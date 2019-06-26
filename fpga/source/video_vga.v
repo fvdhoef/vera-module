@@ -44,11 +44,11 @@ module video_vga(
         end
     end
 
-    wire hsync = (x_counter >= H_ACTIVE + H_FRONT_PORCH && x_counter < H_ACTIVE + H_FRONT_PORCH + H_SYNC);
-    wire vsync = (y_counter >= V_ACTIVE + V_FRONT_PORCH && y_counter < V_ACTIVE + V_FRONT_PORCH + V_SYNC);
+    wire hsync    = (x_counter >= H_ACTIVE + H_FRONT_PORCH && x_counter < H_ACTIVE + H_FRONT_PORCH + H_SYNC);
+    wire vsync    = (y_counter >= V_ACTIVE + V_FRONT_PORCH && y_counter < V_ACTIVE + V_FRONT_PORCH + V_SYNC);
     wire h_active = (x_counter < H_ACTIVE);
     wire v_active = (y_counter < V_ACTIVE);
-    wire active = h_active && v_active;
+    wire active   = h_active && v_active;
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin

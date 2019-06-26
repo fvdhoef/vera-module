@@ -9,7 +9,7 @@ module tb();
     end
 
     initial begin
-        #3000 $finish;
+        #300000 $finish;
     end
 
     // Generate 25MHz sysclk

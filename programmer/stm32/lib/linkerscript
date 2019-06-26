@@ -1,0 +1,62 @@
+MEMORY {
+    rom (rx)  : ORIGIN = 0x08000000, LENGTH = 0x00008000  /* 32k */
+    ram (rwx) : ORIGIN = 0x20000000, LENGTH = 0x00001800  /* 6k */
+}
+
+ENTRY(reset_handler)
+
+SECTIONS {
+    /DISCARD/ : {
+        *(*.data._impure_ptr)
+    }
+
+    .text : ALIGN(4) {
+        FILL(0xff)
+        _stext = .;
+        KEEP(*(.vectors))
+        *(.text*)
+        *(.rodata)
+        *(.rodata.*)
+        . = ALIGN(4);
+    } > rom
+
+    . = ALIGN(4);
+    _etext = .;
+
+    .data : ALIGN(4) {
+        FILL(0xff)
+        _srelocate = .;
+        *(vtable)
+        *(.data*)
+
+        . = ALIGN(4);
+        *(.ramcode)
+
+        . = ALIGN(4);
+        _erelocate = .;
+    } > ram AT > rom
+
+    .bss : ALIGN(4) {
+        _bss = .;
+        *(.bss*)
+        *(COMMON)
+        . = ALIGN(4);
+        _ebss = .;
+    } > ram
+
+    .noinit : ALIGN(4) {
+        *(.noinit*)
+        . = ALIGN(4);
+    } > ram
+
+    .stack (NOLOAD): {
+        . = ALIGN(8);
+        _sstack = .;
+        KEEP(*(.stack_area))
+        . = ALIGN(8);
+        _estack = .;
+    } > ram
+
+    . = ALIGN(4);
+    _end = . ;
+}
