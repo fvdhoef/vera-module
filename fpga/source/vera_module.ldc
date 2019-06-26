@@ -1,0 +1,21 @@
+# 14MHz PHY2
+create_clock -name {bus_phy2} -period 71 [get_ports bus_phy2]
+
+# 25MHz system clock
+create_clock -name {clk25} -period 40 [get_ports clk25]
+
+# Define clock domains to be independent
+set_clock_groups -group [get_clocks bus_phy2] -group [get_clocks clk25] -asynchronous
+
+# Setup time (tCLK - tSU)
+set_input_delay 25 -max -clock [get_clocks bus_phy2] [get_ports {bus_cs_n bus_rw_n bus_a[0] bus_a[1] bus_a[2]}]
+
+set_input_delay 25 -max -clock [get_clocks bus_phy2] [get_ports {bus_d[0] bus_d[1] bus_d[2] bus_d[3] bus_d[4] bus_d[5] bus_d[6] bus_d[7]}]
+
+# Hold time (tH)
+set_input_delay 10 -min -clock [get_clocks bus_phy2] -add_delay [get_ports {bus_d[0] bus_d[1] bus_d[2] bus_d[3] bus_d[4] bus_d[5] bus_d[6] bus_d[7]}]
+
+set_output_delay 10 -clock [get_clocks bus_phy2] -add_delay [get_ports {bus_d[0] bus_d[1] bus_d[2] bus_d[3] bus_d[4] bus_d[5] bus_d[6] bus_d[7]}]
+
+
+set_output_delay 10 -clock [get_clocks clk25] [get_ports {vga_r[0] vga_r[1] vga_r[2] vga_r[3] vga_g[0] vga_g[1] vga_g[2] vga_g[3] vga_b[0] vga_b[1] vga_b[2] vga_b[3] vga_hsync vga_vsync}]

@@ -1,0 +1,52 @@
+[*]
+[*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
+[*] Wed Jun 26 11:55:28 2019
+[*]
+[dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
+[dumpfile_mtime] "Wed Jun 26 11:55:07 2019"
+[dumpfile_size] 4907
+[savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
+[timestart] 0
+[size] 1477 1099
+[pos] -1 -1
+*-10.000000 1500 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb.
+[sst_width] 261
+[signals_width] 359
+[sst_expanded] 1
+[sst_vpaned_height] 323
+@22
+tb.bus_a[15:0]
+@28
+tb.top.clk25
+@22
+tb.top.vga_r[3:0]
+tb.top.vga_g[3:0]
+tb.top.vga_b[3:0]
+@28
+tb.top.vga_hsync
+tb.top.vga_vsync
+tb.top.bus_res_n
+tb.top.bus_phy2
+tb.top.bus_cs_n
+tb.top.bus_rw_n
+tb.top.bus_a[2:0]
+@22
+tb.top.bus_d[7:0]
+@28
+tb.top.bus_rdy
+tb.top.bus_irq_n
+@200
+-Internal
+@28
+tb.top.bus_reset
+tb.top.clk25_reset
+@22
+tb.top.data_in[7:0]
+tb.top.reg_addr_l[7:0]
+tb.top.reg_addr_h[7:0]
+@28
+tb.top.bus_read
+tb.top.bus_write
+[pattern_trace] 1
+[pattern_trace] 0

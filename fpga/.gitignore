@@ -1,0 +1,10 @@
+*.html
+.floorplanner.ini
+.setting.ini
+.recovery
+*.log
+impl/
+vera_module_tcr.dir/
+*.dmp
+*.xml
+*.vcd
