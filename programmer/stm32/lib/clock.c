@@ -8,8 +8,8 @@ void clock_init(void) {
     // Configure flash (1 waitstate)
     FLASH->ACR = FLASH_ACR_PRFTBE | FLASH_ACR_LATENCY;
 
-    // Enable HSE (24MHz external clock) and wait for it to be ready
-    RCC->CR |= RCC_CR_HSEBYP | RCC_CR_HSEON;
+    // Enable HSE (8MHz crystal) and wait for it to be ready
+    RCC->CR |= RCC_CR_HSEON;
     while ((RCC->CR & RCC_CR_HSERDY) == 0) {
     }
 
@@ -18,7 +18,7 @@ void clock_init(void) {
 
     // Configure PLL
     RCC->CFGR |= RCC_CFGR_PLLMUL6 | RCC_CFGR_PLLSRC_HSE_PREDIV;
-    RCC->CFGR2 = RCC_CFGR2_PREDIV_DIV3;
+    RCC->CFGR2 = RCC_CFGR2_PREDIV_DIV1;
     RCC->CR |= RCC_CR_PLLON;
     while ((RCC->CR & RCC_CR_PLLRDY) == 0) {
     }
