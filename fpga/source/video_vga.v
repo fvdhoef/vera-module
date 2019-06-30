@@ -60,13 +60,13 @@ module video_vga(
 
         end else begin
             if (active) begin
+                vga_r <= x_counter[7:4];
+                vga_g <= y_counter[7:4];
+                vga_b <= x_counter[7:4] ^ y_counter[7:4];
+            end else begin
                 vga_r <= 4'd0;
                 vga_g <= 4'd0;
                 vga_b <= 4'd0;
-            end else begin
-                vga_r <= 4'd15;
-                vga_g <= 4'd14;
-                vga_b <= 4'd13;
             end
             vga_hsync <= hsync;
             vga_vsync <= vsync;

@@ -14,7 +14,7 @@ module char_rom(
 
     initial begin
         `ifdef __ICARUS__
-            $readmemh("char_rom.mem", mem_r);
+            $readmemh("../char_rom.mem", mem_r);
         `else
             $readmemh("source/char_rom.mem", mem_r);
         `endif

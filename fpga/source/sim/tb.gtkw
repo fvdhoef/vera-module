@@ -1,22 +1,23 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Wed Jun 26 11:55:28 2019
+[*] Sun Jun 30 14:36:08 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Wed Jun 26 11:55:07 2019"
-[dumpfile_size] 4907
+[dumpfile_mtime] "Sun Jun 30 14:31:09 2019"
+[dumpfile_size] 332781
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
-[timestart] 0
-[size] 1477 1099
-[pos] -1 -1
-*-10.000000 1500 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[timestart] 5890
+[size] 1920 1368
+[pos] 310 -33
+*-11.000000 11740 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
+[treeopen] tb.top.
 [sst_width] 261
 [signals_width] 359
 [sst_expanded] 1
-[sst_vpaned_height] 323
+[sst_vpaned_height] 433
 @22
-tb.bus_a[15:0]
+tb.extbus_a[15:0]
 @28
 tb.top.clk25
 @22
@@ -26,27 +27,59 @@ tb.top.vga_b[3:0]
 @28
 tb.top.vga_hsync
 tb.top.vga_vsync
-tb.top.bus_res_n
-tb.top.bus_phy2
-tb.top.bus_cs_n
-tb.top.bus_rw_n
-tb.top.bus_a[2:0]
+tb.top.extbus_res_n
+tb.top.extbus_phy2
+tb.top.extbus_cs_n
+tb.top.extbus_rw_n
 @22
-tb.top.bus_d[7:0]
+tb.top.extbus_a[2:0]
+tb.top.extbus_d[7:0]
+tb.top.extbus.intbus_rddata[7:0]
+tb.top.extbus.intbus_rddata_r[7:0]
+tb.top.extbus.extbus_d_out[7:0]
 @28
-tb.top.bus_rdy
-tb.top.bus_irq_n
+tb.top.extbus_rdy
+tb.top.extbus_irq_n
 @200
 -Internal
 @28
-tb.top.bus_reset
-tb.top.clk25_reset
+tb.top.extbus.extbus_phy2
 @22
-tb.top.data_in[7:0]
-tb.top.reg_addr_l[7:0]
-tb.top.reg_addr_h[7:0]
+tb.top.extbus.addr_r[17:0]
+@24
+tb.top.extbus.addr_incr_r[3:0]
 @28
-tb.top.bus_read
-tb.top.bus_write
+tb.top.extbus.do_access_toggle
+tb.top.extbus.do_access
+tb.top.extbus.access_done
+tb.top.extbus.do_increment
+tb.top.extbus.do_write
+@200
+-Internal bus
+@28
+tb.top.extbus.intbus_clk
+@22
+tb.top.extbus.intbus_addr[17:0]
+tb.top.extbus.intbus_wrdata[7:0]
+tb.top.extbus.intbus_rddata[7:0]
+@28
+tb.top.extbus.intbus_write
+tb.top.extbus.intbus_strobe
+tb.top.extbus.readback_result
+tb.top.extbus.readback_result_r
+@22
+tb.top.extbus.intbus_rddata_r[7:0]
+@200
+-Main RAM
+@22
+tb.top.main_ram.bus_addr[14:0]
+@28
+tb.top.main_ram.bus_wrbytesel[3:0]
+@22
+tb.top.main_ram.bus_wrdata[31:0]
+@28
+tb.top.main_ram.bus_write
+@23
+tb.top.main_ram.bus_rddata[31:0]
 [pattern_trace] 1
 [pattern_trace] 0

@@ -67,7 +67,7 @@ $(C_OBJS): $(OBJ_DIR)/%.o: %.c
 
 .PHONY: all release install debug dfu clean
 
-all: $(OBJ_DIR) $(OUT)
+all: $(OBJ_DIR) $(OUT) $(DFU)
 
 $(OBJ_DIR):
 	@mkdir -p $(OBJ_DIR) $(addprefix $(OBJ_DIR)/, $(dir $(S_SRCS) $(C_SRCS)))
@@ -112,7 +112,7 @@ $(BIN): $(OUT)
 	$(OBJCOPY) -O binary $< $@
 
 $(DFU): $(BIN)
-	../../tools/scripts/dfu-convert.py -b 0x08000000:$< $@
+	./dfu-convert.py -b 0x08000000:$< $@
 
 dfu: $(DFU)
 	@echo Programming $<...

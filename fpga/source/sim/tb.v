@@ -21,76 +21,76 @@ module tb();
     always #250 phy2 = !phy2;
 
     // Generate async reset
-    reg bus_res_n = 0;
+    reg extbus_res_n = 0;
     initial begin
-        #123 bus_res_n = 1'b1;
+        #123 extbus_res_n = 1'b1;
     end
 
-    reg bus_rw_n = 1;
-    reg [15:0] bus_a = 0;
+    reg extbus_rw_n = 1;
+    reg [15:0] extbus_a = 0;
 
-    wire bus_cs_n = !((bus_a & 'hFFF0) == 'h1000);
-
-
-    reg [7:0] bus_d_wr = 0;
+    wire extbus_cs_n = !((extbus_a & 'hFFF0) == 'h1000);
 
 
-    wire [7:0] bus_d = bus_rw_n ? 8'hZ : bus_d_wr;
+    reg [7:0] extbus_d_wr = 0;
+
+
+    wire [7:0] extbus_d = extbus_rw_n ? 8'hZ : extbus_d_wr;
 
     top top(
         .clk25(sysclk),
 
-        .bus_res_n(bus_res_n),
-        .bus_phy2(phy2),
-        .bus_cs_n(bus_cs_n),
-        .bus_rw_n(bus_rw_n),
-        .bus_a(bus_a[2:0]),
-        .bus_d(bus_d));
+        .extbus_res_n(extbus_res_n),
+        .extbus_phy2(phy2),
+        .extbus_cs_n(extbus_cs_n),
+        .extbus_rw_n(extbus_rw_n),
+        .extbus_a(extbus_a[2:0]),
+        .extbus_d(extbus_d));
 
 
-    task bus_write;
+    task extbus_write;
         input [15:0] addr;
         input  [7:0] data;
 
         begin
             @(negedge phy2)
             #10; // tAH = 10ns
-            bus_rw_n = 1'bX;
-            bus_a = 16'bX;
-            bus_d_wr = 8'bX;
+            extbus_rw_n = 1'bX;
+            extbus_a = 16'bX;
+            extbus_d_wr = 8'bX;
             #20;
-            bus_a = addr; // address
-            bus_rw_n = 1'b0; // write
+            extbus_a = addr; // address
+            extbus_rw_n = 1'b0; // write
 
             @(posedge phy2)
             #140;
-            bus_d_wr = data;
+            extbus_d_wr = data;
 
 
             @(negedge phy2)
             #10;
-            bus_a = 16'b0;
-            bus_rw_n = 1'b1;
+            extbus_a = 16'b0;
+            extbus_rw_n = 1'b1;
         end
     endtask
 
-    task bus_read;
+    task extbus_read;
         input [15:0] addr;
 
         begin
             @(negedge phy2)
             #10; // tAH = 10ns
-            bus_rw_n = 1'bX;
-            bus_a = 16'bX;
-            bus_d_wr = 8'bX;
+            extbus_rw_n = 1'bX;
+            extbus_a = 16'bX;
+            extbus_d_wr = 8'bX;
             #20;
-            bus_a = addr;    // address
-            bus_rw_n = 1'b1; // read
+            extbus_a = addr;    // address
+            extbus_rw_n = 1'b1; // read
 
             @(negedge phy2)
             #10;
-            bus_a = 16'b0;
-            bus_rw_n = 1'b1;
+            extbus_a = 16'b0;
+            extbus_rw_n = 1'b1;
         end
     endtask
 
@@ -98,8 +98,55 @@ module tb();
 
     initial begin
         #1000
-        bus_write(16'h1000, 8'hAA);
-        bus_read(16'h1000);
+        // extbus_write(16'h1000, 8'h12);
+        // extbus_write(16'h1001, 8'h00);
+        // extbus_write(16'h1002, 8'h00);
+        // extbus_read(16'h1003);
+        // extbus_read(16'h1003);
+        // extbus_read(16'h1003);
+        // extbus_read(16'h1003);
+
+        // extbus_write(16'h1002, 8'h10);
+        // extbus_read(16'h1003);
+
+        extbus_write(16'h1000, 8'h10);
+        @(negedge phy2);
+        extbus_write(16'h1001, 8'h00);
+        @(negedge phy2);
+        extbus_write(16'h1002, 8'h00);
+        @(negedge phy2);
+
+        extbus_write(16'h1003, 8'h01);
+        @(negedge phy2);
+        extbus_write(16'h1003, 8'h02);
+        @(negedge phy2);
+        extbus_write(16'h1003, 8'h03);
+        @(negedge phy2);
+        extbus_write(16'h1003, 8'h04);
+        @(negedge phy2);
+
+        extbus_write(16'h1000, 8'h10);
+        @(negedge phy2);
+        extbus_write(16'h1001, 8'h00);
+        @(negedge phy2);
+        extbus_write(16'h1002, 8'h00);
+        @(negedge phy2);
+
+        extbus_read(16'h1003);
+        @(negedge phy2);
+        extbus_read(16'h1003);
+        @(negedge phy2);
+        extbus_read(16'h1003);
+        @(negedge phy2);
+        extbus_read(16'h1003);
+        @(negedge phy2);
+
+
+
+        // extbus_write(16'h1003, 8'h13);
+        // extbus_write(16'h1003, 8'h42);
+        // extbus_write(16'h1003, 8'h02);
+        // extbus_write(16'h1003, 8'h03);
 
         // for (i=0; i<8; i=i+1) begin
 
