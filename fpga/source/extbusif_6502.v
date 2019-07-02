@@ -33,7 +33,6 @@ module extbusif_6502(
 
     reg [7:0] intbus_rddata_r;
 
-
     // Asynchronous selection of read data
     reg [7:0] extbus_d_out;
     always @* begin
@@ -52,16 +51,14 @@ module extbusif_6502(
     assign extbus_rdy = 1'bZ;
 
     // From extbus domain to intbus domain
-    reg do_access_toggle;
-    reg [2:0] do_access_toggle_r;
-    always @(posedge intbus_clk) do_access_toggle_r <= {do_access_toggle_r[1:0], do_access_toggle};
-    wire do_access = do_access_toggle_r[1] ^ do_access_toggle_r[2];
+    reg  eb_do_access;
+    wire ib_do_access;
 
-    // From intbus domain to extbus domain
-    reg access_done_toggle;
-    reg [2:0] access_done_toggle_r;
-    always @(negedge extbus_phy2) access_done_toggle_r <= {access_done_toggle_r[1:0], access_done_toggle};
-    wire access_done = access_done_toggle_r[1] ^ access_done_toggle_r[2];
+    pulse2pulse p2p_do_access(
+        .in_clk(!extbus_phy2),
+        .in_pulse(eb_do_access),
+        .out_clk(intbus_clk),
+        .out_pulse(ib_do_access));
 
     // On positive edge of PHY2, 6502 updates address lines (and thus chipselect) and R/W# line:
     reg [2:0] extbus_a_r;
@@ -75,101 +72,114 @@ module extbusif_6502(
     end
 
     // On negative edge of PHY2, data lines should be valid
-    reg [7:0] extbus_d_in_r;
-    reg do_write;
-    reg do_increment;
+    reg   [7:0] extbus_d_in_r;
+    reg         do_write;
+    reg         do_increment;
+
+    reg   [3:0] addr_incr_next;
+    reg  [17:0] addr_next;
+
+    reg  [17:0] access_addr_r, access_addr_next;
+    reg   [7:0] wrdata_r,      wrdata_next;
+    reg         do_write_r,    do_write_next;
+
+    always @* begin
+        addr_incr_next   = addr_incr_r;
+        addr_next        = addr_r;
+
+        access_addr_next = access_addr_r; 
+        wrdata_next      = wrdata_r;
+        do_write_next    = do_write_r;
+
+        eb_do_access     = 0;
+
+        if (!extbus_cs_n) begin
+            case (extbus_a_r)
+                3'd0: if (!extbus_rw_n) begin
+                    addr_incr_next   = extbus_d_in[7:4];
+                    addr_next[17:16] = extbus_d_in[1:0];
+
+                    access_addr_next = addr_next;
+                    do_write_next    = 0;
+                    eb_do_access     = 1;
+                end
+
+                3'd1: if (!extbus_rw_n) begin
+                    addr_next[15:8]  = extbus_d_in;
+
+                    access_addr_next = addr_next;
+                    do_write_next    = 0;
+                    eb_do_access     = 1;
+                end
+
+                3'd2: if (!extbus_rw_n) begin
+                    addr_next[7:0]   = extbus_d_in;
+
+                    access_addr_next = addr_next;
+                    do_write_next    = 0;
+                    eb_do_access     = 1;
+                end
+
+                3'd3: begin
+                    addr_next        = addr_r + addr_incr_r;
+
+                    access_addr_next = addr_r;
+                    wrdata_next      = extbus_d_in;
+                    do_write_next    = !extbus_rw_n_r;
+                    eb_do_access     = 1;
+                end
+            endcase
+        end
+
+    end
 
     always @(negedge extbus_phy2 or posedge extbus_reset) begin
         if (extbus_reset) begin
-            do_access_toggle <= 0;
-            extbus_d_in_r <= 8'h00;
-
-            addr_incr_r <= 0;
-            addr_r <= 0;
-            do_write <= 0;
-            do_increment <= 0;
+            addr_incr_r   <= 0;
+            addr_r        <= 0;
+            access_addr_r <= 0;
+            wrdata_r      <= 0;
+            do_write_r    <= 0;
 
         end else begin
-            if (access_done && do_increment) begin
-                addr_r <= addr_r + addr_incr_r;
-                do_increment <= 0;
-            end
-
-            if (!extbus_cs_n) begin
-                case (extbus_a_r)
-                    3'd0: if (!extbus_rw_n) begin
-                        addr_incr_r   <= extbus_d_in[7:4];
-                        addr_r[17:16] <= extbus_d_in[1:0];
-
-                        do_access_toggle <= !do_access_toggle;
-                        do_write <= 0;
-                    end
-
-                    3'd1: if (!extbus_rw_n) begin
-                        addr_r[15:8] <= extbus_d_in;
-
-                        do_access_toggle <= !do_access_toggle;
-                        do_write <= 0;
-                    end
-
-                    3'd2: if (!extbus_rw_n) begin
-                        addr_r[7:0] <= extbus_d_in;
-
-                        do_access_toggle <= !do_access_toggle;
-                        do_write <= 0;
-                    end
-
-                    3'd3: begin
-                        extbus_d_in_r <= extbus_d_in;
-
-                        do_access_toggle <= !do_access_toggle;
-                        do_write <= !extbus_rw_n_r;
-
-                        if (!extbus_rw_n_r) begin
-                            do_increment <= 1;
-                        end else begin
-                            addr_r <= addr_r + addr_incr_r;
-                        end
-                    end
-                endcase
-
-            end
+            addr_incr_r   <= addr_incr_next;
+            addr_r        <= addr_next;
+            access_addr_r <= access_addr_next;
+            wrdata_r      <= wrdata_next;
+            do_write_r    <= do_write_next;
         end
     end
+
 
 
     reg readback_result;
     reg readback_result_r;
     always @(posedge intbus_clk or posedge intbus_reset) begin
         if (intbus_reset) begin
-            access_done_toggle <= 0;
+            intbus_addr        <= 18'h0;
+            intbus_wrdata      <= 8'h0;
+            intbus_strobe      <= 1'b0;
+            intbus_write       <= 1'b0;
 
-            intbus_addr <= 18'h0;
-            intbus_wrdata <= 8'h0;
-            intbus_strobe <= 1'b0;
-            intbus_write <= 1'b0;
+            intbus_rddata_r    <= 8'h0;
 
-            intbus_rddata_r <= 8'h0;
-
-            readback_result <= 0;
-            readback_result_r <= 0;
+            readback_result    <= 0;
+            readback_result_r  <= 0;
 
         end else begin
-            readback_result <= intbus_strobe && !intbus_write;
+            readback_result   <= intbus_strobe && !intbus_write;
             readback_result_r <= readback_result;
 
-            intbus_strobe <= 1'b0;
-            intbus_write  <= 1'b0;
+            intbus_strobe     <= 1'b0;
+            intbus_write      <= 1'b0;
 
-            if (do_access) begin
-                intbus_addr <= addr_r;
+            if (ib_do_access) begin
+                intbus_addr   <= access_addr_r;
                 intbus_strobe <= 1'b1;
-                intbus_wrdata <= extbus_d_in_r;
-                intbus_write <= do_write;
+                intbus_wrdata <= wrdata_r;
+                intbus_write  <= do_write_r;
 
-                readback_result <= !do_write;
-
-                access_done_toggle <= !access_done_toggle;
+                readback_result <= 1'b1;    //!do_write;
             end
 
             if (readback_result_r) begin

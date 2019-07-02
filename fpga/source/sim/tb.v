@@ -110,36 +110,38 @@ module tb();
         // extbus_read(16'h1003);
 
         extbus_write(16'h1000, 8'h10);
-        @(negedge phy2);
         extbus_write(16'h1001, 8'h00);
-        @(negedge phy2);
         extbus_write(16'h1002, 8'h00);
-        @(negedge phy2);
 
         extbus_write(16'h1003, 8'h01);
-        @(negedge phy2);
         extbus_write(16'h1003, 8'h02);
-        @(negedge phy2);
         extbus_write(16'h1003, 8'h03);
-        @(negedge phy2);
         extbus_write(16'h1003, 8'h04);
-        @(negedge phy2);
 
         extbus_write(16'h1000, 8'h10);
-        @(negedge phy2);
         extbus_write(16'h1001, 8'h00);
-        @(negedge phy2);
         extbus_write(16'h1002, 8'h00);
-        @(negedge phy2);
 
         extbus_read(16'h1003);
-        @(negedge phy2);
         extbus_read(16'h1003);
-        @(negedge phy2);
         extbus_read(16'h1003);
-        @(negedge phy2);
         extbus_read(16'h1003);
-        @(negedge phy2);
+
+        // @(negedge phy2);
+        // extbus_write(16'h1003, 8'h02);
+        // @(negedge phy2);
+        // extbus_write(16'h1003, 8'h03);
+        // @(negedge phy2);
+        // extbus_write(16'h1003, 8'h04);
+        // @(negedge phy2);
+
+        // extbus_write(16'h1000, 8'h10);
+        // @(negedge phy2);
+        // extbus_write(16'h1001, 8'h00);
+        // @(negedge phy2);
+        // extbus_write(16'h1002, 8'h00);
+        // @(negedge phy2);
+
 
 
 
