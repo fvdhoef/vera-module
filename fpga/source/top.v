@@ -39,31 +39,91 @@ module top(
     // Address decoding:
     // 00000-1FFFF Main RAM (128kB)
     // 20000-20FFF Character ROM (4kB)
+    // 30000-301FF Palette RAM (512B)
     wire mainram_sel = (intbus_addr[17] == 0);
-    wire charrom_sel = (intbus_addr[17] == 1);
+    wire charrom_sel = (intbus_addr[17:16] == 2'b10);
+    wire palette_sel = (intbus_addr[17:16] == 2'b11);
+
+    // 16-bit byte sel
+    wire [1:0] bytesel16 = intbus_addr[0] ? 2'b10 : 2'b01;
+
+    // 32-bit byte sel
+    reg [3:0] bytesel32;
+    always @* case (intbus_addr[1:0])
+        2'b00: bytesel32 = 4'b0001;
+        2'b01: bytesel32 = 4'b0010;
+        2'b10: bytesel32 = 4'b0100;
+        2'b11: bytesel32 = 4'b1000;
+    endcase
 
     //
     // Main RAM (128kB) 00000-1FFFF
     //
     wire [31:0] mainram_wrdata = {4{intbus_wrdata}};
-    reg   [3:0] mainram_wrbytesel;
     wire [31:0] mainram_rddata;
     wire        mainram_write = mainram_sel && intbus_strobe && intbus_write;
-
-    always @* case (intbus_addr[1:0])
-        2'b00: mainram_wrbytesel = 4'b0001;
-        2'b01: mainram_wrbytesel = 4'b0010;
-        2'b10: mainram_wrbytesel = 4'b0100;
-        2'b11: mainram_wrbytesel = 4'b1000;
-    endcase
 
     main_ram main_ram(
         .clk(intbus_clk),
         .bus_addr(intbus_addr[16:2]),
         .bus_wrdata(mainram_wrdata),
-        .bus_wrbytesel(mainram_wrbytesel),
+        .bus_wrbytesel(bytesel32),
         .bus_rddata(mainram_rddata),
         .bus_write(mainram_write));
+
+    //
+    // Display line buffer
+    //
+    wire [10:0] linebuf_wridx;
+    wire  [7:0] linebuf_wrdata;
+    wire        linebuf_wren;
+
+    wire [10:0] linebuf_rdidx;
+    wire  [7:0] linebuf_rddata;
+
+    dpram #(.ADDR_WIDTH(11), .DATA_WIDTH(8)) display_linebuf(
+        .wr_clk(intbus_clk),
+        .wr_addr(linebuf_wridx),
+        .wr_en(linebuf_wren),
+        .wr_data(linebuf_wrdata),
+
+        .rd_clk(intbus_clk),
+        .rd_addr(linebuf_rdidx),
+        .rd_data(linebuf_rddata));
+
+    //
+    // Palette - 2 instances to allow for readback of palette entries
+    //
+    wire        palette_write = palette_sel && intbus_strobe && intbus_write;
+    wire [15:0] palette_ib_rddata;
+
+    wire [15:0] palette_rgb_data;
+
+    palette_ram palette_ram(
+        .wr_clk_i(intbus_clk),
+        .rd_clk_i(intbus_clk),
+        .wr_clk_en_i(1'b1),
+        .rd_en_i(1'b1),
+        .rd_clk_en_i(1'b1),
+        .wr_en_i(palette_write),
+        .wr_data_i({2{intbus_wrdata}}),
+        .ben_i(bytesel16),
+        .wr_addr_i(intbus_addr[8:1]),
+        .rd_addr_i(linebuf_rddata),
+        .rd_data_o(palette_rgb_data));
+
+    palette_ram palette_ram_readback(
+        .wr_clk_i(intbus_clk),
+        .rd_clk_i(intbus_clk),
+        .wr_clk_en_i(1'b1),
+        .rd_en_i(1'b1),
+        .rd_clk_en_i(1'b1),
+        .wr_en_i(palette_write),
+        .wr_data_i({2{intbus_wrdata}}),
+        .ben_i(bytesel16),
+        .wr_addr_i(intbus_addr[8:1]),
+        .rd_addr_i(intbus_addr[8:1]),
+        .rd_data_o(palette_ib_rddata));
 
     //
     // Charactor ROM (4kB) 20000-20FFF
@@ -74,12 +134,12 @@ module top(
         .rd_addr(intbus_addr[11:2]),
         .rd_data(charrom_rddata));
 
-    
     reg [31:0] intbus_rddata;
     always @* begin
         intbus_rddata = 0;
         if (mainram_sel) intbus_rddata = mainram_rddata;
         if (charrom_sel) intbus_rddata = charrom_rddata;
+        if (palette_sel) intbus_rddata = {2{palette_ib_rddata}};
     end
 
     reg [7:0] intbus_rddata8;
@@ -110,10 +170,27 @@ module top(
         .intbus_strobe(intbus_strobe),
         .intbus_write(intbus_write));
 
+    // Renderer
+    renderer renderer(
+        .rst(intbus_reset),
+        .clk(intbus_clk),
+
+        // Line buffer interface
+        .linebuf_wridx(linebuf_wridx),
+        .linebuf_wrdata(linebuf_wrdata),
+        .linebuf_wren(linebuf_wren));
+
     // VGA video
     video_vga video_vga(
         .rst(intbus_reset),
         .clk(intbus_clk),
+
+        .pixel_width(2'd0),
+        .pixel_height(2'd0),
+
+        // Line buffer / palette interface
+        .linebuf_idx(linebuf_rdidx),
+        .linebuf_rgb_data(palette_rgb_data[11:0]),
 
         // VGA interface
         .vga_r(vga_r),

@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Wed Jul  3 09:23:51 2019
+[*] Wed Jul  3 11:46:58 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Wed Jul  3 09:22:30 2019"
-[dumpfile_size] 330894
+[dumpfile_mtime] "Wed Jul  3 11:46:30 2019"
+[dumpfile_size] 622996
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
 [timestart] 0
 [size] 1920 1007
 [pos] 122 81
-*-11.000000 1250 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-11.000000 32160 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
@@ -35,9 +35,7 @@ tb.top.extbus.extbus_irq_n
 tb.top.extbus.eb_busy_value
 tb.top.extbus.end_of_cycle
 tb.top.extbus.intbus_strobe
-@29
 tb.top.extbus.intbus_strobe_r
-@28
 tb.top.extbus.ib_do_read
 tb.top.extbus.ib_do_write
 tb.top.extbus.intbus_clk
@@ -66,5 +64,7 @@ tb.top.main_ram.bus_write
 tb.top.main_ram.bus_rddata[31:0]
 @28
 tb.top.extbus.extbus_a_r[2:0]
+@24
+tb.top.linebuf_rdidx[10:0]
 [pattern_trace] 1
 [pattern_trace] 0

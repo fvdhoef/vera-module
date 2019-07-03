@@ -4,6 +4,13 @@ module video_vga(
     input  wire        rst,
     input  wire        clk,
 
+    input  wire  [1:0] pixel_width,
+    input  wire  [1:0] pixel_height,
+
+    // Line buffer / palette interface
+    output reg  [10:0] linebuf_idx,
+    input  wire [11:0] linebuf_rgb_data,
+
     // VGA interface
     output reg   [3:0] vga_r,
     output reg   [3:0] vga_g,
@@ -50,6 +57,30 @@ module video_vga(
     wire v_active = (y_counter < V_ACTIVE);
     wire active   = h_active && v_active;
 
+    // Line buffer logic
+    reg [1:0] pixel_width_cnt_r;
+
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            linebuf_idx <= 11'd0;
+            pixel_width_cnt_r <= 0;
+
+        end else begin
+            if (pixel_width_cnt_r == 0) begin
+                pixel_width_cnt_r <= pixel_width;
+
+                linebuf_idx <= linebuf_idx + 1;
+            end else begin
+                pixel_width_cnt_r <= pixel_width_cnt_r - 1;
+            end
+
+            if (h_last) begin
+                linebuf_idx <= 0;
+                pixel_width_cnt_r <= pixel_width;
+            end
+        end
+    end
+
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             vga_r <= 4'd0;
@@ -60,19 +91,18 @@ module video_vga(
 
         end else begin
             if (active) begin
-                vga_r <= x_counter[7:4];
-                vga_g <= y_counter[7:4];
-                vga_b <= x_counter[7:4] ^ y_counter[7:4];
+                vga_r <= linebuf_rgb_data[11:8];
+                vga_g <= linebuf_rgb_data[7:4];
+                vga_b <= linebuf_rgb_data[3:0];
             end else begin
                 vga_r <= 4'd0;
                 vga_g <= 4'd0;
                 vga_b <= 4'd0;
             end
+
             vga_hsync <= hsync;
             vga_vsync <= vsync;
-
         end
     end
-
 
 endmodule

@@ -1,0 +1,11 @@
+    palette_ram u_palette_ram(.wr_clk_i(wr_clk_i),
+        .rd_clk_i(rd_clk_i),
+        .wr_clk_en_i(wr_clk_en_i),
+        .rd_en_i(rd_en_i),
+        .rd_clk_en_i(rd_clk_en_i),
+        .wr_en_i(wr_en_i),
+        .ben_i(ben_i),
+        .wr_data_i(wr_data_i),
+        .wr_addr_i(wr_addr_i),
+        .rd_addr_i(rd_addr_i),
+        .rd_data_o(rd_data_o));
