@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Mon Jul  1 19:18:30 2019
+[*] Wed Jul  3 09:23:51 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Mon Jul  1 19:13:01 2019"
-[dumpfile_size] 337213
+[dumpfile_mtime] "Wed Jul  3 09:22:30 2019"
+[dumpfile_size] 330894
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
-[timestart] 5120
+[timestart] 0
 [size] 1920 1007
-[pos] -8 -19
-*-11.000000 10980 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] 122 81
+*-11.000000 1250 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
@@ -25,33 +25,33 @@ tb.top.extbus_rw_n
 @22
 tb.top.extbus_a[2:0]
 tb.top.extbus_d[7:0]
+@28
+tb.top.extbus.extbus_rdy
+tb.top.extbus.extbus_irq_n
 @200
 -Internal
-@22
-tb.top.extbus.extbus_d_out[7:0]
-tb.top.extbus.addr_r[17:0]
-@24
-tb.top.extbus.addr_incr_r[3:0]
-@200
 -Internal bus
 @28
+tb.top.extbus.eb_busy_value
+tb.top.extbus.end_of_cycle
+tb.top.extbus.intbus_strobe
+@29
+tb.top.extbus.intbus_strobe_r
+@28
+tb.top.extbus.ib_do_read
+tb.top.extbus.ib_do_write
 tb.top.extbus.intbus_clk
 @22
 tb.top.extbus.intbus_addr[17:0]
 tb.top.extbus.intbus_wrdata[7:0]
 tb.top.extbus.intbus_rddata[7:0]
-tb.top.extbus.intbus_rddata_r[7:0]
+tb.top.extbus.ib_rddata_r[7:0]
 @28
 tb.top.extbus.intbus_write
 tb.top.extbus.intbus_strobe
-tb.top.extbus.readback_result
-tb.top.extbus.readback_result_r
-tb.top.extbus.p2p_do_access.toggle_r
 @22
-tb.top.extbus.access_addr_r[17:0]
-tb.top.extbus.addr_next[17:0]
-tb.top.extbus.addr_r[17:0]
-tb.top.extbus.addr_incr_r[3:0]
+tb.top.extbus.ib_addr_r[17:0]
+tb.top.extbus.ib_addr_incr_r[3:0]
 @200
 -Main RAM
 @22
@@ -64,6 +64,7 @@ tb.top.main_ram.bus_wrdata[31:0]
 tb.top.main_ram.bus_write
 @22
 tb.top.main_ram.bus_rddata[31:0]
-tb.top.extbus.access_addr_r[17:0]
+@28
+tb.top.extbus.extbus_a_r[2:0]
 [pattern_trace] 1
 [pattern_trace] 0

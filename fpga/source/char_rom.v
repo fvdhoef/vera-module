@@ -3,10 +3,10 @@
 module char_rom(
     input  wire        clk,
 
-    input  wire [11:0] rd_addr,
-    output reg   [7:0] rd_data);
+    input  wire  [9:0] rd_addr,
+    output reg  [31:0] rd_data);
 
-    reg [7:0] mem_r[0:4095];
+    reg [31:0] mem_r[0:1023];
 
     always @(posedge clk) begin
         rd_data <= mem_r[rd_addr];

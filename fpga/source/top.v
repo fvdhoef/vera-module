@@ -68,28 +68,27 @@ module top(
     //
     // Charactor ROM (4kB) 20000-20FFF
     //
-    wire [7:0] charrom_rddata;
+    wire [31:0] charrom_rddata;
     char_rom char_rom(
         .clk(intbus_clk),
-        .rd_addr(intbus_addr[11:0]),
+        .rd_addr(intbus_addr[11:2]),
         .rd_data(charrom_rddata));
 
-
-    reg [7:0] mainram_rddata8;
-    always @* case (intbus_addr[1:0])
-        2'b00: mainram_rddata8 = mainram_rddata[7:0];
-        2'b01: mainram_rddata8 = mainram_rddata[15:8];
-        2'b10: mainram_rddata8 = mainram_rddata[23:16];
-        2'b11: mainram_rddata8 = mainram_rddata[31:24];
-    endcase
-
     
-    reg [7:0] intbus_rddata;
+    reg [31:0] intbus_rddata;
     always @* begin
-        intbus_rddata = 8'h00;
-        if (mainram_sel) intbus_rddata = mainram_rddata8;
+        intbus_rddata = 0;
+        if (mainram_sel) intbus_rddata = mainram_rddata;
         if (charrom_sel) intbus_rddata = charrom_rddata;
     end
+
+    reg [7:0] intbus_rddata8;
+    always @* case (intbus_addr[1:0])
+        2'b00: intbus_rddata8 = intbus_rddata[7:0];
+        2'b01: intbus_rddata8 = intbus_rddata[15:8];
+        2'b10: intbus_rddata8 = intbus_rddata[23:16];
+        2'b11: intbus_rddata8 = intbus_rddata[31:24];
+    endcase
 
     extbusif_6502 extbus(
         // 6502 slave bus interface
@@ -107,7 +106,7 @@ module top(
         .intbus_clk(intbus_clk),
         .intbus_addr(intbus_addr),
         .intbus_wrdata(intbus_wrdata),
-        .intbus_rddata(intbus_rddata),
+        .intbus_rddata(intbus_rddata8),
         .intbus_strobe(intbus_strobe),
         .intbus_write(intbus_write));
 
