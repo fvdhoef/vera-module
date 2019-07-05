@@ -2,7 +2,6 @@
 
 module extbusif_6502(
     // 6502 slave bus interface
-    input  wire        extbus_res_n,  /* Reset */
     input  wire        extbus_phy2,   /* Bus clock */
     input  wire        extbus_cs_n,   /* Chip select */
     input  wire        extbus_rw_n,   /* Read(1) / write(0) */
@@ -11,23 +10,23 @@ module extbusif_6502(
     output wire        extbus_rdy,    /* Ready out */
     output wire        extbus_irq_n,  /* IRQ */
 
-    // Internal bus master interface
-    input  wire        intbus_reset,
-    input  wire        intbus_clk,
-    output reg  [17:0] intbus_addr,
-    output reg   [7:0] intbus_wrdata,
-    input  wire  [7:0] intbus_rddata,
-    output reg         intbus_strobe,
-    output reg         intbus_write);
+    // Bus master interface
+    input  wire        bm_reset,
+    input  wire        bm_clk,
+    output reg  [18:0] bm_addr,
+    output reg   [7:0] bm_wrdata,
+    input  wire  [7:0] bm_rddata,
+    output reg         bm_strobe,
+    output reg         bm_write);
 
-    // Directly exposed bus registers (internal bus clock domain)
-    reg  [3:0] ib_addr_incr_r;
-    reg [17:0] ib_addr_r;
-    reg  [7:0] ib_rddata_r;
+    // Directly exposed bus registers (bus master clock domain)
+    reg  [3:0] bm_addr_incr_r;
+    reg [18:0] bm_addr_r;
+    reg  [7:0] bm_rddata_r;
 
-    reg        ib_irq_r;
+    reg        bm_irq_r;
 
-    reg        ib_busy_done;
+    reg        bm_busy_done;
 
     //////////////////////////////////////////////////////////////////////////
     // External bus clock domain
@@ -35,27 +34,25 @@ module extbusif_6502(
 
     // Asynchronous selection of read data
     reg [7:0] eb_rddata;
-    always @* begin
-        case (extbus_a)
-            3'd0:    eb_rddata = {ib_addr_incr_r, 2'b0, ib_addr_r[17:16]};
-            3'd1:    eb_rddata = ib_addr_r[15:8];
-            3'd2:    eb_rddata = ib_addr_r[7:0];
-            3'd3:    eb_rddata = ib_rddata_r;
-            default: eb_rddata = 8'h42;
-        endcase
-    end
+    always @* case (extbus_a)
+        3'd0:    eb_rddata = {bm_addr_incr_r, 1'b0, bm_addr_r[18:16]};
+        3'd1:    eb_rddata = bm_addr_r[15:8];
+        3'd2:    eb_rddata = bm_addr_r[7:0];
+        3'd3:    eb_rddata = bm_rddata_r;
+        default: eb_rddata = 8'h00;
+    endcase
 
     // Handle tristating of data bus
     assign extbus_d = (!extbus_cs_n && extbus_rw_n) ? eb_rddata : 8'bZ;
     wire [7:0] eb_wrdata = extbus_d;
 
     // IRQ signal (open-drain output)
-    assign extbus_irq_n = ib_irq_r ? 1'b0 : 1'bZ;
+    assign extbus_irq_n = bm_irq_r ? 1'b0 : 1'bZ;
 
     // RDY signal (open-drain output)
     reg eb_busy_value;
-    always @(posedge extbus_phy2 or posedge ib_busy_done) begin
-        if (ib_busy_done) begin
+    always @(posedge extbus_phy2 or posedge bm_busy_done) begin
+        if (bm_busy_done) begin
             eb_busy_value <= 0;
         end else begin
             eb_busy_value <= extbus_rw_n;
@@ -81,103 +78,101 @@ module extbusif_6502(
     end
 
     // Generate read and write pulses to internal bus
-    wire ib_do_read;
+    wire bm_do_read;
     pulse2pulse p2p_do_read(
         .in_clk(extbus_phy2),
         .in_pulse(!extbus_cs_n && extbus_rw_n),
-        .out_clk(intbus_clk),
-        .out_pulse(ib_do_read));
+        .out_clk(bm_clk),
+        .out_pulse(bm_do_read));
 
-    wire ib_do_write;
+    wire bm_do_write;
     pulse2pulse p2p_do_write(
         .in_clk(!extbus_phy2),
         .in_pulse(!extbus_cs_n && !extbus_rw_n),
-        .out_clk(intbus_clk),
-        .out_pulse(ib_do_write));
+        .out_clk(bm_clk),
+        .out_pulse(bm_do_write));
 
     //////////////////////////////////////////////////////////////////////////
     // Internal bus clock domain
     //////////////////////////////////////////////////////////////////////////
 
-    reg [2:0] eb_cs_r;
-    always @(posedge intbus_clk) eb_cs_r <= {eb_cs_r[1:0], extbus_cs_n};
-    wire end_of_cycle = eb_cs_r[1] && !eb_cs_r[2];
+    reg   [3:0] bm_addr_incr_next;
+    reg  [18:0] bm_addr_next;
+    reg  [18:0] bm_access_addr_next;
+    reg   [7:0] bm_write_data_next;
+    reg   [7:0] bm_rddata_next;
+    reg         bm_strobe_next, bm_write_next;
 
-    reg   [3:0] ib_addr_incr_next;
-    reg  [17:0] ib_addr_next;
-    reg  [17:0] ib_access_addr_next;
-    reg   [7:0] ib_write_data_next;
-    reg   [7:0] ib_rddata_next;
-    reg         ib_strobe_next, ib_write_next;
-
-    reg         intbus_strobe_r;
+    reg         bm_strobe_r;
 
     always @* begin
-        ib_addr_incr_next   = ib_addr_incr_r;
-        ib_addr_next        = ib_addr_r;
-        ib_access_addr_next = intbus_addr;
-        ib_write_data_next  = intbus_wrdata;
-        ib_rddata_next      = ib_rddata_r;
-        ib_strobe_next      = 0;
-        ib_write_next       = 0;
+        bm_addr_incr_next   = bm_addr_incr_r;
+        bm_addr_next        = bm_addr_r;
+        bm_access_addr_next = bm_addr;
+        bm_write_data_next  = bm_wrdata;
+        bm_rddata_next      = bm_rddata_r;
+        bm_strobe_next      = 0;
+        bm_write_next       = 0;
 
-        ib_busy_done        = ib_do_write;
+        bm_busy_done        = bm_do_write;
 
-        if (intbus_strobe_r && !intbus_write) begin
-            ib_rddata_next = intbus_rddata;
-            ib_busy_done = 1;
+        if (bm_strobe_r && !bm_write) begin
+            bm_rddata_next = bm_rddata;
+            bm_busy_done = 1;
         end
 
         case (extbus_a_r)
-            3'd0: if (ib_do_write) begin
-                ib_addr_incr_next   = eb_wrdata_r[7:4];
-                ib_addr_next[17:16] = eb_wrdata_r[1:0];
+            3'd0: if (bm_do_write) begin
+                bm_addr_incr_next   = eb_wrdata_r[7:4];
+                bm_addr_next[18:16] = eb_wrdata_r[2:0];
             end
 
-            3'd1: if (ib_do_write) begin
-                ib_addr_next[15:8]  = eb_wrdata_r;
+            3'd1: if (bm_do_write) begin
+                bm_addr_next[15:8]  = eb_wrdata_r;
             end
 
-            3'd2: if (ib_do_write) begin
-                ib_addr_next[7:0]   = eb_wrdata_r;
+            3'd2: if (bm_do_write) begin
+                bm_addr_next[7:0]   = eb_wrdata_r;
             end
 
-            3'd3: if (ib_do_read || ib_do_write) begin
-                ib_access_addr_next = ib_addr_r;
-                ib_addr_next        = ib_addr_r + ib_addr_incr_r;
-                ib_strobe_next      = 1;
-                ib_write_data_next  = eb_wrdata_r;
-                ib_write_next       = ib_do_write;
+            3'd3: if (bm_do_read || bm_do_write) begin
+                bm_access_addr_next = bm_addr_r;
+                bm_addr_next        = bm_addr_r + bm_addr_incr_r;
+                bm_strobe_next      = 1;
+                bm_write_data_next  = eb_wrdata_r;
+                bm_write_next       = bm_do_write;
             end
         endcase
     end
 
-    always @(posedge intbus_clk or posedge intbus_reset) begin
-        if (intbus_reset) begin
-            ib_addr_incr_r   <= 0;
-            ib_addr_r        <= 0;
+    always @(posedge bm_clk or posedge bm_reset) begin
+        if (bm_reset) begin
+            bm_addr_incr_r <= 0;
+            bm_addr_r      <= 0;
 
-            intbus_addr      <= 0;
-            intbus_wrdata    <= 0;
-            ib_rddata_r      <= 0;
-            intbus_strobe    <= 0;
-            intbus_write     <= 0;
+            bm_addr        <= 0;
+            bm_wrdata      <= 0;
+            bm_rddata_r    <= 0;
+            bm_strobe      <= 0;
+            bm_write       <= 0;
 
-            ib_irq_r         <= 0;
+            bm_irq_r       <= 0;
 
-            intbus_strobe_r  <= 0;
+            bm_strobe_r    <= 0;
 
         end else begin
-            ib_addr_incr_r   <= ib_addr_incr_next;
-            ib_addr_r        <= ib_addr_next;
+            bm_addr_incr_r <= bm_addr_incr_next;
+            bm_addr_r      <= bm_addr_next;
 
-            intbus_addr      <= ib_access_addr_next;
-            intbus_wrdata    <= ib_write_data_next;
-            ib_rddata_r      <= ib_rddata_next;
-            intbus_strobe    <= ib_strobe_next;
-            intbus_write     <= ib_write_next;
+            bm_addr        <= bm_access_addr_next;
+            bm_wrdata      <= bm_write_data_next;
+            bm_rddata_r    <= bm_rddata_next;
+            bm_strobe      <= bm_strobe_next;
+            bm_write       <= bm_write_next;
 
-            intbus_strobe_r  <= intbus_strobe;
+            bm_strobe_r    <= bm_strobe;
+
+            bm_irq_r       <= 1'b0;
         end
     end
 
