@@ -49,12 +49,15 @@ module top(
     reg         layer1_bm_ack;
 
     // Line buffer signals
-    wire [10:0] linebuf_wridx;
+    wire  [9:0] linebuf_wridx;
     wire  [7:0] linebuf_wrdata;
     wire        linebuf_wren;
 
-    wire [10:0] linebuf_rdidx;
+    wire  [9:0] linebuf_rdidx;
     wire  [7:0] linebuf_rddata;
+
+    wire start_of_screen;
+    wire start_of_line;
 
 
     //////////////////////////////////////////////////////////////////////////
@@ -175,6 +178,9 @@ module top(
         .rst(reset),
         .clk(clk),
 
+        .start_of_screen(start_of_screen),
+        .start_of_line(start_of_line),
+
         // Register interface (on register bus)
         .regs_addr(regbus_addr[3:0]),
         .regs_wrdata(regbus_wrdata),
@@ -253,14 +259,25 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     // Display line buffer
     //////////////////////////////////////////////////////////////////////////
+    reg active_line_buf_r;
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            active_line_buf_r <= 0;
+        end else begin
+            if (start_of_line) begin
+                active_line_buf_r <= !active_line_buf_r;
+            end
+        end
+    end
+
     dpram #(.ADDR_WIDTH(11), .DATA_WIDTH(8)) display_linebuf(
         .wr_clk(clk),
-        .wr_addr(linebuf_wridx),
+        .wr_addr({active_line_buf_r, linebuf_wridx}),
         .wr_en(linebuf_wren),
         .wr_data(linebuf_wrdata),
 
         .rd_clk(clk),
-        .rd_addr(linebuf_rdidx),
+        .rd_addr({!active_line_buf_r, linebuf_rdidx}),
         .rd_data(linebuf_rddata));
 
     //////////////////////////////////////////////////////////////////////////
@@ -270,8 +287,8 @@ module top(
         .rst(reset),
         .clk(clk),
 
-        .pixel_width(2'd0),
-        .pixel_height(2'd0),
+        .start_of_screen(start_of_screen),
+        .start_of_line(start_of_line),
 
         // Line buffer / palette interface
         .linebuf_idx(linebuf_rdidx),

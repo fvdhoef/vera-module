@@ -4,6 +4,9 @@ module layer_renderer(
     input  wire        rst,
     input  wire        clk,
 
+    input  wire        start_of_screen,
+    input  wire        start_of_line,
+
     // Register interface
     input  wire  [3:0] regs_addr,
     input  wire  [7:0] regs_wrdata,
@@ -17,7 +20,7 @@ module layer_renderer(
     input  wire        bus_ack,
 
     // Line buffer interface
-    output reg  [10:0] linebuf_wridx,
+    output reg   [9:0] linebuf_wridx,
     output reg   [7:0] linebuf_wrdata,
     output reg         linebuf_wren);
 
@@ -30,7 +33,9 @@ module layer_renderer(
     // 2 - Bitmapped mode
     // 3 - Tile mode
 
-    // Registers
+    //////////////////////////////////////////////////////////////////////////
+    // Register interface
+    //////////////////////////////////////////////////////////////////////////
     reg        reg_enable_r;
     reg  [2:0] reg_mode_r;
     reg [15:0] reg_map_baseaddr_r;
@@ -83,9 +88,9 @@ module layer_renderer(
         end
     end
 
-
-
-
+    //////////////////////////////////////////////////////////////////////////
+    // Line renderer
+    //////////////////////////////////////////////////////////////////////////
 
 
 
@@ -151,21 +156,35 @@ module layer_renderer(
     // end
 
 
+    reg [9:0] linebuf_wridx_next;
+    reg [7:0] linebuf_wrdata_next;
+    reg       linebuf_wren_next;
+
+    always @* begin
+        linebuf_wridx_next  = linebuf_wridx;
+        linebuf_wrdata_next = linebuf_wrdata;
+        linebuf_wren_next   = linebuf_wren;
+
+        if (start_of_line) begin
+            linebuf_wridx_next = 0;
+        end else begin
+            linebuf_wridx_next = linebuf_wridx + 1;
+        end
+
+        linebuf_wrdata_next = linebuf_wridx_next[7:0];
+        linebuf_wren_next   = 1;
+    end
+
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             linebuf_wridx  <= 0;
             linebuf_wrdata <= 0;
             linebuf_wren   <= 0;
 
-            // map_addr_r     <= 0;
-            // tile_addr_r    <= 18'h20000;
-
-            // state_r        <= FETCH_MAP;
-
         end else begin
-            linebuf_wridx  <= linebuf_wridx + 1;
-            linebuf_wrdata <= linebuf_wridx[7:0];
-            linebuf_wren   <= 1;
+            linebuf_wridx  <= linebuf_wridx_next;
+            linebuf_wrdata <= linebuf_wrdata_next;
+            linebuf_wren   <= linebuf_wren_next;
         end
     end
 

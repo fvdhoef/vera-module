@@ -1,22 +1,22 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Wed Jul  3 11:46:58 2019
+[*] Fri Jul  5 11:15:05 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Wed Jul  3 11:46:30 2019"
-[dumpfile_size] 622996
+[dumpfile_mtime] "Fri Jul  5 11:05:33 2019"
+[dumpfile_size] 1647132
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
-[timestart] 0
-[size] 1920 1007
-[pos] 122 81
-*-11.000000 32160 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[timestart] 61719
+[size] 2560 1377
+[pos] -68 -109
+*-9.000000 62300 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
 [sst_width] 261
 [signals_width] 359
 [sst_expanded] 1
-[sst_vpaned_height] 407
+[sst_vpaned_height] 586
 @28
 tb.top.extbus_res_n
 tb.top.extbus_phy2
@@ -33,23 +33,6 @@ tb.top.extbus.extbus_irq_n
 -Internal bus
 @28
 tb.top.extbus.eb_busy_value
-tb.top.extbus.end_of_cycle
-tb.top.extbus.intbus_strobe
-tb.top.extbus.intbus_strobe_r
-tb.top.extbus.ib_do_read
-tb.top.extbus.ib_do_write
-tb.top.extbus.intbus_clk
-@22
-tb.top.extbus.intbus_addr[17:0]
-tb.top.extbus.intbus_wrdata[7:0]
-tb.top.extbus.intbus_rddata[7:0]
-tb.top.extbus.ib_rddata_r[7:0]
-@28
-tb.top.extbus.intbus_write
-tb.top.extbus.intbus_strobe
-@22
-tb.top.extbus.ib_addr_r[17:0]
-tb.top.extbus.ib_addr_incr_r[3:0]
 @200
 -Main RAM
 @22
@@ -64,7 +47,28 @@ tb.top.main_ram.bus_write
 tb.top.main_ram.bus_rddata[31:0]
 @28
 tb.top.extbus.extbus_a_r[2:0]
+@200
+-Layer 1 renderer
+@29
+tb.top.video_vga.start_of_line
+@28
+tb.top.layer1_renderer.linebuf_wren
 @24
-tb.top.linebuf_rdidx[10:0]
+tb.top.layer1_renderer.linebuf_wridx[9:0]
+@22
+tb.top.layer1_renderer.linebuf_wrdata[7:0]
+@200
+-VGA
+@22
+tb.top.video_vga.linebuf_idx[9:0]
+tb.top.linebuf_rddata[7:0]
+tb.top.video_vga.vga_r[3:0]
+tb.top.video_vga.vga_g[3:0]
+tb.top.video_vga.vga_b[3:0]
+@28
+tb.top.video_vga.vga_hsync
+tb.top.video_vga.vga_vsync
+tb.top.video_vga.h_active
+tb.top.video_vga.v_active
 [pattern_trace] 1
 [pattern_trace] 0

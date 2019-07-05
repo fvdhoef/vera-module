@@ -4,12 +4,12 @@ module video_vga(
     input  wire        rst,
     input  wire        clk,
 
-    input  wire  [1:0] pixel_width,
-    input  wire  [1:0] pixel_height,
-
     // Line buffer / palette interface
-    output reg  [10:0] linebuf_idx,
+    output wire  [9:0] linebuf_idx,
     input  wire [11:0] linebuf_rgb_data,
+
+    output wire        start_of_screen,
+    output wire        start_of_line,
 
     // VGA interface
     output reg   [3:0] vga_r,
@@ -57,29 +57,16 @@ module video_vga(
     wire v_active = (y_counter < V_ACTIVE);
     wire active   = h_active && v_active;
 
-    // Line buffer logic
-    reg [1:0] pixel_width_cnt_r;
+    assign start_of_screen = h_last && v_last;
+    assign start_of_line   = h_last;
 
-    always @(posedge clk or posedge rst) begin
-        if (rst) begin
-            linebuf_idx <= 11'd0;
-            pixel_width_cnt_r <= 0;
+    assign linebuf_idx = x_counter;
 
-        end else begin
-            if (pixel_width_cnt_r == 0) begin
-                pixel_width_cnt_r <= pixel_width;
-
-                linebuf_idx <= linebuf_idx + 1;
-            end else begin
-                pixel_width_cnt_r <= pixel_width_cnt_r - 1;
-            end
-
-            if (h_last) begin
-                linebuf_idx <= 0;
-                pixel_width_cnt_r <= pixel_width;
-            end
-        end
-    end
+    // Compensate pipeline delays
+    reg [1:0] hsync_r, vsync_r, active_r;
+    always @(posedge clk) hsync_r  <= {hsync_r[0], hsync};
+    always @(posedge clk) vsync_r  <= {vsync_r[0], vsync};
+    always @(posedge clk) active_r <= {active_r[0], active};
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
@@ -90,7 +77,7 @@ module video_vga(
             vga_vsync <= 0;
 
         end else begin
-            if (active) begin
+            if (active_r[1]) begin
                 vga_r <= linebuf_rgb_data[11:8];
                 vga_g <= linebuf_rgb_data[7:4];
                 vga_b <= linebuf_rgb_data[3:0];
@@ -100,8 +87,8 @@ module video_vga(
                 vga_b <= 4'd0;
             end
 
-            vga_hsync <= hsync;
-            vga_vsync <= vsync;
+            vga_hsync <= hsync_r[1];
+            vga_vsync <= vsync_r[1];
         end
     end
 
