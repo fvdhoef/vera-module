@@ -139,11 +139,17 @@ module top(
         2'b11: membus_bytesel = 4'b1000;
     endcase
 
-    // Read data mux
+    // Read data mux (with pipeline delay on selection)
+    reg mainram_sel_r, charrom_sel_r;
+    always @(posedge clk) begin
+        mainram_sel_r <= mainram_sel;
+        charrom_sel_r <= charrom_sel;
+    end
+
     always @* begin
         membus_rddata = 32'h00000000;
-        if (mainram_sel) membus_rddata = mainram_rddata;
-        if (charrom_sel) membus_rddata = charrom_rddata;
+        if (mainram_sel_r) membus_rddata = mainram_rddata;
+        if (charrom_sel_r) membus_rddata = charrom_rddata;
     end
 
     wire regbus_bm_strobe = membus_sel && regbus_strobe;
@@ -153,8 +159,8 @@ module top(
     reg layer1_bm_ack_next;
 
     always @* begin
-        membus_addr        = 18'b0;
-        membus_write       = 1'b0;
+        membus_addr   = 18'b0;
+        membus_write  = 1'b0;
         layer1_bm_ack_next = 1'b0;
 
         if (regbus_bm_strobe) begin
@@ -189,7 +195,7 @@ module top(
 
         // Bus master interface
         .bus_addr(layer1_bm_addr),
-        .bus_data(membus_rddata),
+        .bus_rddata(membus_rddata),
         .bus_strobe(layer1_bm_strobe),
         .bus_ack(layer1_bm_ack),
 

@@ -109,13 +109,13 @@ module tb();
         // extbus_write(16'h1002, 8'h10);
         // extbus_read(16'h1003);
 
-        extbus_write(16'h1000, 8'h02);
+        extbus_write(16'h1000, 8'h00);
         extbus_write(16'h1001, 8'h00);
-        extbus_write(16'h1002, 8'h00);
+        extbus_write(16'h1002, 8'hA5);
         extbus_read(16'h1003);
-        extbus_write(16'h1002, 8'h04);
+        extbus_write(16'h1002, 8'h5A);
         extbus_read(16'h1003);
-        extbus_write(16'h1002, 8'h08);
+        extbus_write(16'h1002, 8'h42);
         extbus_read(16'h1003);
 
         // extbus_write(16'h1003, 8'h01);

@@ -64,18 +64,18 @@ module main_ram(
         blk32_rddata_r <= blk32[bus_addr[13:0]];
     end
 
-    // initial begin: INIT
-    //     integer i;
-    //     for (i=0; i<16384; i=i+1) begin
-    //         blk10[i] = i;
-    //         blk32[i] = i;
-    //     end
+    initial begin: INIT
+        integer i;
+        for (i=0; i<16384; i=i+1) begin
+            blk10[i] = i;
+            blk32[i] = i;
+        end
 
-    //     blk10[0] = 32'h01000201;
-    //     blk10[1] = 32'h02100011;
-    //     blk10[2] = 32'h56000011;
-    //     blk10[3] = 32'h03FFFCFF;
-    // end
+        blk10[0] = 32'h43022101;
+        // blk10[1] = 32'h02100011;
+        // blk10[2] = 32'h56000011;
+        // blk10[3] = 32'h03FFFCFF;
+    end
 
 `else
 

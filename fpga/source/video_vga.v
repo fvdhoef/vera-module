@@ -41,8 +41,13 @@ module video_vga(
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
+`ifdef __ICARUS__
+            x_counter <= 10'd750;
+            y_counter <= 10'd524;
+`else
             x_counter <= 10'd0;
             y_counter <= 10'd0;
+`endif
 
         end else begin
             x_counter <= h_last ? 0 : (x_counter + 1);
