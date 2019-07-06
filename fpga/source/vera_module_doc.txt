@@ -2,6 +2,10 @@
 -=                     Commander X8 - VERA video module                     =-
 ------------------------------------------------------------------------------
 
+Author:  Frank van den Hoef
+Version: 0.1
+Date:    2019-07-06
+
 DISCLAIMER:
 This is preliminary documentation. Register layout as described in this
 document can change at any point during development.
@@ -11,7 +15,7 @@ document can change at any point during development.
 ------------------------------------------------------------------------------
 
 From the perspective of the 6502 in the Commander X8 the video module is
-located at address $9F20-$9F27.
+located at addresses $9F20-$9F27.
 
 The addresses are defined as follows:
 
