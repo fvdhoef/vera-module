@@ -50,7 +50,7 @@ module layer_renderer(
             4'h5: regs_rddata = reg_scroll_x_r[7:0];
             4'h6: regs_rddata = {6'b0, reg_scroll_x_r[9:8]};
             4'h7: regs_rddata = reg_scroll_y_r[7:0];
-            4'h9: regs_rddata = {6'b0, reg_scroll_y_r[9:8]};
+            4'h8: regs_rddata = {6'b0, reg_scroll_y_r[9:8]};
             default: regs_rddata = 8'h00;
         endcase
     end
@@ -79,7 +79,7 @@ module layer_renderer(
                     4'h5: reg_scroll_x_r[7:0]       <= regs_wrdata;
                     4'h6: reg_scroll_x_r[9:8]       <= regs_wrdata[1:0];
                     4'h7: reg_scroll_y_r[7:0]       <= regs_wrdata;
-                    4'h9: reg_scroll_y_r[9:8]       <= regs_wrdata[1:0];
+                    4'h8: reg_scroll_y_r[9:8]       <= regs_wrdata[1:0];
                 endcase
             end
         end
@@ -110,37 +110,16 @@ module layer_renderer(
 
     // Data as fetched from memory
     reg [31:0] map_data_r;
-    reg [31:0] tile_data_r;
 
-    reg [3:0] xcnt_r;
+    reg map_data_sel_r;
+
+
     reg [2:0] ycnt_r;
     reg [2:0] ycnt_next_r;
 
 
-    wire [15:0] cur_map_data = xcnt_r[3] ? map_data_r[31:16] : map_data_r[15:0];
+    wire [15:0] cur_map_data = map_data_sel_r ? map_data_r[31:16] : map_data_r[15:0];
     wire  [7:0] cur_tile_idx = cur_map_data[7:0];
-
-    reg [7:0] cur_tile_data;
-    always @* case (ycnt_r[1:0])
-        2'd0: cur_tile_data = tile_data_r[7:0];
-        2'd1: cur_tile_data = tile_data_r[15:8];
-        2'd2: cur_tile_data = tile_data_r[23:16];
-        2'd3: cur_tile_data = tile_data_r[31:24];
-    endcase
-
-    reg cur_pixel_data;
-    always @* case (xcnt_r[2:0])
-        3'd0: cur_pixel_data = cur_tile_data[7];
-        3'd1: cur_pixel_data = cur_tile_data[6];
-        3'd2: cur_pixel_data = cur_tile_data[5];
-        3'd3: cur_pixel_data = cur_tile_data[4];
-        3'd4: cur_pixel_data = cur_tile_data[3];
-        3'd5: cur_pixel_data = cur_tile_data[2];
-        3'd6: cur_pixel_data = cur_tile_data[1];
-        3'd7: cur_pixel_data = cur_tile_data[0];
-    endcase
-
-    wire [7:0] cur_pixel_color = cur_pixel_data ? {4'b0, cur_map_data[11:8]} : {4'b0, cur_map_data[15:12]};
 
     reg [9:0] linebuf_wridx_r;
 
@@ -148,44 +127,50 @@ module layer_renderer(
     reg bus_strobe_r;
     assign bus_strobe = bus_strobe_r && !bus_ack;
 
+    reg [7:0] next_render_data_r;
+    reg [7:0] next_render_mapdata_r;
+
+
+
+    reg [7:0] render_data_r;
+    reg [7:0] render_mapdata_r;
+    reg       render_start;
+    wire      render_busy;
+
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
-            state_r        <= WAIT_START;
+            state_r         <= WAIT_START;
 
-            bus_addr       <= 0;
-            bus_strobe_r   <= 0;
+            bus_addr        <= 0;
+            bus_strobe_r    <= 0;
 
-            linebuf_wridx  <= 0;
-            linebuf_wrdata <= 0;
-            linebuf_wren   <= 0;
-
-            linebuf_wridx_r <= 0;
-            xcnt_r          <= 0;
             ycnt_r          <= 0;
             ycnt_next_r     <= 0;
 
             map_addr_r      <= 0;
 
+            map_data_sel_r  <= 0;
+
         end else begin
-            linebuf_wren <= 0;
+            render_start <= 0;
 
             case (state_r)
                 WAIT_START: begin
                 end
 
                 FETCH_MAP: begin
-                    bus_addr <= {map_addr_r, 2'b00};
-                    map_addr_r <= map_addr_r + 1;
-
+                    bus_addr     <= {map_addr_r, 2'b00};
                     bus_strobe_r <= 1;
+
+                    map_addr_r   <= map_addr_r + 1;
 
                     state_r <= WAIT_FETCH_MAP;
                 end
 
                 WAIT_FETCH_MAP: begin
                     if (bus_ack) begin
-                        map_data_r <= bus_rddata;
+                        map_data_r   <= bus_rddata;
                         bus_strobe_r <= 0;
 
                         state_r <= FETCH_TILE;
@@ -193,7 +178,7 @@ module layer_renderer(
                 end
 
                 FETCH_TILE: begin
-                    bus_addr <= {reg_tile_baseaddr_r, 2'b00} + {cur_tile_idx, ycnt_r[2], 2'b0};
+                    bus_addr     <= {reg_tile_baseaddr_r, 2'b00} + {cur_tile_idx, ycnt_r[2], 2'b0};
                     bus_strobe_r <= 1;
 
                     state_r <= WAIT_FETCH_TILE;
@@ -201,46 +186,98 @@ module layer_renderer(
 
                 WAIT_FETCH_TILE: begin
                     if (bus_ack) begin
-                        tile_data_r <= bus_rddata;
                         bus_strobe_r <= 0;
+
+                        case (ycnt_r[1:0])
+                            2'd0: next_render_data_r <= bus_rddata[7:0];
+                            2'd1: next_render_data_r <= bus_rddata[15:8];
+                            2'd2: next_render_data_r <= bus_rddata[23:16];
+                            2'd3: next_render_data_r <= bus_rddata[31:24];
+                        endcase
+                        next_render_mapdata_r <= cur_map_data[15:8];
 
                         state_r <= RENDER;
                     end
                 end
 
                 RENDER: begin
-                    linebuf_wridx <= linebuf_wridx_r;
-                    linebuf_wrdata <= cur_pixel_color;
-                    linebuf_wren <= 1;
+                    if (!render_busy) begin
+                        render_data_r    <= next_render_data_r;
+                        render_mapdata_r <= next_render_mapdata_r;
+                        render_start     <= 1;
 
-                    linebuf_wridx_r <= linebuf_wridx_r + 1;
-
-                    if (linebuf_wridx_r[2:0] == 7) begin
-                        state_r <= linebuf_wridx_r[3] ? FETCH_MAP : FETCH_TILE;
+                        state_r <= map_data_sel_r ? FETCH_MAP : FETCH_TILE;
+                        map_data_sel_r <= !map_data_sel_r;
                     end
-
-                    xcnt_r <= xcnt_r + 1;
                 end
             endcase
 
             if (start_of_line) begin
                 state_r         <= FETCH_MAP;
-                linebuf_wridx_r <= 0;
-                xcnt_r          <= 0;
                 ycnt_r          <= ycnt_next_r;
                 ycnt_next_r     <= ycnt_next_r + 1;
+                map_data_sel_r  <= 0;
 
                 if (ycnt_next_r == 7) begin
-                    map_row_addr_r  <= map_row_addr_r + 32;
+                    map_row_addr_r <= map_row_addr_r + 40;
                 end
-                map_addr_r      <= map_row_addr_r;
+                map_addr_r <= map_row_addr_r;
             end
 
             if (start_of_screen) begin
                 map_row_addr_r <= reg_map_baseaddr_r;
                 map_addr_r     <= reg_map_baseaddr_r;
-                ycnt_r <= 0;
-                ycnt_next_r <= 1;
+                ycnt_r         <= 0;
+                ycnt_next_r    <= 1;
+            end
+        end
+    end
+
+    reg [3:0] xcnt_r;
+    assign render_busy = !xcnt_r[3];
+
+    reg cur_pixel_data;
+    always @* case (xcnt_r[2:0])
+        3'd0: cur_pixel_data = render_data_r[7];
+        3'd1: cur_pixel_data = render_data_r[6];
+        3'd2: cur_pixel_data = render_data_r[5];
+        3'd3: cur_pixel_data = render_data_r[4];
+        3'd4: cur_pixel_data = render_data_r[3];
+        3'd5: cur_pixel_data = render_data_r[2];
+        3'd6: cur_pixel_data = render_data_r[1];
+        3'd7: cur_pixel_data = render_data_r[0];
+    endcase
+
+    wire [7:0] cur_pixel_color = cur_pixel_data ? {4'b0, render_mapdata_r[3:0]} : {4'b0, render_mapdata_r[7:4]};
+
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            xcnt_r <= 8;
+
+            linebuf_wridx   <= 0;
+            linebuf_wrdata  <= 0;
+            linebuf_wren    <= 0;
+
+            linebuf_wridx_r <= 0;
+
+        end else begin
+            linebuf_wren <= 0;
+
+            if (linebuf_wridx_r < 'd640) begin
+                if (!xcnt_r[3] || render_start) begin
+                    xcnt_r <= render_start ? 'd1 : (xcnt_r + 1);
+
+                    linebuf_wridx  <= linebuf_wridx_r;
+                    linebuf_wrdata <= cur_pixel_color;
+                    linebuf_wren   <= 1;
+
+                    linebuf_wridx_r <= linebuf_wridx_r + 1;
+                end
+            end
+
+            if (start_of_line) begin
+                xcnt_r <= 8;
+                linebuf_wridx_r <= 0;
             end
         end
     end
