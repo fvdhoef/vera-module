@@ -114,6 +114,7 @@ module layer_renderer(
 
     reg [3:0] xcnt_r;
     reg [2:0] ycnt_r;
+    reg [2:0] ycnt_next_r;
 
 
     wire [15:0] cur_map_data = xcnt_r[3] ? map_data_r[31:16] : map_data_r[15:0];
@@ -129,14 +130,14 @@ module layer_renderer(
 
     reg cur_pixel_data;
     always @* case (xcnt_r[2:0])
-        3'd0: cur_pixel_data = cur_tile_data[0];
-        3'd1: cur_pixel_data = cur_tile_data[1];
-        3'd2: cur_pixel_data = cur_tile_data[2];
-        3'd3: cur_pixel_data = cur_tile_data[3];
-        3'd4: cur_pixel_data = cur_tile_data[4];
-        3'd5: cur_pixel_data = cur_tile_data[5];
-        3'd6: cur_pixel_data = cur_tile_data[6];
-        3'd7: cur_pixel_data = cur_tile_data[7];
+        3'd0: cur_pixel_data = cur_tile_data[7];
+        3'd1: cur_pixel_data = cur_tile_data[6];
+        3'd2: cur_pixel_data = cur_tile_data[5];
+        3'd3: cur_pixel_data = cur_tile_data[4];
+        3'd4: cur_pixel_data = cur_tile_data[3];
+        3'd5: cur_pixel_data = cur_tile_data[2];
+        3'd6: cur_pixel_data = cur_tile_data[1];
+        3'd7: cur_pixel_data = cur_tile_data[0];
     endcase
 
     wire [7:0] cur_pixel_color = cur_pixel_data ? {4'b0, cur_map_data[11:8]} : {4'b0, cur_map_data[15:12]};
@@ -162,6 +163,7 @@ module layer_renderer(
             linebuf_wridx_r <= 0;
             xcnt_r          <= 0;
             ycnt_r          <= 0;
+            ycnt_next_r     <= 0;
 
             map_addr_r      <= 0;
 
@@ -225,16 +227,20 @@ module layer_renderer(
                 state_r         <= FETCH_MAP;
                 linebuf_wridx_r <= 0;
                 xcnt_r          <= 0;
-                ycnt_r          <= ycnt_r + 1;
+                ycnt_r          <= ycnt_next_r;
+                ycnt_next_r     <= ycnt_next_r + 1;
 
-                map_row_addr_r  <= map_row_addr_r + 32;
+                if (ycnt_next_r == 7) begin
+                    map_row_addr_r  <= map_row_addr_r + 32;
+                end
                 map_addr_r      <= map_row_addr_r;
             end
 
             if (start_of_screen) begin
-                map_row_addr_r <= reg_map_baseaddr_r + 32;
+                map_row_addr_r <= reg_map_baseaddr_r;
                 map_addr_r     <= reg_map_baseaddr_r;
                 ycnt_r <= 0;
+                ycnt_next_r <= 1;
             end
         end
     end

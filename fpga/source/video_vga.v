@@ -38,12 +38,13 @@ module video_vga(
 
     wire h_last = (x_counter == H_TOTAL - 1);
     wire v_last = (y_counter == V_TOTAL - 1);
+    wire v_last2 = (y_counter == V_TOTAL - 2);  // Start rendering one line earlier
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
 `ifdef __ICARUS__
             x_counter <= 10'd750;
-            y_counter <= 10'd524;
+            y_counter <= 10'd523;
 `else
             x_counter <= 10'd0;
             y_counter <= 10'd0;
@@ -62,7 +63,7 @@ module video_vga(
     wire v_active = (y_counter < V_ACTIVE);
     wire active   = h_active && v_active;
 
-    assign start_of_screen = h_last && v_last;
+    assign start_of_screen = h_last && v_last2;
     assign start_of_line   = h_last;
 
     assign linebuf_idx = x_counter;
