@@ -63,9 +63,12 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     // Synchronize external asynchronous reset signal to clk25 domain
     //////////////////////////////////////////////////////////////////////////
+    reg [3:0] por_cnt_r = 0;
+    always @(posedge clk25) if (!por_cnt_r[3]) por_cnt_r <= por_cnt_r + 1;
+
     wire reset;
     reset_sync reset_sync_clk25(
-        .async_rst_in(!extbus_res_n),
+        .async_rst_in(!extbus_res_n || !por_cnt_r[3]),
         .clk(clk25),
         .reset_out(reset));
 

@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Sat Jul  6 12:40:15 2019
+[*] Wed Jul 10 07:34:51 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Sat Jul  6 12:39:22 2019"
-[dumpfile_size] 639272
+[dumpfile_mtime] "Wed Jul 10 07:34:15 2019"
+[dumpfile_size] 1870099
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
-[timestart] 118010
+[timestart] 0
 [size] 2560 1377
-[pos] -9 -33
-*-13.955821 120630 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] -1 -1
+*-8.955821 231 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
@@ -30,6 +30,11 @@ tb.top.extbus.extbus_rdy
 tb.top.extbus.extbus_irq_n
 @200
 -Internal
+@22
+tb.top.por_cnt_r[3:0]
+@29
+tb.top.reset
+@200
 -Internal bus
 @28
 tb.top.extbus.eb_busy_value
@@ -73,7 +78,7 @@ tb.top.layer1_renderer.render_start
 @22
 tb.top.layer1_renderer.render_mapdata_r[7:0]
 tb.top.layer1_renderer.render_data_r[7:0]
-@29
+@28
 tb.top.layer1_renderer.render_busy
 @200
 -
@@ -84,7 +89,6 @@ tb.top.layer1_renderer.ycnt_next_r[2:0]
 @22
 tb.top.layer1_renderer.cur_pixel_color[7:0]
 tb.top.layer1_renderer.map_data_r[31:0]
-tb.top.layer1_renderer.tile_data_r[31:0]
 tb.top.layer1_renderer.cur_map_data[15:0]
 tb.top.layer1_renderer.cur_tile_idx[7:0]
 tb.top.layer1_renderer.map_row_addr_r[15:0]
@@ -127,7 +131,6 @@ tb.top.layer1_renderer.map_addr_r[15:0]
 -
 @22
 tb.top.layer1_renderer.map_data_r[31:0]
-tb.top.layer1_renderer.tile_data_r[31:0]
 @200
 -VGA
 @22
