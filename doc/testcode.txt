@@ -1,0 +1,39 @@
+*=$0200
+  LDA #$10
+  STA $8000
+  LDA #$00
+  STA $8001
+  STA $8002
+  LDX #0
+LOOP
+  TXA
+  STA $8003
+  LDA #$6E
+  STA $8003
+  INX
+  BNE LOOP
+
+  LDY #10
+LOOP2
+  LDA #$20
+  STA $8003
+  LDA #$6E
+  STA $8003
+  INX
+  BNE LOOP2
+
+  RTS
+
+
+*=$0200
+  LDA #$10
+  STA $8000
+  LDA #$00
+  STA $8001
+  STA $8002
+  LDX #79
+  LDA #$02
+
+  STA $8003
+  STA $8003
+  RTS

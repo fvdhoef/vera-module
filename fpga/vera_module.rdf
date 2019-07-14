@@ -2,7 +2,7 @@
 <RadiantProject version="4.1" title="vera_module" device="iCE40UP5K-SG48I" performance_grade="High-Performance_1.2V" default_implementation="impl">
     <Options/>
     <Implementation title="impl" dir="impl" description="impl" synthesis="synplify" default_strategy="Strategy1">
-        <Options def_top="top" top="top"/>
+        <Options def_top="video_vga" top="top"/>
         <Source name="source/top.v" type="Verilog" type_short="Verilog">
             <Options top_module="top"/>
         </Source>
@@ -19,6 +19,30 @@
             <Options/>
         </Source>
         <Source name="source/main_ram.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/pulse2pulse.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/dpram.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/generated/palette_ram/palette_ram.ipx" type="IPX_Module" type_short="IPX">
+            <Options/>
+        </Source>
+        <Source name="source/layer_renderer.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/video_composite.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/video_modulator.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/video_modulator_coslut.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/video_modulator_sinlut.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
         <Source name="source/vera_module.ldc" type="LSE Design Constraints File" type_short="LDC">

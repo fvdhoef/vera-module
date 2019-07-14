@@ -1,22 +1,24 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Wed Jul 10 07:34:51 2019
+[*] Sun Jul 14 11:55:21 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Wed Jul 10 07:34:15 2019"
-[dumpfile_size] 1870099
+[dumpfile_mtime] "Sun Jul 14 11:50:34 2019"
+[dumpfile_size] 13952399
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
-[timestart] 0
-[size] 2560 1377
+[timestart] 1328900
+[size] 2560 1371
 [pos] -1 -1
-*-8.955821 231 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-11.277744 1341700 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
+[treeopen] tb.top.video_composite.
+[treeopen] tb.top.video_composite.modulator.
 [sst_width] 261
 [signals_width] 359
 [sst_expanded] 1
-[sst_vpaned_height] 510
+[sst_vpaned_height] 508
 @28
 tb.top.extbus_res_n
 tb.top.extbus_phy2
@@ -32,8 +34,80 @@ tb.top.extbus.extbus_irq_n
 -Internal
 @22
 tb.top.por_cnt_r[3:0]
-@29
+@28
 tb.top.reset
+@200
+-Composite video
+@24
+tb.top.video_composite.modulator.r[3:0]
+tb.top.video_composite.modulator.g[3:0]
+tb.top.video_composite.modulator.b[3:0]
+@420
+tb.top.video_composite.modulator.r_s[4:0]
+tb.top.video_composite.modulator.g_s[4:0]
+tb.top.video_composite.modulator.b_s[4:0]
+@24
+tb.top.video_composite.modulator.y_s[15:0]
+tb.top.video_composite.modulator.i_s[15:0]
+tb.top.video_composite.modulator.q_s[15:0]
+tb.top.video_composite.modulator.i8_s[7:0]
+tb.top.video_composite.modulator.q8_s[7:0]
+@10420
+tb.top.video_composite.modulator.im[14:0]
+@20000
+-
+@10420
+tb.top.video_composite.modulator.qm[14:0]
+@20000
+-
+@c08421
+#{tb.top.video_composite.modulator.chroma_s[12:9]} (2)tb.top.video_composite.modulator.chroma_s[14:0] (3)tb.top.video_composite.modulator.chroma_s[14:0] (4)tb.top.video_composite.modulator.chroma_s[14:0] (5)tb.top.video_composite.modulator.chroma_s[14:0]
+@28
+(2)tb.top.video_composite.modulator.chroma_s[14:0]
+(3)tb.top.video_composite.modulator.chroma_s[14:0]
+(4)tb.top.video_composite.modulator.chroma_s[14:0]
+(5)tb.top.video_composite.modulator.chroma_s[14:0]
+@1409601
+-group_end
+@20000
+-
+-
+@c08420
+tb.top.video_composite.modulator.chroma_s[14:0]
+@28
+(0)tb.top.video_composite.modulator.chroma_s[14:0]
+(1)tb.top.video_composite.modulator.chroma_s[14:0]
+(2)tb.top.video_composite.modulator.chroma_s[14:0]
+(3)tb.top.video_composite.modulator.chroma_s[14:0]
+(4)tb.top.video_composite.modulator.chroma_s[14:0]
+(5)tb.top.video_composite.modulator.chroma_s[14:0]
+(6)tb.top.video_composite.modulator.chroma_s[14:0]
+(7)tb.top.video_composite.modulator.chroma_s[14:0]
+(8)tb.top.video_composite.modulator.chroma_s[14:0]
+(9)tb.top.video_composite.modulator.chroma_s[14:0]
+(10)tb.top.video_composite.modulator.chroma_s[14:0]
+(11)tb.top.video_composite.modulator.chroma_s[14:0]
+(12)tb.top.video_composite.modulator.chroma_s[14:0]
+(13)tb.top.video_composite.modulator.chroma_s[14:0]
+(14)tb.top.video_composite.modulator.chroma_s[14:0]
+@1401200
+-group_end
+@20000
+-
+-
+@200
+-
+@8024
+tb.top.video_composite.luma[3:0]
+tb.top.video_composite.chroma[3:0]
+@20000
+-
+-
+@28
+tb.top.video_composite.sync_n
+tb.top.video_composite.modulator.color_burst
+@24
+tb.top.video_composite.hcnt[10:0]
 @200
 -Internal bus
 @28
@@ -94,7 +168,6 @@ tb.top.layer1_renderer.cur_tile_idx[7:0]
 tb.top.layer1_renderer.map_row_addr_r[15:0]
 @28
 tb.top.layer1_renderer.start_of_screen
-tb.top.video_vga.start_of_line
 tb.top.layer1_renderer.linebuf_wren
 @24
 tb.top.layer1_renderer.linebuf_wridx[9:0]
@@ -134,16 +207,7 @@ tb.top.layer1_renderer.map_data_r[31:0]
 @200
 -VGA
 @22
-tb.top.video_vga.linebuf_idx[9:0]
 tb.top.linebuf_rddata[7:0]
-tb.top.video_vga.vga_r[3:0]
-tb.top.video_vga.vga_g[3:0]
-tb.top.video_vga.vga_b[3:0]
-@28
-tb.top.video_vga.vga_hsync
-tb.top.video_vga.vga_vsync
-tb.top.video_vga.h_active
-tb.top.video_vga.v_active
 @200
 -Memory bus
 @22
