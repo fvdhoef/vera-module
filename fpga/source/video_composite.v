@@ -4,6 +4,13 @@ module video_composite(
     input  wire        rst,
     input  wire        clk,
 
+    // Line buffer / palette interface
+    output wire  [9:0] linebuf_idx,
+    input  wire [11:0] linebuf_rgb_data,
+
+    output wire        start_of_screen,
+    output wire        start_of_line,
+
     // Composite interface
     output wire  [4:0] luma,
     output wire        sync_n,
@@ -79,7 +86,14 @@ module video_composite(
     reg field; // 0: even, 1: odd
 
     wire v_even_field_last = (vcnt == 524);
+
+    wire v_last2 = (vcnt == 38+3 || vcnt == 563+4);
     wire v_last = (vcnt == 1049);
+
+
+    assign start_of_line   = h_last;
+    assign start_of_screen = h_last && v_last2;
+
 
     reg  [8:0] field_line_cnt;
     wire [9:0] frame_line_cnt = {field_line_cnt, field};
@@ -121,14 +135,32 @@ module video_composite(
         end
     end
 
+
+    reg [10:0] linebuf_idx_r;
+    assign linebuf_idx = linebuf_idx_r[10:1];
+
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            linebuf_idx_r <= 0;
+        end else begin
+            if (h_active) begin
+                linebuf_idx_r <= linebuf_idx_r + 1;
+            end
+
+            if (start_of_line) begin
+                linebuf_idx_r <= 0;
+            end
+        end
+    end
+
     wire grayscale_lines = frame_line_cnt < 100;
     wire red_lines       = frame_line_cnt >= 100 && frame_line_cnt < 200;
     wire green_lines     = frame_line_cnt >= 200 && frame_line_cnt < 300;
     wire blue_lines      = frame_line_cnt >= 300;
 
-    wire [3:0] r = (grayscale_lines || red_lines)   ? hcnt[7:4] : 0;
-    wire [3:0] g = (grayscale_lines || green_lines) ? hcnt[7:4] : 0;
-    wire [3:0] b = (grayscale_lines || blue_lines)  ? hcnt[7:4] : 0;
+    wire [3:0] r = linebuf_rgb_data[11:8];
+    wire [3:0] g = linebuf_rgb_data[7:4];
+    wire [3:0] b = linebuf_rgb_data[3:0];
 
     video_modulator modulator (
         .clk(clk),

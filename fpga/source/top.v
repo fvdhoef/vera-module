@@ -289,6 +289,30 @@ module top(
         .rd_addr({!active_line_buf_r, linebuf_rdidx}),
         .rd_data(linebuf_rddata));
 
+// `define COMPOSITE
+`ifdef COMPOSITE
+    wire [4:0] luma;
+
+    video_composite video_composite(
+        .rst(reset),
+        .clk(clk),
+
+        // Line buffer / palette interface
+        .linebuf_idx(linebuf_rdidx),
+        .linebuf_rgb_data(palette_rgb_data[11:0]),
+
+        .start_of_screen(start_of_screen),
+        .start_of_line(start_of_line),
+
+        // Composite interface
+        .luma(luma),
+        .sync_n(vga_hsync),
+        .chroma(vga_r));
+
+    assign vga_g = luma[4:1];
+    assign vga_vsync = luma[0];
+
+`else
     //////////////////////////////////////////////////////////////////////////
     // VGA video
     //////////////////////////////////////////////////////////////////////////
@@ -296,12 +320,12 @@ module top(
         .rst(reset),
         .clk(clk),
 
-        .start_of_screen(start_of_screen),
-        .start_of_line(start_of_line),
-
         // Line buffer / palette interface
         .linebuf_idx(linebuf_rdidx),
         .linebuf_rgb_data(palette_rgb_data[11:0]),
+
+        .start_of_screen(start_of_screen),
+        .start_of_line(start_of_line),
 
         // VGA interface
         .vga_r(vga_r),
@@ -309,5 +333,6 @@ module top(
         .vga_b(vga_b),
         .vga_hsync(vga_hsync),
         .vga_vsync(vga_vsync));
+`endif
 
 endmodule

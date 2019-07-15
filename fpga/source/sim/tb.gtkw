@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Sun Jul 14 11:55:21 2019
+[*] Mon Jul 15 05:35:12 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Sun Jul 14 11:50:34 2019"
-[dumpfile_size] 13952399
+[dumpfile_mtime] "Mon Jul 15 05:31:10 2019"
+[dumpfile_size] 14915631
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
-[timestart] 1328900
+[timestart] 2487714
 [size] 2560 1371
 [pos] -1 -1
-*-11.277744 1341700 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-8.277744 2488540 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
@@ -36,6 +36,8 @@ tb.top.extbus.extbus_irq_n
 tb.top.por_cnt_r[3:0]
 @28
 tb.top.reset
+@23
+tb.top.video_composite.linebuf_idx[9:0]
 @200
 -Composite video
 @24
@@ -52,22 +54,17 @@ tb.top.video_composite.modulator.i_s[15:0]
 tb.top.video_composite.modulator.q_s[15:0]
 tb.top.video_composite.modulator.i8_s[7:0]
 tb.top.video_composite.modulator.q8_s[7:0]
-@10420
-tb.top.video_composite.modulator.im[14:0]
 @20000
 -
-@10420
-tb.top.video_composite.modulator.qm[14:0]
-@20000
 -
-@c08421
+@c08420
 #{tb.top.video_composite.modulator.chroma_s[12:9]} (2)tb.top.video_composite.modulator.chroma_s[14:0] (3)tb.top.video_composite.modulator.chroma_s[14:0] (4)tb.top.video_composite.modulator.chroma_s[14:0] (5)tb.top.video_composite.modulator.chroma_s[14:0]
 @28
 (2)tb.top.video_composite.modulator.chroma_s[14:0]
 (3)tb.top.video_composite.modulator.chroma_s[14:0]
 (4)tb.top.video_composite.modulator.chroma_s[14:0]
 (5)tb.top.video_composite.modulator.chroma_s[14:0]
-@1409601
+@1401200
 -group_end
 @20000
 -
@@ -98,7 +95,6 @@ tb.top.video_composite.modulator.chroma_s[14:0]
 @200
 -
 @8024
-tb.top.video_composite.luma[3:0]
 tb.top.video_composite.chroma[3:0]
 @20000
 -
