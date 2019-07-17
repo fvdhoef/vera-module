@@ -25,8 +25,7 @@ module extbusif_6502(
     reg  [7:0] bm_rddata_r;
 
     reg        bm_irq_r;
-
-    reg        bm_busy_done;
+    reg        bm_busy_r;
 
     //////////////////////////////////////////////////////////////////////////
     // External bus clock domain
@@ -50,59 +49,58 @@ module extbusif_6502(
     assign extbus_irq_n = bm_irq_r ? 1'b0 : 1'bZ;
 
     // RDY signal (open-drain output)
-    reg eb_busy_value;
-    always @(posedge extbus_phy2 or posedge bm_busy_done) begin
-        if (bm_busy_done) begin
-            eb_busy_value <= 0;
-        end else begin
-            eb_busy_value <= extbus_rw_n;
-        end
-    end
+    assign extbus_rdy = (!extbus_cs_n && bm_busy_r) ? 1'b0 : 1'bZ;
 
-    assign extbus_rdy = (!extbus_cs_n && eb_busy_value) ? 1'b0 : 1'bZ;
-
-    // On positive edge of PHY2, 6502 updates address lines (and thus chipselect) and R/W# line:
-    reg [2:0] extbus_a_r;
-    always @(posedge extbus_phy2) begin
-        if (!extbus_cs_n) begin
-            extbus_a_r <= extbus_a;
-        end
-    end
-
-    // On negative edge of PHY2, write data from CPU is valid
-    reg [7:0] eb_wrdata_r;
-    always @(negedge extbus_phy2) begin
-        if (!extbus_cs_n && !extbus_rw_n) begin
-            eb_wrdata_r <= eb_wrdata;
-        end
-    end
-
-    // Generate read and write pulses to internal bus
-    wire bm_do_read;
-    pulse2pulse p2p_do_read(
-        .in_clk(extbus_phy2),
-        .in_pulse(!extbus_cs_n && extbus_rw_n),
-        .out_clk(bm_clk),
-        .out_pulse(bm_do_read));
-
-    wire bm_do_write;
-    pulse2pulse p2p_do_write(
-        .in_clk(!extbus_phy2),
-        .in_pulse(!extbus_cs_n && !extbus_rw_n),
-        .out_clk(bm_clk),
-        .out_pulse(bm_do_write));
+    // Gate PHY2 by chipselect
+    wire ext_access = extbus_phy2 && !extbus_cs_n;
 
     //////////////////////////////////////////////////////////////////////////
     // Internal bus clock domain
     //////////////////////////////////////////////////////////////////////////
+
+    // Synchronize chipselect
+    reg [2:0] chipselect_r;
+    always @(posedge bm_clk) chipselect_r <= {chipselect_r[1:0], !extbus_cs_n};
+
+    // Synchronize access signal
+    reg [2:0] ext_access_r;
+    always @(posedge bm_clk) ext_access_r <= {ext_access_r[1:0], ext_access};
+
+    // Simulate latching of address, write data and read/write lines.
+    reg [2:0] eb_addr_r, eb_addr_rr, eb_addr_rrr;
+    reg [7:0] eb_wrdata_r, eb_wrdata_rr, eb_wrdata_rrr;
+    reg       eb_rw_r, eb_rw_rr, eb_rw_rrr;
+
+    always @(posedge bm_clk) begin
+        if (ext_access_r[1]) begin
+            eb_addr_r    <= extbus_a;
+            eb_wrdata_r  <= eb_wrdata;
+            eb_rw_r      <= extbus_rw_n;
+
+            eb_addr_rr   <= eb_addr_r;
+            eb_wrdata_rr <= eb_wrdata_r;
+            eb_rw_rr     <= eb_rw_r;
+
+            eb_addr_rrr   <= eb_addr_rr;
+            eb_wrdata_rrr <= eb_wrdata_rr;
+            eb_rw_rrr     <= eb_rw_rr;
+        end
+    end
+
+    wire ext_access_start = (ext_access_r[2:1] == 2'b01);
+    wire ext_access_end   = (ext_access_r[2:1] == 2'b10);
+
+    wire chip_selected    = (chipselect_r[2:1] == 2'b01);
+    wire chip_deselected  = (chipselect_r[2:1] == 2'b10);
 
     reg   [3:0] bm_addr_incr_next;
     reg  [18:0] bm_addr_next;
     reg  [18:0] bm_access_addr_next;
     reg   [7:0] bm_write_data_next;
     reg   [7:0] bm_rddata_next;
+    reg         bm_busy_next;
     reg         bm_strobe_next, bm_write_next;
-
+    reg         bm_do_access;
     reg         bm_strobe_r;
 
     always @* begin
@@ -111,38 +109,61 @@ module extbusif_6502(
         bm_access_addr_next = bm_addr;
         bm_write_data_next  = bm_wrdata;
         bm_rddata_next      = bm_rddata_r;
+        bm_busy_next        = bm_busy_r;
         bm_strobe_next      = 0;
         bm_write_next       = 0;
-
-        bm_busy_done        = bm_do_write;
+        bm_do_access        = 0;
 
         if (bm_strobe_r && !bm_write) begin
             bm_rddata_next = bm_rddata;
-            bm_busy_done = 1;
+            bm_busy_next = 0;
         end
 
-        case (extbus_a_r)
-            3'd0: if (bm_do_write) begin
-                bm_addr_incr_next   = eb_wrdata_r[7:4];
-                bm_addr_next[18:16] = eb_wrdata_r[2:0];
-            end
+        // Always re-assert busy signal at end of cycle
+        if (chip_deselected) begin
+            bm_busy_next      = 1;
+        end
 
-            3'd1: if (bm_do_write) begin
-                bm_addr_next[15:8]  = eb_wrdata_r;
+        // Start the read access as early as possible to be able to get the
+        // result in the same 6502 bus cycle (depending on the 6502 bus clock
+        // speed).
+        if (ext_access_start) begin
+            if (extbus_rw_n && extbus_a == 3'd3) begin
+                bm_do_access = 1;
+            end else begin
+                bm_busy_next = 0;
             end
+        end
 
-            3'd2: if (bm_do_write) begin
-                bm_addr_next[7:0]   = eb_wrdata_r;
-            end
+        // Write (use signals from a few cycles earlier)
+        if (ext_access_end && !eb_rw_rrr) begin
+            case (eb_addr_rrr)
+                3'd0: begin
+                    bm_addr_incr_next   = eb_wrdata_rrr[7:4];
+                    bm_addr_next[18:16] = eb_wrdata_rrr[2:0];
+                end
 
-            3'd3: if (bm_do_read || bm_do_write) begin
-                bm_access_addr_next = bm_addr_r;
-                bm_addr_next        = bm_addr_r + bm_addr_incr_r;
-                bm_strobe_next      = 1;
-                bm_write_data_next  = eb_wrdata_r;
-                bm_write_next       = bm_do_write;
-            end
-        endcase
+                3'd1: begin
+                    bm_addr_next[15:8]  = eb_wrdata_rrr;
+                end
+
+                3'd2: begin
+                    bm_addr_next[7:0]   = eb_wrdata_rrr;
+                end
+
+                3'd3: begin
+                    bm_do_access        = 1;
+                    bm_write_data_next  = eb_wrdata_rrr;
+                    bm_write_next       = 1;
+                end
+            endcase
+        end
+
+        if (bm_do_access) begin
+            bm_access_addr_next = bm_addr_r;
+            bm_addr_next        = bm_addr_r + bm_addr_incr_r;
+            bm_strobe_next      = 1;
+        end
     end
 
     always @(posedge bm_clk or posedge bm_reset) begin
@@ -157,6 +178,7 @@ module extbusif_6502(
             bm_write       <= 0;
 
             bm_irq_r       <= 0;
+            bm_busy_r      <= 0;
 
             bm_strobe_r    <= 0;
 
@@ -173,6 +195,7 @@ module extbusif_6502(
             bm_strobe_r    <= bm_strobe;
 
             bm_irq_r       <= 1'b0;
+            bm_busy_r      <= bm_busy_next;
         end
     end
 

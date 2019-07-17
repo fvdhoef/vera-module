@@ -30,6 +30,7 @@ module top(
 
     // Register bus read outputs
     wire  [7:0] layer1_regs_rddata;
+    wire  [7:0] layer2_regs_rddata;
     wire  [7:0] palette_rddata;
 
     // Memory bus signals
@@ -47,11 +48,23 @@ module top(
     wire [17:0] layer1_bm_addr;
     wire        layer1_bm_strobe;
     reg         layer1_bm_ack;
+    reg         layer1_bm_ack_next;
+
+    wire [17:0] layer2_bm_addr;
+    wire        layer2_bm_strobe;
+    reg         layer2_bm_ack;
+    reg         layer2_bm_ack_next;
 
     // Line buffer signals
-    wire  [9:0] linebuf_wridx;
-    wire  [7:0] linebuf_wrdata;
-    wire        linebuf_wren;
+    wire  [9:0] layer1_linebuf_wridx;
+    wire  [7:0] layer1_linebuf_wrdata;
+    wire        layer1_linebuf_wren;
+
+    wire  [9:0] layer2_linebuf_wridx;
+    wire  [7:0] layer2_linebuf_wrdata;
+    wire        layer2_linebuf_wren;
+
+
 
     wire  [9:0] linebuf_rdidx;
     wire  [7:0] linebuf_rddata;
@@ -102,9 +115,11 @@ module top(
     // 00000-1FFFF  Main RAM
     // 20000-20FFF  Character ROM
     // 40000-4000F  Layer 1 registers
+    // 40010-4001F  Layer 2 registers
     // 40200-403FF  Palette
     wire membus_sel      = !regbus_addr[18];
     wire layer1_regs_sel = regbus_addr[18] && regbus_addr[17:4] == 'b00_00000000_0000;
+    wire layer2_regs_sel = regbus_addr[18] && regbus_addr[17:4] == 'b00_00000000_0001;
     wire palette_sel     = regbus_addr[18] && regbus_addr[17:9] == 'b00_0000001;
 
     // Memory bus read data selection
@@ -121,6 +136,7 @@ module top(
         regbus_rddata = 8'h00;
         if (membus_sel)      regbus_rddata = membus_rddata8;
         if (layer1_regs_sel) regbus_rddata = layer1_regs_rddata;
+        if (layer2_regs_sel) regbus_rddata = layer2_regs_rddata;
         if (palette_sel)     regbus_rddata = palette_rddata;
     end
 
@@ -157,14 +173,13 @@ module top(
 
     wire regbus_bm_strobe = membus_sel && regbus_strobe;
 
-    assign membus_strobe = regbus_bm_strobe || layer1_bm_strobe;
-
-    reg layer1_bm_ack_next;
+    assign membus_strobe = regbus_bm_strobe || layer1_bm_strobe || layer2_bm_strobe;
 
     always @* begin
         membus_addr   = 18'b0;
         membus_write  = 1'b0;
         layer1_bm_ack_next = 1'b0;
+        layer2_bm_ack_next = 1'b0;
 
         if (regbus_bm_strobe) begin
             membus_addr  = regbus_addr[17:0];
@@ -173,10 +188,15 @@ module top(
         end else if (layer1_bm_strobe) begin
             membus_addr        = layer1_bm_addr[17:0];
             layer1_bm_ack_next = 1'b1;
+
+        end else if (layer2_bm_strobe) begin
+            membus_addr        = layer2_bm_addr[17:0];
+            layer2_bm_ack_next = 1'b1;
         end
     end
 
     always @(posedge clk) layer1_bm_ack <= layer1_bm_ack_next;
+    always @(posedge clk) layer2_bm_ack <= layer2_bm_ack_next;
 
     //////////////////////////////////////////////////////////////////////////
     // Layer 1 renderer
@@ -203,10 +223,39 @@ module top(
         .bus_ack(layer1_bm_ack),
 
         // Line buffer interface
-        .linebuf_wridx(linebuf_wridx),
-        .linebuf_wrdata(linebuf_wrdata),
-        .linebuf_wren(linebuf_wren));
-    
+        .linebuf_wridx(layer1_linebuf_wridx),
+        .linebuf_wrdata(layer1_linebuf_wrdata),
+        .linebuf_wren(layer1_linebuf_wren));
+
+    //////////////////////////////////////////////////////////////////////////
+    // Layer 2 renderer
+    //////////////////////////////////////////////////////////////////////////
+    wire layer2_regs_write = layer2_regs_sel && regbus_strobe && regbus_write;
+
+    layer_renderer layer2_renderer(
+        .rst(reset),
+        .clk(clk),
+
+        .start_of_screen(start_of_screen),
+        .start_of_line(start_of_line),
+
+        // Register interface (on register bus)
+        .regs_addr(regbus_addr[3:0]),
+        .regs_wrdata(regbus_wrdata),
+        .regs_rddata(layer2_regs_rddata),
+        .regs_write(layer2_regs_write),
+
+        // Bus master interface
+        .bus_addr(layer2_bm_addr),
+        .bus_rddata(membus_rddata),
+        .bus_strobe(layer2_bm_strobe),
+        .bus_ack(layer2_bm_ack),
+
+        // Line buffer interface
+        .linebuf_wridx(layer2_linebuf_wridx),
+        .linebuf_wrdata(layer2_linebuf_wrdata),
+        .linebuf_wren(layer2_linebuf_wren));
+
     //////////////////////////////////////////////////////////////////////////
     // Palette (2 instances to allow for readback of palette entries)
     //////////////////////////////////////////////////////////////////////////
@@ -266,7 +315,7 @@ module top(
         .rd_data(charrom_rddata));
 
     //////////////////////////////////////////////////////////////////////////
-    // Display line buffer
+    // Line buffers
     //////////////////////////////////////////////////////////////////////////
     reg active_line_buf_r;
     always @(posedge clk or posedge reset) begin
@@ -279,15 +328,26 @@ module top(
         end
     end
 
-    dpram #(.ADDR_WIDTH(11), .DATA_WIDTH(8)) display_linebuf(
+    dpram #(.ADDR_WIDTH(11), .DATA_WIDTH(8)) layer1_linebuf(
         .wr_clk(clk),
-        .wr_addr({active_line_buf_r, linebuf_wridx}),
-        .wr_en(linebuf_wren),
-        .wr_data(linebuf_wrdata),
+        .wr_addr({active_line_buf_r, layer1_linebuf_wridx}),
+        .wr_en(layer1_linebuf_wren),
+        .wr_data(layer1_linebuf_wrdata),
 
         .rd_clk(clk),
         .rd_addr({!active_line_buf_r, linebuf_rdidx}),
         .rd_data(linebuf_rddata));
+
+    dpram #(.ADDR_WIDTH(11), .DATA_WIDTH(8)) layer2_linebuf(
+        .wr_clk(clk),
+        .wr_addr({active_line_buf_r, layer2_linebuf_wridx}),
+        .wr_en(layer2_linebuf_wren),
+        .wr_data(layer2_linebuf_wrdata),
+
+        .rd_clk(clk),
+        .rd_addr(11'b0),    //{!active_line_buf_r, linebuf_rdidx}),
+        .rd_data());
+
 
 // `define COMPOSITE
 `ifdef COMPOSITE

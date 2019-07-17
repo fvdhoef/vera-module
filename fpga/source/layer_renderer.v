@@ -40,9 +40,12 @@ module layer_renderer(
     reg  [9:0] reg_scroll_x_r;
     reg  [9:0] reg_scroll_y_r;
 
+    reg  [1:0] reg_pixel_width_r;
+    reg  [1:0] reg_pixel_height_r;
+
     always @* begin
         case (regs_addr)
-            4'h0: regs_rddata = {reg_mode_r, 4'b0, reg_enable_r};
+            4'h0: regs_rddata = {reg_mode_r, reg_pixel_height_r, reg_pixel_width_r, reg_enable_r};
             4'h1: regs_rddata = reg_map_baseaddr_r[7:0];
             4'h2: regs_rddata = reg_map_baseaddr_r[15:8];
             4'h3: regs_rddata = reg_tile_baseaddr_r[7:0];
@@ -57,8 +60,11 @@ module layer_renderer(
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
-            reg_enable_r        <= 0;
             reg_mode_r          <= 2'b00;
+            reg_pixel_height_r  <= 2'd0;
+            reg_pixel_width_r   <= 2'd0;
+            reg_enable_r        <= 0;
+
             reg_map_baseaddr_r  <= 16'h0000;
             reg_tile_baseaddr_r <= 16'h8000;
             reg_scroll_x_r      <= 10'd0;
@@ -68,8 +74,10 @@ module layer_renderer(
             if (regs_write) begin
                 case (regs_addr[3:0])
                     4'h0: begin
-                        reg_mode_r   <= regs_wrdata[7:5];
-                        reg_enable_r <= regs_wrdata[0];
+                        reg_mode_r         <= regs_wrdata[7:5];
+                        reg_pixel_height_r <= regs_wrdata[4:3];
+                        reg_pixel_width_r  <= regs_wrdata[2:1];
+                        reg_enable_r       <= regs_wrdata[0];
                     end
 
                     4'h1: reg_map_baseaddr_r[7:0]   <= regs_wrdata;
@@ -138,6 +146,10 @@ module layer_renderer(
     wire      render_busy;
 
 
+    wire  line_done = linebuf_wridx_r >= 'd640;
+
+    reg [1:0] height_cnt_r;
+
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             state_r         <= WAIT_START;
@@ -151,6 +163,8 @@ module layer_renderer(
             map_addr_r      <= 0;
 
             map_data_sel_r  <= 0;
+
+            height_cnt_r    <= 0;
 
         end else begin
             render_start <= 0;
@@ -209,26 +223,39 @@ module layer_renderer(
                         state_r <= map_data_sel_r ? FETCH_MAP : FETCH_TILE;
                         map_data_sel_r <= !map_data_sel_r;
                     end
+
+                    if (line_done) begin
+                        state_r <= WAIT_START;
+                    end
                 end
             endcase
 
             if (start_of_line) begin
                 state_r         <= FETCH_MAP;
                 ycnt_r          <= ycnt_next_r;
-                ycnt_next_r     <= ycnt_next_r + 1;
                 map_data_sel_r  <= 0;
+                map_addr_r      <= map_row_addr_r;
 
-                if (ycnt_next_r == 7) begin
-                    map_row_addr_r <= map_row_addr_r + 40;
+                if (height_cnt_r == reg_pixel_height_r) begin
+                    ycnt_next_r     <= ycnt_next_r + 1;
+                    height_cnt_r    <= 0;
+
+                    if (ycnt_next_r == 7) begin
+                        map_row_addr_r <= map_row_addr_r + 40;
+                    end
+                end else begin
+                    height_cnt_r <= height_cnt_r + 1;
                 end
-                map_addr_r <= map_row_addr_r;
+
             end
 
             if (start_of_screen) begin
                 map_row_addr_r <= reg_map_baseaddr_r;
                 map_addr_r     <= reg_map_baseaddr_r;
                 ycnt_r         <= 0;
-                ycnt_next_r    <= 1;
+                
+                ycnt_next_r    <= (reg_pixel_height_r == 0) ? 1 : 0;
+                height_cnt_r   <= 0;
             end
         end
     end
@@ -250,6 +277,9 @@ module layer_renderer(
 
     wire [7:0] cur_pixel_color = cur_pixel_data ? {4'b0, render_mapdata_r[3:0]} : {4'b0, render_mapdata_r[7:4]};
 
+
+    reg [1:0] width_cnt_r;
+
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             xcnt_r <= 8;
@@ -260,12 +290,23 @@ module layer_renderer(
 
             linebuf_wridx_r <= 0;
 
+            width_cnt_r     <= 0;
+
         end else begin
             linebuf_wren <= 0;
 
-            if (linebuf_wridx_r < 'd640) begin
-                if (!xcnt_r[3] || render_start) begin
-                    xcnt_r <= render_start ? 'd1 : (xcnt_r + 1);
+            if (!line_done) begin
+                if (render_busy || render_start) begin
+                    if (width_cnt_r == reg_pixel_width_r) begin
+                        width_cnt_r <= 0;
+                        xcnt_r <= xcnt_r + 1;
+                    end else begin
+                        width_cnt_r <= width_cnt_r + 1;
+                    end
+
+                    if (render_start) begin
+                        xcnt_r <= reg_pixel_width_r == 0 ? 'd1 : 0;
+                    end
 
                     linebuf_wridx  <= linebuf_wridx_r;
                     linebuf_wrdata <= cur_pixel_color;
@@ -277,6 +318,7 @@ module layer_renderer(
 
             if (start_of_line) begin
                 xcnt_r <= 8;
+                width_cnt_r <= 0;
                 linebuf_wridx_r <= 0;
             end
         end

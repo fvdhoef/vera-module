@@ -1,21 +1,19 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Mon Jul 15 05:35:12 2019
+[*] Wed Jul 17 09:49:49 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Mon Jul 15 05:31:10 2019"
-[dumpfile_size] 14915631
+[dumpfile_mtime] "Wed Jul 17 09:49:33 2019"
+[dumpfile_size] 25161637
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
-[timestart] 2487714
+[timestart] 1146
 [size] 2560 1371
 [pos] -1 -1
-*-8.277744 2488540 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-9.378208 2080 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
-[treeopen] tb.top.video_composite.
-[treeopen] tb.top.video_composite.modulator.
-[sst_width] 261
+[sst_width] 388
 [signals_width] 359
 [sst_expanded] 1
 [sst_vpaned_height] 508
@@ -32,196 +30,60 @@ tb.top.extbus.extbus_rdy
 tb.top.extbus.extbus_irq_n
 @200
 -Internal
+@29
+tb.top.extbus.allow_access_r
+@28
+tb.top.extbus.eb_addr_rrr[2:0]
 @22
+tb.top.extbus.eb_wrdata_rrr[7:0]
+@28
+tb.top.extbus.eb_rw_rrr
+@22
+tb.top.extbus.bm_wrdata[7:0]
+tb.top.extbus.bm_addr_r[18:0]
+tb.top.extbus.bm_addr_incr_r[3:0]
 tb.top.por_cnt_r[3:0]
 @28
 tb.top.reset
-@23
-tb.top.video_composite.linebuf_idx[9:0]
+@200
+-
+@28
+tb.top.extbus.bm_clk
+@22
+tb.top.extbus.bm_addr[18:0]
+tb.top.extbus.bm_wrdata[7:0]
+tb.top.extbus.bm_rddata[7:0]
+@28
+tb.top.extbus.bm_strobe
+tb.top.extbus.bm_write
+tb.top.extbus.bm_do_access
+@22
+tb.top.extbus.bm_rddata_r[7:0]
+@20000
+-
 @200
 -Composite video
+@20000
+-
+@28
+tb.top.layer1_renderer.start_of_line
+tb.top.layer1_renderer.start_of_screen
 @24
-tb.top.video_composite.modulator.r[3:0]
-tb.top.video_composite.modulator.g[3:0]
-tb.top.video_composite.modulator.b[3:0]
-@420
-tb.top.video_composite.modulator.r_s[4:0]
-tb.top.video_composite.modulator.g_s[4:0]
-tb.top.video_composite.modulator.b_s[4:0]
-@24
-tb.top.video_composite.modulator.y_s[15:0]
-tb.top.video_composite.modulator.i_s[15:0]
-tb.top.video_composite.modulator.q_s[15:0]
-tb.top.video_composite.modulator.i8_s[7:0]
-tb.top.video_composite.modulator.q8_s[7:0]
-@20000
--
--
-@c08420
-#{tb.top.video_composite.modulator.chroma_s[12:9]} (2)tb.top.video_composite.modulator.chroma_s[14:0] (3)tb.top.video_composite.modulator.chroma_s[14:0] (4)tb.top.video_composite.modulator.chroma_s[14:0] (5)tb.top.video_composite.modulator.chroma_s[14:0]
-@28
-(2)tb.top.video_composite.modulator.chroma_s[14:0]
-(3)tb.top.video_composite.modulator.chroma_s[14:0]
-(4)tb.top.video_composite.modulator.chroma_s[14:0]
-(5)tb.top.video_composite.modulator.chroma_s[14:0]
-@1401200
--group_end
-@20000
--
--
-@c08420
-tb.top.video_composite.modulator.chroma_s[14:0]
-@28
-(0)tb.top.video_composite.modulator.chroma_s[14:0]
-(1)tb.top.video_composite.modulator.chroma_s[14:0]
-(2)tb.top.video_composite.modulator.chroma_s[14:0]
-(3)tb.top.video_composite.modulator.chroma_s[14:0]
-(4)tb.top.video_composite.modulator.chroma_s[14:0]
-(5)tb.top.video_composite.modulator.chroma_s[14:0]
-(6)tb.top.video_composite.modulator.chroma_s[14:0]
-(7)tb.top.video_composite.modulator.chroma_s[14:0]
-(8)tb.top.video_composite.modulator.chroma_s[14:0]
-(9)tb.top.video_composite.modulator.chroma_s[14:0]
-(10)tb.top.video_composite.modulator.chroma_s[14:0]
-(11)tb.top.video_composite.modulator.chroma_s[14:0]
-(12)tb.top.video_composite.modulator.chroma_s[14:0]
-(13)tb.top.video_composite.modulator.chroma_s[14:0]
-(14)tb.top.video_composite.modulator.chroma_s[14:0]
-@1401200
--group_end
-@20000
--
--
-@200
--
-@8024
-tb.top.video_composite.chroma[3:0]
-@20000
--
--
-@28
-tb.top.video_composite.sync_n
-tb.top.video_composite.modulator.color_burst
-@24
-tb.top.video_composite.hcnt[10:0]
-@200
--Internal bus
-@28
-tb.top.extbus.eb_busy_value
+tb.top.layer1_renderer.linebuf_wridx[9:0]
+tb.top.layer2_renderer.width_cnt_r[1:0]
 @22
-tb.top.membus_addr[17:0]
-@200
--Main RAM
-@22
-tb.top.main_ram.bus_addr[14:0]
-tb.top.main_ram.bus_rddata[31:0]
+tb.top.layer1_renderer.linebuf_wrdata[7:0]
 @28
-tb.top.main_ram.bus_wrbytesel[3:0]
+tb.top.layer1_renderer.linebuf_wren
 @22
-tb.top.main_ram.bus_wrdata[31:0]
-@28
-tb.top.main_ram.bus_write
-@22
-tb.top.main_ram.bus_rddata[31:0]
-@28
-tb.top.extbus.extbus_a_r[2:0]
-@200
--Layer 1 renderer
-@2028
-^1 /c/Work/vera-module/fpga/source/sim/layer_renderer_state.txt
-tb.top.layer1_renderer.state_r[2:0]
-@22
-tb.top.layer1_renderer.reg_map_baseaddr_r[15:0]
-tb.top.layer1_renderer.reg_tile_baseaddr_r[15:0]
-@200
--
-@22
-tb.top.layer1_renderer.bus_addr[17:0]
-tb.top.layer1_renderer.bus_rddata[31:0]
-@28
-tb.top.layer1_renderer.bus_strobe
-tb.top.layer1_renderer.bus_ack
-@200
--
-@28
-tb.top.layer1_renderer.render_start
-@22
-tb.top.layer1_renderer.render_mapdata_r[7:0]
 tb.top.layer1_renderer.render_data_r[7:0]
 @28
 tb.top.layer1_renderer.render_busy
-@200
--
-@24
-tb.top.layer1_renderer.xcnt_r[3:0]
-tb.top.layer1_renderer.ycnt_r[2:0]
-tb.top.layer1_renderer.ycnt_next_r[2:0]
-@22
-tb.top.layer1_renderer.cur_pixel_color[7:0]
-tb.top.layer1_renderer.map_data_r[31:0]
-tb.top.layer1_renderer.cur_map_data[15:0]
-tb.top.layer1_renderer.cur_tile_idx[7:0]
-tb.top.layer1_renderer.map_row_addr_r[15:0]
-@28
-tb.top.layer1_renderer.start_of_screen
-tb.top.layer1_renderer.linebuf_wren
-@24
-tb.top.layer1_renderer.linebuf_wridx[9:0]
-@22
-tb.top.layer1_renderer.linebuf_wrdata[7:0]
-@200
--
-@c00022
-#{tb.top.layer1_renderer.bus_addr[17:2]} (0)tb.top.layer1_renderer.bus_addr[17:0] (1)tb.top.layer1_renderer.bus_addr[17:0] (2)tb.top.layer1_renderer.bus_addr[17:0] (3)tb.top.layer1_renderer.bus_addr[17:0] (4)tb.top.layer1_renderer.bus_addr[17:0] (5)tb.top.layer1_renderer.bus_addr[17:0] (6)tb.top.layer1_renderer.bus_addr[17:0] (7)tb.top.layer1_renderer.bus_addr[17:0] (8)tb.top.layer1_renderer.bus_addr[17:0] (9)tb.top.layer1_renderer.bus_addr[17:0] (10)tb.top.layer1_renderer.bus_addr[17:0] (11)tb.top.layer1_renderer.bus_addr[17:0] (12)tb.top.layer1_renderer.bus_addr[17:0] (13)tb.top.layer1_renderer.bus_addr[17:0] (14)tb.top.layer1_renderer.bus_addr[17:0] (15)tb.top.layer1_renderer.bus_addr[17:0]
-@28
-(0)tb.top.layer1_renderer.bus_addr[17:0]
-(1)tb.top.layer1_renderer.bus_addr[17:0]
-(2)tb.top.layer1_renderer.bus_addr[17:0]
-(3)tb.top.layer1_renderer.bus_addr[17:0]
-(4)tb.top.layer1_renderer.bus_addr[17:0]
-(5)tb.top.layer1_renderer.bus_addr[17:0]
-(6)tb.top.layer1_renderer.bus_addr[17:0]
-(7)tb.top.layer1_renderer.bus_addr[17:0]
-(8)tb.top.layer1_renderer.bus_addr[17:0]
-(9)tb.top.layer1_renderer.bus_addr[17:0]
-(10)tb.top.layer1_renderer.bus_addr[17:0]
-(11)tb.top.layer1_renderer.bus_addr[17:0]
-(12)tb.top.layer1_renderer.bus_addr[17:0]
-(13)tb.top.layer1_renderer.bus_addr[17:0]
-(14)tb.top.layer1_renderer.bus_addr[17:0]
-(15)tb.top.layer1_renderer.bus_addr[17:0]
-@1401200
--group_end
-@22
-tb.top.layer1_renderer.map_row_addr_r[15:0]
-tb.top.layer1_renderer.map_addr_r[15:0]
-@200
--
--
-@22
-tb.top.layer1_renderer.map_data_r[31:0]
-@200
--VGA
-@22
-tb.top.linebuf_rddata[7:0]
-@200
--Memory bus
-@22
-tb.top.regbus_addr[18:0]
-@28
-tb.top.regbus_bm_strobe
-@22
-tb.top.regbus_rddata[7:0]
-tb.top.membus_addr[17:0]
-tb.top.membus_bytesel[3:0]
-tb.top.membus_rddata8[7:0]
-tb.top.membus_rddata[31:0]
-@28
-tb.top.membus_sel
+tb.top.layer1_renderer.state_r[2:0]
+tb.top.layer1_bm_strobe
+tb.top.layer1_bm_ack
+tb.top.layer2_bm_strobe
+tb.top.layer2_bm_ack
 tb.top.membus_strobe
-@22
-tb.top.membus_wrdata[31:0]
-@28
-tb.top.membus_write
 [pattern_trace] 1
 [pattern_trace] 0
