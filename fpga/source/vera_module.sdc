@@ -5,7 +5,7 @@
 create_clock -name {clk25} -period 40 [get_ports clk25]
 
 # Define clock domains to be independent
-set_clock_groups -group [get_clocks extbus_phy2] -group [get_clocks clk25] -asynchronous
+#set_clock_groups -group [get_clocks extbus_phy2] -group [get_clocks clk25] -asynchronous
 
 # Setup time (tCLK - tSU)
 #set_input_delay 25 -max -clock [get_clocks extbus_phy2] [get_ports {extbus_cs_n extbus_rw_n extbus_a[0] extbus_a[1] extbus_a[2]}]

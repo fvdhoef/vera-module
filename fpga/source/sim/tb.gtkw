@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Wed Jul 17 09:49:49 2019
+[*] Sat Jul 20 12:41:50 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Wed Jul 17 09:49:33 2019"
-[dumpfile_size] 25161637
+[dumpfile_mtime] "Sat Jul 20 12:40:28 2019"
+[dumpfile_size] 25162066
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
-[timestart] 1146
+[timestart] 0
 [size] 2560 1371
-[pos] -1 -1
-*-9.378208 2080 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] -10 -32
+*-12.378208 31880 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
@@ -30,8 +30,6 @@ tb.top.extbus.extbus_rdy
 tb.top.extbus.extbus_irq_n
 @200
 -Internal
-@29
-tb.top.extbus.allow_access_r
 @28
 tb.top.extbus.eb_addr_rrr[2:0]
 @22
@@ -66,10 +64,40 @@ tb.top.extbus.bm_rddata_r[7:0]
 @20000
 -
 @28
+tb.top.layer1_renderer.line_done
 tb.top.layer1_renderer.start_of_line
 tb.top.layer1_renderer.start_of_screen
-@24
+@c00025
+tb.top.layer1_renderer.linebuf_wridx_r[9:0]
+@28
+(0)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
+(1)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
+(2)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
+(3)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
+(4)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
+(5)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
+(6)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
+(7)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
+(8)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
+(9)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
+@1401205
+-group_end
+@c00024
 tb.top.layer1_renderer.linebuf_wridx[9:0]
+@28
+(0)tb.top.layer1_renderer.linebuf_wridx[9:0]
+(1)tb.top.layer1_renderer.linebuf_wridx[9:0]
+(2)tb.top.layer1_renderer.linebuf_wridx[9:0]
+(3)tb.top.layer1_renderer.linebuf_wridx[9:0]
+(4)tb.top.layer1_renderer.linebuf_wridx[9:0]
+(5)tb.top.layer1_renderer.linebuf_wridx[9:0]
+(6)tb.top.layer1_renderer.linebuf_wridx[9:0]
+(7)tb.top.layer1_renderer.linebuf_wridx[9:0]
+(8)tb.top.layer1_renderer.linebuf_wridx[9:0]
+(9)tb.top.layer1_renderer.linebuf_wridx[9:0]
+@1401200
+-group_end
+@24
 tb.top.layer2_renderer.width_cnt_r[1:0]
 @22
 tb.top.layer1_renderer.linebuf_wrdata[7:0]

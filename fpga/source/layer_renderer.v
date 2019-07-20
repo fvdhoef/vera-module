@@ -33,27 +33,37 @@ module layer_renderer(
     //////////////////////////////////////////////////////////////////////////
     // Register interface
     //////////////////////////////////////////////////////////////////////////
-    reg        reg_enable_r;
+
+    // CTRL0
     reg  [2:0] reg_mode_r;
+    reg  [1:0] reg_pixel_height_r;
+    reg  [1:0] reg_pixel_width_r;
+    reg        reg_enable_r;
+
+    // CTRL1
+    reg        reg_tile_height_r;
+    reg        reg_tile_width_r;
+    reg  [1:0] reg_map_height_r;
+    reg  [1:0] reg_map_width_r;
+
+    // Other registers
     reg [15:0] reg_map_baseaddr_r;
     reg [15:0] reg_tile_baseaddr_r;
     reg  [9:0] reg_scroll_x_r;
     reg  [9:0] reg_scroll_y_r;
 
-    reg  [1:0] reg_pixel_width_r;
-    reg  [1:0] reg_pixel_height_r;
-
     always @* begin
         case (regs_addr)
             4'h0: regs_rddata = {reg_mode_r, reg_pixel_height_r, reg_pixel_width_r, reg_enable_r};
-            4'h1: regs_rddata = reg_map_baseaddr_r[7:0];
-            4'h2: regs_rddata = reg_map_baseaddr_r[15:8];
-            4'h3: regs_rddata = reg_tile_baseaddr_r[7:0];
-            4'h4: regs_rddata = reg_tile_baseaddr_r[15:8];
-            4'h5: regs_rddata = reg_scroll_x_r[7:0];
-            4'h6: regs_rddata = {6'b0, reg_scroll_x_r[9:8]};
-            4'h7: regs_rddata = reg_scroll_y_r[7:0];
-            4'h8: regs_rddata = {6'b0, reg_scroll_y_r[9:8]};
+            4'h1: regs_rddata = {2'b0, reg_tile_height_r, reg_tile_width_r, reg_map_height_r, reg_map_width_r};
+            4'h2: regs_rddata = reg_map_baseaddr_r[7:0];
+            4'h3: regs_rddata = reg_map_baseaddr_r[15:8];
+            4'h4: regs_rddata = reg_tile_baseaddr_r[7:0];
+            4'h5: regs_rddata = reg_tile_baseaddr_r[15:8];
+            4'h6: regs_rddata = reg_scroll_x_r[7:0];
+            4'h7: regs_rddata = {6'b0, reg_scroll_x_r[9:8]};
+            4'h8: regs_rddata = reg_scroll_y_r[7:0];
+            4'h9: regs_rddata = {6'b0, reg_scroll_y_r[9:8]};
             default: regs_rddata = 8'h00;
         endcase
     end
@@ -64,6 +74,11 @@ module layer_renderer(
             reg_pixel_height_r  <= 2'd0;
             reg_pixel_width_r   <= 2'd0;
             reg_enable_r        <= 0;
+
+            reg_tile_height_r   <= 0;
+            reg_tile_width_r    <= 0;
+            reg_map_height_r    <= 0;
+            reg_map_width_r     <= 0;
 
             reg_map_baseaddr_r  <= 16'h0000;
             reg_tile_baseaddr_r <= 16'h8000;
@@ -80,14 +95,21 @@ module layer_renderer(
                         reg_enable_r       <= regs_wrdata[0];
                     end
 
-                    4'h1: reg_map_baseaddr_r[7:0]   <= regs_wrdata;
-                    4'h2: reg_map_baseaddr_r[15:8]  <= regs_wrdata;
-                    4'h3: reg_tile_baseaddr_r[7:0]  <= regs_wrdata;
-                    4'h4: reg_tile_baseaddr_r[15:8] <= regs_wrdata;
-                    4'h5: reg_scroll_x_r[7:0]       <= regs_wrdata;
-                    4'h6: reg_scroll_x_r[9:8]       <= regs_wrdata[1:0];
-                    4'h7: reg_scroll_y_r[7:0]       <= regs_wrdata;
-                    4'h8: reg_scroll_y_r[9:8]       <= regs_wrdata[1:0];
+                    4'h1: begin
+                        reg_tile_height_r <= regs_wrdata[5];
+                        reg_tile_width_r  <= regs_wrdata[4];
+                        reg_map_height_r  <= regs_wrdata[3:2];
+                        reg_map_width_r   <= regs_wrdata[1:0];
+                    end
+
+                    4'h2: reg_map_baseaddr_r[7:0]   <= regs_wrdata;
+                    4'h3: reg_map_baseaddr_r[15:8]  <= regs_wrdata;
+                    4'h4: reg_tile_baseaddr_r[7:0]  <= regs_wrdata;
+                    4'h5: reg_tile_baseaddr_r[15:8] <= regs_wrdata;
+                    4'h6: reg_scroll_x_r[7:0]       <= regs_wrdata;
+                    4'h7: reg_scroll_x_r[9:8]       <= regs_wrdata[1:0];
+                    4'h8: reg_scroll_y_r[7:0]       <= regs_wrdata;
+                    4'h9: reg_scroll_y_r[9:8]       <= regs_wrdata[1:0];
                 endcase
             end
         end
@@ -129,24 +151,18 @@ module layer_renderer(
     wire [15:0] cur_map_data = map_data_sel_r ? map_data_r[31:16] : map_data_r[15:0];
     wire  [7:0] cur_tile_idx = cur_map_data[7:0];
 
-    reg [9:0] linebuf_wridx_r;
-
-
     reg bus_strobe_r;
     assign bus_strobe = bus_strobe_r && !bus_ack;
 
     reg [7:0] next_render_data_r;
     reg [7:0] next_render_mapdata_r;
 
-
-
     reg [7:0] render_data_r;
     reg [7:0] render_mapdata_r;
     reg       render_start;
     wire      render_busy;
 
-
-    wire  line_done = linebuf_wridx_r >= 'd640;
+    wire  line_done;
 
     reg [1:0] height_cnt_r;
 
@@ -260,6 +276,9 @@ module layer_renderer(
         end
     end
 
+    //////////////////////////////////////////////////////////////////////////
+    // Pixel renderer
+    //////////////////////////////////////////////////////////////////////////
     reg [3:0] xcnt_r;
     assign render_busy = !xcnt_r[3];
 
@@ -277,50 +296,75 @@ module layer_renderer(
 
     wire [7:0] cur_pixel_color = cur_pixel_data ? {4'b0, render_mapdata_r[3:0]} : {4'b0, render_mapdata_r[7:4]};
 
+    reg [9:0] lb_wridx_r;
+    assign line_done = lb_wridx_r[9:7] == 3'b101;
+
 
     reg [1:0] width_cnt_r;
 
+    reg [9:0] linebuf_wridx_next;
+    reg [7:0] linebuf_wrdata_next;
+    reg       linebuf_wren_next;
+
+    reg [1:0] width_cnt_next;
+    reg [3:0] xcnt_next;
+
+    reg [9:0] lb_wridx_next;
+
+    always @* begin
+        width_cnt_next      = width_cnt_r;
+        xcnt_next           = xcnt_r;
+        linebuf_wridx_next  = linebuf_wridx;
+        linebuf_wrdata_next = linebuf_wrdata;
+        linebuf_wren_next   = 0;
+        lb_wridx_next       = lb_wridx_r;
+
+        if (!line_done) begin
+            if (render_busy || render_start) begin
+                if (width_cnt_r == reg_pixel_width_r) begin
+                    width_cnt_next = 0;
+                    xcnt_next = xcnt_r + 1;
+                end else begin
+                    width_cnt_next = width_cnt_r + 1;
+                end
+
+                if (render_start) begin
+                    xcnt_next = reg_pixel_width_r == 0 ? 'd1 : 0;
+                end
+
+                linebuf_wridx_next  = lb_wridx_r;
+                linebuf_wrdata_next = cur_pixel_color;
+                linebuf_wren_next   = 1;
+
+                lb_wridx_next = lb_wridx_r + 1;
+            end
+        end
+
+        if (start_of_line) begin
+            xcnt_next = 8;
+            width_cnt_next = 0;
+
+            // Handle sub-tile horizontal scrolling
+            lb_wridx_next = 10'd0 - (reg_tile_width_r ? reg_scroll_x_r[3:0] : reg_scroll_x_r[2:0]);
+        end
+    end
+
     always @(posedge clk or posedge rst) begin
         if (rst) begin
-            xcnt_r <= 8;
-
+            width_cnt_r     <= 0;
+            xcnt_r          <= 8;
             linebuf_wridx   <= 0;
             linebuf_wrdata  <= 0;
             linebuf_wren    <= 0;
-
-            linebuf_wridx_r <= 0;
-
-            width_cnt_r     <= 0;
+            lb_wridx_r      <= 0;
 
         end else begin
-            linebuf_wren <= 0;
-
-            if (!line_done) begin
-                if (render_busy || render_start) begin
-                    if (width_cnt_r == reg_pixel_width_r) begin
-                        width_cnt_r <= 0;
-                        xcnt_r <= xcnt_r + 1;
-                    end else begin
-                        width_cnt_r <= width_cnt_r + 1;
-                    end
-
-                    if (render_start) begin
-                        xcnt_r <= reg_pixel_width_r == 0 ? 'd1 : 0;
-                    end
-
-                    linebuf_wridx  <= linebuf_wridx_r;
-                    linebuf_wrdata <= cur_pixel_color;
-                    linebuf_wren   <= 1;
-
-                    linebuf_wridx_r <= linebuf_wridx_r + 1;
-                end
-            end
-
-            if (start_of_line) begin
-                xcnt_r <= 8;
-                width_cnt_r <= 0;
-                linebuf_wridx_r <= 0;
-            end
+            width_cnt_r     <= width_cnt_next;
+            xcnt_r          <= xcnt_next;
+            linebuf_wridx   <= linebuf_wridx_next;
+            linebuf_wrdata  <= linebuf_wrdata_next;
+            linebuf_wren    <= linebuf_wren_next;
+            lb_wridx_r      <= lb_wridx_next;
         end
     end
 
