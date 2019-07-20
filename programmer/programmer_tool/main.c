@@ -1,7 +1,6 @@
 #include "lib.h"
 #include "usb.h"
 #include "flash.h"
-#include "sdio.h"
 #include "unistd.h"
 
 #ifndef __APPLE__

@@ -4,7 +4,8 @@ SRC_DIRS    += .
 CFLAGS      += -O0 -g
 OUT          = $(OBJ_DIR)/programmer_tool
 CFLAGS      += `pkg-config --cflags libusb-1.0`
-LFLAGS      += `pkg-config --libs libusb-1.0`
+LFLAGS      += -static `pkg-config --libs libusb-1.0`
+#
 
 CFLAGS      += -D_BSD_SOURCE -D_DEFAULT_SOURCE -std=c11 -pedantic
 CFLAGS      += -Wall -Wextra -Wshadow -Winit-self -Wfloat-conversion -Wdouble-promotion -Wmissing-include-dirs

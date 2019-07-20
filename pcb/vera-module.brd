@@ -1136,8 +1136,8 @@ Programmer</text>
 <element name="R26" library="rcl" package="R0603" value="30k" x="56.18" y="39.65" rot="R90"/>
 <element name="R27" library="rcl" package="R0603" value="60.4k" x="57.78" y="39.65" rot="R90"/>
 <element name="R2" library="rcl" package="R0603" value="9.31k" x="44.98" y="39.65" rot="R90"/>
-<element name="R28" library="rcl" package="R0603" value="499" x="43.43" y="39.65" rot="R270"/>
-<element name="R29" library="rcl" package="R0603" value="499" x="59.38" y="39.65" rot="R270"/>
+<element name="R28" library="rcl" package="R0603" value="1.2k" x="43.43" y="39.65" rot="R270"/>
+<element name="R29" library="rcl" package="R0603" value="1.2k" x="59.38" y="39.65" rot="R270"/>
 <element name="U2" library="integrated_circuits" package="SOIC-8" value="THS7314D" x="38.13" y="35" rot="R90"/>
 <element name="R30" library="rcl" package="R0603" value="75" x="40.93" y="43.3" rot="R90"/>
 <element name="R31" library="rcl" package="R0603" value="75" x="39.38" y="43.3" rot="R90"/>
@@ -1145,7 +1145,7 @@ Programmer</text>
 <element name="C1" library="rcl" package="C0603" value="100n" x="41.63" y="33" rot="R270"/>
 <element name="C2" library="rcl" package="C0805" value="10u" x="43.43" y="33.2" rot="R270"/>
 <element name="C3" library="rcl" package="C0603" value="1n" x="37.83" y="43.3" rot="R90"/>
-<element name="R33" library="rcl" package="R0603" value="75" x="38.58" y="40.95" rot="R180"/>
+<element name="R33" library="rcl" package="R0603" value="0" x="38.58" y="40.95" rot="R180"/>
 <element name="U3" library="integrated_circuits" package="TSSOP-24" value="SN74CBTD3861PWR" x="57.13" y="10.5" rot="R270"/>
 <element name="R34" library="rcl" package="R0603" value="10k" x="48.83" y="32.2"/>
 <element name="R35" library="rcl" package="R0603" value="10k" x="48.83" y="33.75"/>

@@ -2613,8 +2613,8 @@
 <part name="R27" library="rcl" deviceset="RESISTOR" device="0603" value="60.4k"/>
 <part name="R2" library="rcl" deviceset="RESISTOR" device="0603" value="9.31k"/>
 <part name="U$2" library="supply" deviceset="GND" device=""/>
-<part name="R28" library="rcl" deviceset="RESISTOR" device="0603" value="499"/>
-<part name="R29" library="rcl" deviceset="RESISTOR" device="0603" value="499"/>
+<part name="R28" library="rcl" deviceset="RESISTOR" device="0603" value="1.2k"/>
+<part name="R29" library="rcl" deviceset="RESISTOR" device="0603" value="1.2k"/>
 <part name="U$3" library="supply" deviceset="GND" device=""/>
 <part name="U$4" library="supply" deviceset="GND" device=""/>
 <part name="U2" library="integrated_circuits" deviceset="THS7314D" device=""/>
@@ -2627,7 +2627,7 @@
 <part name="C2" library="rcl" deviceset="CAPACITOR" device="0805" value="10u"/>
 <part name="GND1" library="supply" deviceset="GND" device=""/>
 <part name="C3" library="rcl" deviceset="CAPACITOR" device="0603" value="1n"/>
-<part name="R33" library="rcl" deviceset="RESISTOR" device="0603" value="75"/>
+<part name="R33" library="rcl" deviceset="RESISTOR" device="0603" value="0"/>
 <part name="U$27" library="supply" deviceset="GND" device=""/>
 <part name="U3" library="integrated_circuits" deviceset="SN74CBTD3861PWR" device=""/>
 <part name="GND2" library="supply" deviceset="GND" device=""/>
