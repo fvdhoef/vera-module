@@ -24,12 +24,6 @@ module layer_renderer(
     output reg   [7:0] linebuf_wrdata,
     output reg         linebuf_wren);
 
-    // Modes:
-    // 0 - 16 color text mode (foreground / background color specified per character)
-    // 1 - 256 color text mode (background color fixed at 0)
-    // 2 - Bitmapped mode
-    // 3 - Tile mode
-
     //////////////////////////////////////////////////////////////////////////
     // Register interface
     //////////////////////////////////////////////////////////////////////////
@@ -49,9 +43,10 @@ module layer_renderer(
     // Other registers
     reg [15:0] reg_map_baseaddr_r;
     reg [15:0] reg_tile_baseaddr_r;
-    reg  [9:0] reg_scroll_x_r;
-    reg  [9:0] reg_scroll_y_r;
+    reg [11:0] reg_hscroll_r;
+    reg [11:0] reg_vscroll_r;
 
+    // Register interface read data
     always @* begin
         case (regs_addr)
             4'h0: regs_rddata = {reg_mode_r, reg_vscale_r, reg_hscale_r, reg_enable_r};
@@ -60,19 +55,20 @@ module layer_renderer(
             4'h3: regs_rddata = reg_map_baseaddr_r[15:8];
             4'h4: regs_rddata = reg_tile_baseaddr_r[7:0];
             4'h5: regs_rddata = reg_tile_baseaddr_r[15:8];
-            4'h6: regs_rddata = reg_scroll_x_r[7:0];
-            4'h7: regs_rddata = {6'b0, reg_scroll_x_r[9:8]};
-            4'h8: regs_rddata = reg_scroll_y_r[7:0];
-            4'h9: regs_rddata = {6'b0, reg_scroll_y_r[9:8]};
+            4'h6: regs_rddata = reg_hscroll_r[7:0];
+            4'h7: regs_rddata = {4'b0, reg_hscroll_r[11:8]};
+            4'h8: regs_rddata = reg_vscroll_r[7:0];
+            4'h9: regs_rddata = {4'b0, reg_vscroll_r[11:8]};
             default: regs_rddata = 8'h00;
         endcase
     end
 
+    // Register interface write data
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             reg_mode_r          <= 2'b00;
-            reg_vscale_r        <= 2'd3;
-            reg_hscale_r        <= 2'd3;
+            reg_vscale_r        <= 2'd0;
+            reg_hscale_r        <= 2'd0;
             reg_enable_r        <= 0;
 
             reg_tile_height_r   <= 0;
@@ -82,8 +78,8 @@ module layer_renderer(
 
             reg_map_baseaddr_r  <= 16'h0000;
             reg_tile_baseaddr_r <= 16'h8000;
-            reg_scroll_x_r      <= 10'd0;
-            reg_scroll_y_r      <= 10'd0;
+            reg_hscroll_r       <= 12'd0;
+            reg_vscroll_r       <= 12'd0;
 
         end else begin
             if (regs_write) begin
@@ -106,10 +102,10 @@ module layer_renderer(
                     4'h3: reg_map_baseaddr_r[15:8]  <= regs_wrdata;
                     4'h4: reg_tile_baseaddr_r[7:0]  <= regs_wrdata;
                     4'h5: reg_tile_baseaddr_r[15:8] <= regs_wrdata;
-                    4'h6: reg_scroll_x_r[7:0]       <= regs_wrdata;
-                    4'h7: reg_scroll_x_r[9:8]       <= regs_wrdata[1:0];
-                    4'h8: reg_scroll_y_r[7:0]       <= regs_wrdata;
-                    4'h9: reg_scroll_y_r[9:8]       <= regs_wrdata[1:0];
+                    4'h6: reg_hscroll_r[7:0]        <= regs_wrdata;
+                    4'h7: reg_hscroll_r[11:8]       <= regs_wrdata[3:0];
+                    4'h8: reg_vscroll_r[7:0]        <= regs_wrdata;
+                    4'h9: reg_vscroll_r[11:8]       <= regs_wrdata[3:0];
                 endcase
             end
         end
@@ -119,6 +115,7 @@ module layer_renderer(
     // Line renderer
     //////////////////////////////////////////////////////////////////////////
 
+    // Decode color depth from mode register
     reg [1:0] color_depth;
     always @* case (reg_mode_r)
         3'd0: color_depth = 2'd0;    // Tile mode 1bpp; 16 color fg/bg color
@@ -131,6 +128,7 @@ module layer_renderer(
         3'd7: color_depth = 2'd3;    // 8bpp bitmap mode
     endcase
 
+    // Decode pixels per word - 1 from mode register
     reg [3:0] pixels_per_word_minus1;
     always @* case (reg_mode_r)
         3'd0: pixels_per_word_minus1 = reg_tile_width_r ? 4'd15 : 4'd7;   // Tile mode 1bpp; 16 color fg/bg color
@@ -143,6 +141,7 @@ module layer_renderer(
         3'd7: pixels_per_word_minus1 = 4'd3;                              // 8bpp bitmap mode
     endcase
 
+    // Decode lines per word - 1 from mode register
     reg [1:0] lines_per_word_minus1;
     always @* case (reg_mode_r)
         3'd0: lines_per_word_minus1 = reg_tile_width_r ? 2'd1 : 2'd3;    // Tile mode 1bpp; 16 color fg/bg color
@@ -155,9 +154,58 @@ module layer_renderer(
         3'd7: lines_per_word_minus1 = 2'd0;                              // 8bpp bitmap mode
     endcase
 
+    reg [11:0] vcnt_r;  // Current line
 
+    // Handle vertical scrolling
+    wire [11:0] scrolled_line_idx = vcnt_r + reg_vscroll_r;
+    wire [7:0] vmap_idx = reg_tile_height_r ? {scrolled_line_idx[11:4]} : scrolled_line_idx[10:3];
 
+    reg [7:0] wrapped_vmap_idx;
+    always @* case (reg_map_height_r)
+        2'd0: wrapped_vmap_idx = {3'b0, vmap_idx[4:0]}; // 32
+        2'd1: wrapped_vmap_idx = {2'b0, vmap_idx[5:0]}; // 64
+        2'd2: wrapped_vmap_idx = {1'b0, vmap_idx[6:0]}; // 128
+        2'd3: wrapped_vmap_idx = {      vmap_idx[7:0]}; // 256
+    endcase
 
+    // Handle horizontal scrolling
+    reg [7:0] htile_cnt_r;
+    wire [7:0] scrolled_htile_cnt = htile_cnt_r + (reg_tile_width_r ? reg_hscroll_r[11:4] : {reg_hscroll_r[10:3]});
+
+    reg [15:0] map_idx;
+    always @* case (reg_map_width_r)
+        2'd0: map_idx = {3'b0, wrapped_vmap_idx, scrolled_htile_cnt[4:0]}; // 32
+        2'd1: map_idx = {2'b0, wrapped_vmap_idx, scrolled_htile_cnt[5:0]}; // 64
+        2'd2: map_idx = {1'b0, wrapped_vmap_idx, scrolled_htile_cnt[6:0]}; // 128
+        2'd3: map_idx = {      wrapped_vmap_idx, scrolled_htile_cnt[7:0]}; // 256
+    endcase
+
+    // Calculate map address
+    wire [17:0] map_addr = {reg_map_baseaddr_r + {1'b0, map_idx[15:1]}, 2'b0};
+
+    // Data as fetched from memory
+    reg [31:0] map_data_r;
+
+    // Select correct 16-bit map data from 32-bit bus data
+    wire [15:0] cur_map_data = map_idx[0] ? map_data_r[31:16] : map_data_r[15:0];
+
+    // Get tile index from map data (mode 0/1 only has 8-bit tile index, other tile modes have 10-bit tile index)
+    wire  [9:0] cur_tile_idx = (reg_mode_r == 'd0 || reg_mode_r == 'd1) ? {2'b0, cur_map_data[7:0]} : cur_map_data[9:0];
+
+    // Calculate tile address
+    reg [17:0] tile_addr;
+    always @* begin
+        if (reg_tile_height_r == 0)
+            tile_addr = {reg_tile_baseaddr_r, 2'b00} + {cur_tile_idx, vcnt_r[2], 2'b0};
+        else
+            tile_addr = {reg_tile_baseaddr_r, 2'b00} + {cur_tile_idx, vcnt_r[3:2], 2'b0};
+    end
+
+    // Generate bus strobe
+    reg bus_strobe_r;
+    assign bus_strobe = bus_strobe_r && !bus_ack;
+
+    // Line renderer state machine states
     reg [2:0] state_r;
     parameter
         WAIT_START      = 3'b000,
@@ -167,48 +215,15 @@ module layer_renderer(
         WAIT_FETCH_TILE = 3'b100,
         RENDER          = 3'b101;
 
-    // Address of start of current map row
-    reg [15:0] map_row_addr_r;
-    reg [15:0] map_addr_r;
-
-    // Address of current map column (actually 2 columns per entry)
-    reg [15:0] map_col_addr_r;
-
-    // Current line within row (8 lines per row)
-    reg  [2:0] row_line_r;
-
-    // Data as fetched from memory
-    reg [31:0] map_data_r;
-
-    reg map_data_sel_r;
-
-
-    reg [2:0] ycnt_r;
-    reg [2:0] ycnt_next_r;
-
-
-    wire [15:0] cur_map_data = map_data_sel_r ? map_data_r[31:16] : map_data_r[15:0];
-    wire  [7:0] cur_tile_idx = cur_map_data[7:0];
-
-    reg bus_strobe_r;
-    assign bus_strobe = bus_strobe_r && !bus_ack;
-
+    // Various registers used by state machine
     reg [31:0] tile_data_r, render_data_r;
-    reg [7:0] next_render_mapdata_r;
-
-    reg [7:0] render_mapdata_r;
-    reg       render_start;
-    wire      render_busy;
-
-    wire  line_done;
-
-    reg [1:0] vscale_cnt_r;
-
-    // bus interface is 32-bit, so each word read contains 2 tile entries
-    //
-    // start of line = x_idx = scroll_x >> 3
-    // bus-addr = ((line_idx + scroll_y) / 8) * 64 + (idx)
-
+    reg  [7:0] next_render_mapdata_r;
+    reg  [7:0] render_mapdata_r;
+    reg        render_start;
+    wire       render_busy;
+    wire       line_done;
+    reg  [1:0] vscale_cnt_r;
+    reg [11:0] vcnt_next_r;
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
@@ -217,14 +232,12 @@ module layer_renderer(
             bus_addr        <= 0;
             bus_strobe_r    <= 0;
 
-            ycnt_r          <= 0;
-            ycnt_next_r     <= 0;
-
-            map_addr_r      <= 0;
-
-            map_data_sel_r  <= 0;
+            vcnt_r          <= 0;
+            vcnt_next_r     <= 0;
 
             vscale_cnt_r    <= 0;
+
+            htile_cnt_r     <= 0;
 
         end else begin
             render_start <= 0;
@@ -234,47 +247,39 @@ module layer_renderer(
                 end
 
                 FETCH_MAP: begin
-                    bus_addr     <= {map_addr_r, 2'b00};
+                    bus_addr     <= map_addr;
                     bus_strobe_r <= 1;
-
-                    map_addr_r   <= map_addr_r + 1;
-
-                    state_r <= WAIT_FETCH_MAP;
+                    state_r      <= WAIT_FETCH_MAP;
                 end
 
                 WAIT_FETCH_MAP: begin
                     if (bus_ack) begin
                         map_data_r   <= bus_rddata;
                         bus_strobe_r <= 0;
-
-                        state_r <= FETCH_TILE;
+                        state_r      <= FETCH_TILE;
                     end
                 end
 
                 FETCH_TILE: begin
-                    bus_addr     <= {reg_tile_baseaddr_r, 2'b00} + {cur_tile_idx, ycnt_r[2], 2'b0};
+                    bus_addr     <= tile_addr;
                     bus_strobe_r <= 1;
-
-                    state_r <= WAIT_FETCH_TILE;
+                    state_r      <= WAIT_FETCH_TILE;
                 end
 
                 WAIT_FETCH_TILE: begin
                     if (bus_ack) begin
-                        bus_strobe_r <= 0;
-                        tile_data_r <= bus_rddata;
-
+                        tile_data_r           <= bus_rddata;
+                        bus_strobe_r          <= 0;
                         next_render_mapdata_r <= cur_map_data[15:8];
-
-                        state_r <= RENDER;
+                        state_r               <= RENDER;
                     end
                 end
 
                 RENDER: begin
                     if (!render_busy) begin
-
                         case (lines_per_word_minus1)
-                            2'd1: render_data_r <= {16'b0, ycnt_r[0] ? tile_data_r[31:16] : tile_data_r[15:0]};
-                            2'd3: case (ycnt_r[1:0])
+                            2'd1: render_data_r <= {16'b0, vcnt_r[0] ? tile_data_r[31:16] : tile_data_r[15:0]};
+                            2'd3: case (vcnt_r[1:0])
                                 2'd0: render_data_r <= {24'b0, tile_data_r[7:0]};
                                 2'd1: render_data_r <= {24'b0, tile_data_r[15:8]};
                                 2'd2: render_data_r <= {24'b0, tile_data_r[23:16]};
@@ -287,8 +292,9 @@ module layer_renderer(
                         render_mapdata_r <= next_render_mapdata_r;
                         render_start     <= 1;
 
-                        state_r <= map_data_sel_r ? FETCH_MAP : FETCH_TILE;
-                        map_data_sel_r <= !map_data_sel_r;
+                        state_r <= map_idx[0] ? FETCH_MAP : FETCH_TILE;
+                        
+                        htile_cnt_r <= htile_cnt_r + 1;
                     end
 
                     if (line_done) begin
@@ -299,57 +305,155 @@ module layer_renderer(
 
             if (start_of_line) begin
                 state_r         <= FETCH_MAP;
-                ycnt_r          <= ycnt_next_r;
-                map_data_sel_r  <= 0;
-                map_addr_r      <= map_row_addr_r;
+                htile_cnt_r     <= 0;
+                vcnt_r          <= vcnt_next_r;
 
                 if (vscale_cnt_r == reg_vscale_r) begin
-                    ycnt_next_r     <= ycnt_next_r + 1;
+                    vcnt_next_r     <= vcnt_next_r + 1;
                     vscale_cnt_r    <= 0;
 
-                    if (ycnt_next_r == 7) begin
-                        map_row_addr_r <= map_row_addr_r + 40;
-                    end
                 end else begin
                     vscale_cnt_r <= vscale_cnt_r + 1;
                 end
-
             end
 
             if (start_of_screen) begin
-                map_row_addr_r <= reg_map_baseaddr_r;
-                map_addr_r     <= reg_map_baseaddr_r;
-                ycnt_r         <= 0;
-                
-                ycnt_next_r    <= (reg_vscale_r == 0) ? 1 : 0;
+                vcnt_r         <= 0;
+                vcnt_next_r    <= (reg_vscale_r == 0) ? 1 : 0;
                 vscale_cnt_r   <= 0;
             end
         end
     end
 
-
-
     //////////////////////////////////////////////////////////////////////////
     // Pixel renderer
     //////////////////////////////////////////////////////////////////////////
 
-    reg cur_pixel_data;
-    always @* case (xcnt_r[2:0])
-        3'd0: cur_pixel_data = render_data_r[7];
-        3'd1: cur_pixel_data = render_data_r[6];
-        3'd2: cur_pixel_data = render_data_r[5];
-        3'd3: cur_pixel_data = render_data_r[4];
-        3'd4: cur_pixel_data = render_data_r[3];
-        3'd5: cur_pixel_data = render_data_r[2];
-        3'd6: cur_pixel_data = render_data_r[1];
-        3'd7: cur_pixel_data = render_data_r[0];
+    // Select current pixel for 1bpp modes
+    reg cur_pixel_data_1bpp;
+    always @* case (xcnt_r[3:0])
+        // Byte 0
+        4'd0:  cur_pixel_data_1bpp = render_data_r[7];
+        4'd1:  cur_pixel_data_1bpp = render_data_r[6];
+        4'd2:  cur_pixel_data_1bpp = render_data_r[5];
+        4'd3:  cur_pixel_data_1bpp = render_data_r[4];
+        4'd4:  cur_pixel_data_1bpp = render_data_r[3];
+        4'd5:  cur_pixel_data_1bpp = render_data_r[2];
+        4'd6:  cur_pixel_data_1bpp = render_data_r[1];
+        4'd7:  cur_pixel_data_1bpp = render_data_r[0];
+
+        // Byte 1
+        4'd8:  cur_pixel_data_1bpp = render_data_r[15];
+        4'd9:  cur_pixel_data_1bpp = render_data_r[14];
+        4'd10: cur_pixel_data_1bpp = render_data_r[13];
+        4'd11: cur_pixel_data_1bpp = render_data_r[12];
+        4'd12: cur_pixel_data_1bpp = render_data_r[11];
+        4'd13: cur_pixel_data_1bpp = render_data_r[10];
+        4'd14: cur_pixel_data_1bpp = render_data_r[9];
+        4'd15: cur_pixel_data_1bpp = render_data_r[8];
     endcase
 
-    wire [7:0] cur_pixel_color = cur_pixel_data ? {4'b0, render_mapdata_r[3:0]} : {4'b0, render_mapdata_r[7:4]};
+    // Select current pixel for 2bpp modes
+    reg [1:0] cur_pixel_data_2bpp;
+    always @* case (xcnt_r[3:0])
+        // Byte 0
+        4'd0:  cur_pixel_data_2bpp = render_data_r[7:6];
+        4'd1:  cur_pixel_data_2bpp = render_data_r[5:4];
+        4'd2:  cur_pixel_data_2bpp = render_data_r[3:2];
+        4'd3:  cur_pixel_data_2bpp = render_data_r[1:0];
+
+        // Byte 1
+        4'd4:  cur_pixel_data_2bpp = render_data_r[15:14];
+        4'd5:  cur_pixel_data_2bpp = render_data_r[13:12];
+        4'd6:  cur_pixel_data_2bpp = render_data_r[11:10];
+        4'd7:  cur_pixel_data_2bpp = render_data_r[9:8];
+
+        // Byte 2
+        4'd8:  cur_pixel_data_2bpp = render_data_r[23:22];
+        4'd9:  cur_pixel_data_2bpp = render_data_r[21:20];
+        4'd10: cur_pixel_data_2bpp = render_data_r[19:18];
+        4'd11: cur_pixel_data_2bpp = render_data_r[17:16];
+
+        // Byte 3
+        4'd12: cur_pixel_data_2bpp = render_data_r[31:30];
+        4'd13: cur_pixel_data_2bpp = render_data_r[29:28];
+        4'd14: cur_pixel_data_2bpp = render_data_r[27:26];
+        4'd15: cur_pixel_data_2bpp = render_data_r[25:24];
+    endcase
+
+    // Select current pixel for 4bpp modes
+    reg [3:0] cur_pixel_data_4bpp;
+    always @* case (xcnt_r[2:0])
+        // Byte 0
+        3'd0: cur_pixel_data_4bpp = render_data_r[7:4];
+        3'd1: cur_pixel_data_4bpp = render_data_r[3:0];
+
+        // Byte 1
+        3'd2: cur_pixel_data_4bpp = render_data_r[15:11];
+        3'd3: cur_pixel_data_4bpp = render_data_r[10:8];
+
+        // Byte 2
+        3'd4: cur_pixel_data_4bpp = render_data_r[23:20];
+        3'd5: cur_pixel_data_4bpp = render_data_r[19:16];
+
+        // Byte 3
+        3'd6: cur_pixel_data_4bpp = render_data_r[31:28];
+        3'd7: cur_pixel_data_4bpp = render_data_r[27:24];
+    endcase
+
+    // Select current pixel for 8bpp modes
+    reg [7:0] cur_pixel_data_8bpp;
+    always @* case (xcnt_r[1:0])
+        // Byte 0
+        3'd0: cur_pixel_data_8bpp = render_data_r[7:0];
+
+        // Byte 1
+        3'd1: cur_pixel_data_8bpp = render_data_r[15:8];
+
+        // Byte 2
+        3'd2: cur_pixel_data_8bpp = render_data_r[23:16];
+
+        // Byte 3
+        3'd3: cur_pixel_data_8bpp = render_data_r[31:24];
+    endcase
+
+    // Select current pixel based on current color depth
+    reg [7:0] tmp_pixel_color;
+    always @* case (color_depth)
+        // 1bpp
+        2'd0: begin
+            if (reg_mode_r == 0) begin
+                // 16 color fg/bg mode
+                tmp_pixel_color = cur_pixel_data_1bpp ? {4'b0, render_mapdata_r[3:0]} : {4'b0, render_mapdata_r[7:4]};
+            end else begin
+                // 256 color fg mode, fixed bg color 0
+                tmp_pixel_color = cur_pixel_data_1bpp ? render_mapdata_r[7:0] : 8'd0;
+            end
+        end
+
+        // 2bpp
+        2'd1: tmp_pixel_color = {6'b0, cur_pixel_data_2bpp};
+
+        // 4bpp
+        2'd2: tmp_pixel_color = {4'b0, cur_pixel_data_4bpp};
+
+        // 8bpp
+        2'd3: tmp_pixel_color = cur_pixel_data_8bpp;
+    endcase
+
+    // Apply palette offset
+    reg [7:0] cur_pixel_color;
+    always @* begin
+        cur_pixel_color[3:0] = tmp_pixel_color[3:0];
+        if (color_depth != 0 && tmp_pixel_color[7:4] == 0 && tmp_pixel_color[3:0] != 0) begin
+            cur_pixel_color[7:4] = tmp_pixel_color[7:4] + {render_mapdata_r[7:4], 4'b0};
+        end else begin
+            cur_pixel_color[7:4] = tmp_pixel_color[7:4];
+        end
+    end
 
     reg [9:0] lb_wridx_r;
     assign line_done = lb_wridx_r[9:7] == 3'b101;
-
 
     reg [1:0] hscale_cnt_r, hscale_cnt_next;
 
@@ -364,7 +468,7 @@ module layer_renderer(
     // -----------------------------------------------------------------------
     // The start position of the rendering in the line buffer depends on the
     // horizontal scroll position and the selected horizontal pixel scaling.
-    wire [3:0] subtile_hscroll = reg_tile_width_r ? reg_scroll_x_r[3:0] : reg_scroll_x_r[2:0];
+    wire [3:0] subtile_hscroll = reg_tile_width_r ? reg_hscroll_r[3:0] : reg_hscroll_r[2:0];
 
     reg [5:0] scaled_subtile_hscroll;
     always @* case (reg_hscale_r)

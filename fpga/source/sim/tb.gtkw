@@ -1,22 +1,22 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Sat Jul 20 12:41:50 2019
+[*] Sat Jul 27 12:20:55 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Sat Jul 20 12:40:28 2019"
-[dumpfile_size] 25162066
+[dumpfile_mtime] "Sat Jul 27 12:19:45 2019"
+[dumpfile_size] 30983159
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
 [timestart] 0
 [size] 2560 1371
-[pos] -10 -32
-*-12.378208 31880 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] -1 -1
+*-12.378208 2420 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
 [sst_width] 388
-[signals_width] 359
+[signals_width] 354
 [sst_expanded] 1
-[sst_vpaned_height] 508
+[sst_vpaned_height] 693
 @28
 tb.top.extbus_res_n
 tb.top.extbus_phy2
@@ -57,31 +57,46 @@ tb.top.extbus.bm_write
 tb.top.extbus.bm_do_access
 @22
 tb.top.extbus.bm_rddata_r[7:0]
+@200
+-
+@22
+tb.top.layer1_renderer.bus_addr[17:0]
+tb.top.layer1_renderer.bus_rddata[31:0]
+@29
+tb.top.layer1_renderer.bus_strobe
+@28
+tb.top.layer1_renderer.bus_ack
 @20000
 -
+@24
+tb.top.layer1_renderer.wrapped_vmap_idx[7:0]
+tb.top.layer1_renderer.htile_cnt_r[7:0]
+tb.top.layer1_renderer.scrolled_htile_cnt[7:0]
+@22
+tb.top.layer1_renderer.map_idx[15:0]
+@24
+tb.top.layer1_renderer.map_addr[17:0]
+tb.top.layer1_renderer.lb_wridx_start[9:0]
+tb.top.layer1_renderer.lb_wridx_r[9:0]
+@28
+tb.top.layer1_renderer.render_start
+@24
+tb.top.layer1_renderer.linebuf_wridx[9:0]
+@22
+tb.top.layer1_renderer.linebuf_wrdata[7:0]
+@28
+tb.top.layer1_renderer.linebuf_wren
+@22
+tb.top.layer1_renderer.xcnt_r[3:0]
+@28
+tb.top.layer1_renderer.hscale_cnt_r[1:0]
 @200
--Composite video
-@20000
+-
 -
 @28
 tb.top.layer1_renderer.line_done
 tb.top.layer1_renderer.start_of_line
 tb.top.layer1_renderer.start_of_screen
-@c00025
-tb.top.layer1_renderer.linebuf_wridx_r[9:0]
-@28
-(0)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
-(1)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
-(2)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
-(3)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
-(4)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
-(5)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
-(6)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
-(7)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
-(8)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
-(9)tb.top.layer1_renderer.linebuf_wridx_r[9:0]
-@1401205
--group_end
 @c00024
 tb.top.layer1_renderer.linebuf_wridx[9:0]
 @28
@@ -97,15 +112,10 @@ tb.top.layer1_renderer.linebuf_wridx[9:0]
 (9)tb.top.layer1_renderer.linebuf_wridx[9:0]
 @1401200
 -group_end
-@24
-tb.top.layer2_renderer.width_cnt_r[1:0]
 @22
 tb.top.layer1_renderer.linebuf_wrdata[7:0]
 @28
 tb.top.layer1_renderer.linebuf_wren
-@22
-tb.top.layer1_renderer.render_data_r[7:0]
-@28
 tb.top.layer1_renderer.render_busy
 tb.top.layer1_renderer.state_r[2:0]
 tb.top.layer1_bm_strobe
