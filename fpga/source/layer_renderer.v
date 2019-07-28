@@ -196,9 +196,9 @@ module layer_renderer(
     reg [17:0] tile_addr;
     always @* begin
         if (reg_tile_height_r == 0)
-            tile_addr = {reg_tile_baseaddr_r, 2'b00} + {cur_tile_idx, vcnt_r[2], 2'b0};
+            tile_addr = {reg_tile_baseaddr_r, 2'b00} + {cur_tile_idx, scrolled_line_idx[2], 2'b0};
         else
-            tile_addr = {reg_tile_baseaddr_r, 2'b00} + {cur_tile_idx, vcnt_r[3:2], 2'b0};
+            tile_addr = {reg_tile_baseaddr_r, 2'b00} + {cur_tile_idx, scrolled_line_idx[3:2], 2'b0};
     end
 
     // Generate bus strobe
@@ -278,8 +278,8 @@ module layer_renderer(
                 RENDER: begin
                     if (!render_busy) begin
                         case (lines_per_word_minus1)
-                            2'd1: render_data_r <= {16'b0, vcnt_r[0] ? tile_data_r[31:16] : tile_data_r[15:0]};
-                            2'd3: case (vcnt_r[1:0])
+                            2'd1: render_data_r <= {16'b0, scrolled_line_idx[0] ? tile_data_r[31:16] : tile_data_r[15:0]};
+                            2'd3: case (scrolled_line_idx[1:0])
                                 2'd0: render_data_r <= {24'b0, tile_data_r[7:0]};
                                 2'd1: render_data_r <= {24'b0, tile_data_r[15:8]};
                                 2'd2: render_data_r <= {24'b0, tile_data_r[23:16]};

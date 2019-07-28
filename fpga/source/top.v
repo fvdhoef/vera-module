@@ -91,6 +91,8 @@ module top(
     // Register bus
     //////////////////////////////////////////////////////////////////////////
 
+    wire [7:0] irqs;
+
     // External 6502 bus to register bus master
     extbusif_6502 extbus(
         // 6502 slave bus interface
@@ -109,7 +111,11 @@ module top(
         .bm_wrdata(regbus_wrdata),
         .bm_rddata(regbus_rddata),
         .bm_strobe(regbus_strobe),
-        .bm_write(regbus_write));
+        .bm_write(regbus_write),
+        
+        .irqs(irqs));
+
+    assign irqs = {7'b0, start_of_screen};
 
     // Register bus memory map:
     // 00000-1FFFF  Main RAM

@@ -207,9 +207,27 @@ int main(int argc, const char **argv) {
 
     for (int i = 0; i < 257; i++) {
         bus_vwrite(0x040006, i & 0xff);
-        bus_vwrite(0x040007, i >> 8);
-        usleep(16000);
+        // bus_vwrite(0x040007, i >> 8);
+        // bus_vwrite(0x040008, i & 0xff);
+        // bus_vwrite(0x040009, i >> 8);
+
+        while ((bus_read(0x8007) & 1) == 0) {
+        }
+        bus_write(0x8007, 1);
     }
+
+    // bus_write(0x8000, 0x00);
+    // bus_write(0x8001, 0x00);
+    // bus_write(0x8002, 0x00);
+
+    // bus_write(0x8003, 5);
+
+    // printf("%02x\n", bus_read(0x8000));
+    // printf("%02x\n", bus_read(0x8001));
+    // printf("%02x\n", bus_read(0x8002));
+    // printf("%02x\n", bus_read(0x8003));
+
+    usleep(10000);
 
     return 0;
 }
