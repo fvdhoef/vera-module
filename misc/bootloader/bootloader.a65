@@ -1,0 +1,164 @@
+; bootloader.a65
+;
+; Little bootloader for Frank's 6502 test system to upload/download data via serial connection.
+
+SDATA = $C000
+SSTAT = $C001
+SCMD  = $C002
+SCTRL = $C003
+
+VADDRH = $8000
+VADDRM = $8001
+VADDRL = $8002
+VDATA  = $8003
+
+NMI_HANDLER = $FA
+IRQ_HANDLER = $FE
+
+ADDRL = $10
+ADDRH = $11
+
+; Read command
+; 01 - read   (2 bytes following containing little endian address to read from)
+; 02 - write  (3 bytes following containing little endian address and write data)
+; 03 - vread  (3 bytes following containing little endian address to read from)
+; 04 - vwrite (4 bytes following containing little endian address and write data)
+; 05 - vwrite2 ()
+; 06 - jump   (2 bytes following containing little endian address to jump to)
+
+    * = $E000
+
+RESET_ENTRY
+    ; Disable IRQs
+    SEI
+    ; Clear decimal mode
+    CLD
+
+    ; Initialize NMI and IRQ vector
+    LDA #<IRQ_DUMMY
+    STA NMI_HANDLER
+    STA IRQ_HANDLER
+    LDA #>IRQ_DUMMY
+    STA NMI_HANDLER+1
+    STA IRQ_HANDLER+1
+
+    ; Initialize ACIA 19200, 8N1, irq disabled
+    LDA #0
+    STA SSTAT
+    STA SCMD
+    LDA #$1F
+    STA SCTRL
+    LDA #$0B
+    STA SCMD
+
+MAINLOOP
+    JSR RXBYTE
+    CMP #1
+    BEQ CMD_READ
+    CMP #2
+    BEQ CMD_WRITE
+    CMP #3
+    BEQ CMD_VREAD
+    CMP #4
+    BEQ CMD_VWRITE
+    CMP #5
+    BEQ CMD_VWRITE2
+    CMP #6
+    BEQ CMD_JUMP
+    JMP MAINLOOP
+
+CMD_READ
+    JSR RXBYTE
+    STA ADDRL
+    JSR RXBYTE
+    STA ADDRH
+    LDA (ADDRL)
+    JSR TXBYTE
+    JMP MAINLOOP
+
+CMD_WRITE
+    JSR RXBYTE
+    STA ADDRL
+    JSR RXBYTE
+    STA ADDRH
+    JSR RXBYTE
+    STA (ADDRL)
+    JMP MAINLOOP
+
+CMD_VREAD
+    JSR RXBYTE
+    STA VADDRH
+    JSR RXBYTE
+    STA VADDRM
+    JSR RXBYTE
+    STA VADDRL
+    LDA VDATA
+    JSR TXBYTE
+    JMP MAINLOOP
+
+CMD_VWRITE
+    JSR RXBYTE
+    STA VADDRH
+    JSR RXBYTE
+    STA VADDRM
+    JSR RXBYTE
+    STA VADDRL
+    JSR RXBYTE
+    STA VDATA
+    JMP MAINLOOP
+
+CMD_VWRITE2
+    JSR RXBYTE
+    STA VADDRH
+    JSR RXBYTE
+    STA VADDRM
+    JSR RXBYTE
+    STA VADDRL
+    JSR RXBYTE
+
+    TAX
+VWRITE2_LOOP
+    JSR RXBYTE
+    STA VDATA
+    DEX
+    BNE VWRITE2_LOOP
+
+    JMP MAINLOOP
+
+CMD_JUMP
+    JSR RXBYTE
+    STA ADDRL
+    JSR RXBYTE
+    STA ADDRH
+    JMP (ADDRL)
+
+; Receive byte, result in A
+RXBYTE
+    ; Check for data received
+    LDA SSTAT
+    AND #$08
+    BEQ RXBYTE
+
+    ; Read RX data
+    LDA SDATA
+    RTS
+
+; Send byte in A
+TXBYTE
+    ; Write TX data
+    STA SDATA
+    RTS
+
+IRQ_DUMMY
+    RTS
+
+NMI_ENTRY
+    JMP (NMI_HANDLER)
+
+IRQ_ENTRY
+    JMP (IRQ_HANDLER)
+
+    .dsb $FFFA - *, $ff;
+    .word NMI_ENTRY
+    .word RESET_ENTRY
+    .word IRQ_ENTRY
