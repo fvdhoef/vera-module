@@ -193,13 +193,20 @@ module layer_renderer(
     wire  [9:0] cur_tile_idx = (reg_mode_r == 'd0 || reg_mode_r == 'd1) ? {2'b0, cur_map_data[7:0]} : cur_map_data[9:0];
 
     // Calculate tile address
-    reg [17:0] tile_addr;
-    always @* begin
-        if (reg_tile_height_r == 0)
-            tile_addr = {reg_tile_baseaddr_r, 2'b00} + {cur_tile_idx, scrolled_line_idx[2], 2'b0};
-        else
-            tile_addr = {reg_tile_baseaddr_r, 2'b00} + {cur_tile_idx, scrolled_line_idx[3:2], 2'b0};
-    end
+    wire [17:0] tile_addr_1bpp = reg_tile_height_r ? {4'b0, cur_tile_idx, scrolled_line_idx[3:2], 2'b0} : {5'b0, cur_tile_idx, scrolled_line_idx[2], 2'b0};
+    wire [17:0] tile_addr_2bpp = reg_tile_height_r ? {3'b0, cur_tile_idx, scrolled_line_idx[3:1], 2'b0} : {4'b0, cur_tile_idx, scrolled_line_idx[2:1], 2'b0};
+    wire [17:0] tile_addr_4bpp = reg_tile_height_r ? {2'b0, cur_tile_idx, scrolled_line_idx[3:0], 2'b0} : {3'b0, cur_tile_idx, scrolled_line_idx[2:0], 2'b0};
+    wire [17:0] tile_addr_8bpp = reg_tile_height_r ? {1'b0, cur_tile_idx, scrolled_line_idx[3:0], htile_cnt_r[0], 2'b0} : {2'b0, cur_tile_idx, scrolled_line_idx[2:0], htile_cnt_r[0], 2'b0};
+
+    reg  [17:0] tile_addr_xbpp;
+    always @* case (color_depth)
+        2'd0: tile_addr_xbpp = tile_addr_1bpp;
+        2'd1: tile_addr_xbpp = tile_addr_2bpp;
+        2'd2: tile_addr_xbpp = tile_addr_4bpp;
+        2'd3: tile_addr_xbpp = tile_addr_8bpp;
+    endcase
+
+    wire [17:0] tile_addr = {reg_tile_baseaddr_r, 2'b00} + tile_addr_xbpp;
 
     // Generate bus strobe
     reg bus_strobe_r;
@@ -446,7 +453,7 @@ module layer_renderer(
     always @* begin
         cur_pixel_color[3:0] = tmp_pixel_color[3:0];
         if (color_depth != 0 && tmp_pixel_color[7:4] == 0 && tmp_pixel_color[3:0] != 0) begin
-            cur_pixel_color[7:4] = tmp_pixel_color[7:4] + {render_mapdata_r[7:4], 4'b0};
+            cur_pixel_color[7:4] = render_mapdata_r[7:4];
         end else begin
             cur_pixel_color[7:4] = tmp_pixel_color[7:4];
         end

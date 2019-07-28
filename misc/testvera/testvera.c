@@ -14,7 +14,11 @@
 static int     serial_fd = -1;
 struct termios old_serial_tio;
 
+uint8_t bus_read(uint16_t addr);
+
 void restore_settings(void) {
+    bus_read(0x8000);
+
     if (serial_fd >= 0) {
         tcsetattr(serial_fd, TCSANOW, &old_serial_tio);
     }
@@ -84,20 +88,28 @@ void bus_vwrite(uint32_t addr, uint8_t data) {
 }
 
 void bus_vwrite2(uint32_t addr, const uint8_t *data, size_t length) {
-    if (length == 0) {
-        return;
-    }
+    while (length) {
+        size_t len = length;
+        if (len > 256) {
+            len = 256;
+        }
 
-    uint8_t buf[512];
-    buf[0] = 5;
-    buf[1] = (addr >> 16) & 0xff;
-    buf[2] = (addr >> 8) & 0xff;
-    buf[3] = (addr >> 0) & 0xff;
-    buf[4] = length & 0xFF;
-    for (int i = 0; i < (int)length; i++) {
-        buf[5 + i] = data[i];
+        printf("Writing to 0x%x, length: %lu\n", addr, len);
+
+        uint8_t buf[512];
+        buf[0] = 5;
+        buf[1] = 0x10 | ((addr >> 16) & 0x0f);
+        buf[2] = (addr >> 8) & 0xff;
+        buf[3] = (addr >> 0) & 0xff;
+        buf[4] = len & 0xFF;
+        for (int i = 0; i < (int)len; i++) {
+            buf[5 + i] = *(data++);
+        }
+        write(serial_fd, buf, 5 + len);
+
+        addr += len;
+        length -= len;
     }
-    write(serial_fd, buf, 5 + length);
 }
 
 uint8_t bus_read(uint16_t addr) {
@@ -124,6 +136,11 @@ void sigint_handler(int s) {
     exit(1);
 }
 
+void set_tile_base(uint32_t p) {
+    bus_vwrite(0x40004, (p >> 2) & 0xFF);
+    bus_vwrite(0x40005, (p >> 10) & 0xFF);
+}
+
 int main(int argc, const char **argv) {
     (void)argc;
     (void)argv;
@@ -131,7 +148,26 @@ int main(int argc, const char **argv) {
     signal(SIGINT, sigint_handler);
     init_serial();
 
-    // bus_vwrite2(0x200000, buf, 256);
+    // {
+    //     uint8_t fontbuf[4096];
+    //     FILE *  f = fopen("../font8x16.bin", "rb");
+    //     if (!f) {
+    //         perror("fopen");
+    //         exit(1);
+    //     }
+    //     if (fread(fontbuf, 4096, 1, f) != 1) {
+    //         perror("fread");
+    //         exit(1);
+    //     }
+    //     fclose(f);
+
+    //     bus_vwrite2(fontloc, fontbuf, 4096);
+    // }
+
+    // bus_vwrite(0x40004, (fontloc >> 2) & 0xFF);
+    // bus_vwrite(0x40005, (fontloc >> 10) & 0xFF);
+
+    // exit(0);
 
     // for (int i=0; i<16; i++) {
     //     bus_write(0x0300 +i, 0xF0 + i);
@@ -155,9 +191,49 @@ int main(int argc, const char **argv) {
     //     bus_vwrite(512 + 2*i, 32);
     //     bus_vwrite(512 + 2*i+1, 0x6E);
     // }
+#if 0
+    uint32_t fontloc = 0x10000;
 
+    bus_vwrite(0x040000, 0);
+    bus_vwrite(0x040001, (1 << 5));
+
+    {
+        uint8_t fontbuf[4096];
+        FILE *  f = fopen("../font8x16.bin", "rb");
+        if (!f) {
+            perror("fopen");
+            exit(1);
+        }
+        if (fread(fontbuf, 4096, 1, f) != 1) {
+            perror("fread");
+            exit(1);
+        }
+        fclose(f);
+        bus_vwrite2(fontloc, fontbuf, 4096);
+    }
+    set_tile_base(0x10000);
+
+    for (int i = 0; i <= 256; i++) {
+        bus_vwrite(0x040006, i & 0xff);
+        bus_vwrite(0x040007, i >> 8);
+
+        // while ((bus_read(0x8007) & 1) == 0) {
+        // }
+        // bus_write(0x8007, 1);
+        usleep(16400);
+    }
+
+    for (int i = 0; i <= 512; i++) {
+        bus_vwrite(0x040008, i & 0xff);
+        bus_vwrite(0x040009, i >> 8);
+
+        usleep(16400);
+    }
+
+    exit(0);
+#endif
+#if 0
     bus_vwrite(0x040000, 0x0A);
-    bus_vwrite(0x040001, 0);
 
     uint8_t buf[256];
     for (int i = 0; i < 128; i++) {
@@ -205,15 +281,54 @@ int main(int argc, const char **argv) {
 
     bus_vwrite(0x040008, 0);
 
-    for (int i = 0; i < 257; i++) {
+    for (int i = 0; i <= 256; i++) {
         bus_vwrite(0x040006, i & 0xff);
-        // bus_vwrite(0x040007, i >> 8);
-        // bus_vwrite(0x040008, i & 0xff);
-        // bus_vwrite(0x040009, i >> 8);
+        bus_vwrite(0x040007, i >> 8);
+        usleep(16400);
+    }
 
-        while ((bus_read(0x8007) & 1) == 0) {
-        }
-        bus_write(0x8007, 1);
+    for (int i = 0; i <= 256; i++) {
+        bus_vwrite(0x040008, i & 0xff);
+        bus_vwrite(0x040009, i >> 8);
+        usleep(16400);
+    }
+#endif
+
+    set_tile_base(0x10000);
+    bus_vwrite(0x040000, 0x7E);
+    bus_vwrite(0x040001, 0);
+    bus_vwrite(0x040006, 0);
+    bus_vwrite(0x040007, 0);
+    bus_vwrite(0x040008, 0);
+    bus_vwrite(0x040009, 0);
+
+    uint8_t tiledata_2bpp[] = {0x03, 0xC0, 0x0F, 0xF0, 0x3C, 0x3C, 0x3F, 0xFC, 0x3C, 0x3C, 0x3C, 0x3C, 0x3C, 0x3C, 0x00, 0x00};
+    bus_vwrite2(0x10000, tiledata_2bpp, sizeof(tiledata_2bpp));
+
+    uint8_t buf[64], buf2[64];
+    for (int i = 0; i < 32; i++) {
+        buf[i * 2 + 0] = i & 1;
+        buf[i * 2 + 1] = 0x30;
+
+        buf2[i * 2 + 0] = 2;
+        buf2[i * 2 + 1] = 0;
+    }
+    bus_vwrite2(0, buf, sizeof(buf));
+    bus_vwrite2(64, buf2, sizeof(buf2));
+    bus_vwrite2(128, buf, sizeof(buf));
+    bus_vwrite2(192, buf, sizeof(buf));
+    bus_vwrite2(256, buf, sizeof(buf));
+
+    for (int i = 0; i <= 256; i++) {
+        bus_vwrite(0x040006, i & 0xff);
+        bus_vwrite(0x040007, i >> 8);
+        usleep(16400);
+    }
+
+    for (int i = 0; i <= 256; i++) {
+        bus_vwrite(0x040008, i & 0xff);
+        bus_vwrite(0x040009, i >> 8);
+        usleep(16400);
     }
 
     // bus_write(0x8000, 0x00);
@@ -226,8 +341,6 @@ int main(int argc, const char **argv) {
     // printf("%02x\n", bus_read(0x8001));
     // printf("%02x\n", bus_read(0x8002));
     // printf("%02x\n", bus_read(0x8003));
-
-    usleep(10000);
 
     return 0;
 }
