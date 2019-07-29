@@ -115,6 +115,8 @@ module extbusif_6502(
     reg         bm_do_access;
     reg         bm_strobe_r;
 
+    reg         access_port;
+
     always @* begin
         reg_addr0_incr_next = reg_addr0_incr_r;
         reg_addr0_next      = reg_addr0_r;
@@ -131,6 +133,7 @@ module extbusif_6502(
         bm_strobe_next      = 0;
         bm_write_next       = 0;
         bm_do_access        = 0;
+        access_port         = 0;
 
         do_warmboot_next    = do_warmboot_r;
 
@@ -148,8 +151,9 @@ module extbusif_6502(
         // result in the same 6502 bus cycle (depending on the 6502 bus clock
         // speed).
         if (ext_access_start) begin
-            if (extbus_rw_n && extbus_a == 3'd3) begin
+            if (extbus_rw_n && (extbus_a == 3'd3 || extbus_a == 3'd4)) begin
                 bm_do_access = 1;
+                access_port = (extbus_a == 3'd4);
             end else begin
                 bm_busy_next = 0;
             end
@@ -188,6 +192,7 @@ module extbusif_6502(
                     bm_do_access        = 1;
                     bm_write_data_next  = eb_wrdata_rrr;
                     bm_write_next       = 1;
+                    access_port         = (eb_addr_rrr == 3'd4);
                 end
 
                 3'd5: begin
@@ -209,7 +214,7 @@ module extbusif_6502(
         reg_isr_next = reg_isr_r | irqs;
 
         if (bm_do_access) begin
-            if (eb_addr_rrr == 3'd3) begin
+            if (!access_port) begin
                 bm_access_addr_next = reg_addr0_r;
                 reg_addr0_next      = reg_addr0_r + reg_addr0_incr_r;
 
