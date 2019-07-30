@@ -1,22 +1,22 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Sun Jul 28 13:03:22 2019
+[*] Mon Jul 29 13:56:10 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Sun Jul 28 12:50:28 2019"
-[dumpfile_size] 36192926
+[dumpfile_mtime] "Mon Jul 29 13:52:52 2019"
+[dumpfile_size] 38729108
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
-[timestart] 0
+[timestart] 1916
 [size] 2560 1371
 [pos] -10 -32
-*-12.378208 820 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-8.378208 2577 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
-[sst_width] 388
-[signals_width] 354
+[sst_width] 275
+[signals_width] 426
 [sst_expanded] 1
-[sst_vpaned_height] 693
+[sst_vpaned_height] 474
 @28
 tb.top.extbus_res_n
 tb.top.extbus_phy2
@@ -63,11 +63,16 @@ tb.top.layer1_renderer.bus_rddata[31:0]
 @28
 tb.top.layer1_renderer.bus_strobe
 tb.top.layer1_renderer.bus_ack
+tb.top.membus_strobe
+tb.top.layer1_renderer.bus_strobe
+tb.top.layer2_renderer.bus_strobe
 @20000
 -
-@23
-tb.top.layer1_renderer.tile_addr[17:0]
+@2028
+^1 /c/Work/vera-module/fpga/source/sim/layer_renderer_state.txt
+tb.top.layer1_renderer.state_r[2:0]
 @22
+tb.top.layer1_renderer.tile_addr[17:0]
 tb.top.layer1_renderer.map_addr[17:0]
 @24
 tb.top.layer1_renderer.wrapped_vmap_idx[7:0]
@@ -93,11 +98,6 @@ tb.top.layer1_renderer.xcnt_r[3:0]
 tb.top.layer1_renderer.hscale_cnt_r[1:0]
 @200
 -
--
-@28
-tb.top.layer1_renderer.line_done
-tb.top.layer1_renderer.start_of_line
-tb.top.layer1_renderer.start_of_screen
 @c00024
 tb.top.layer1_renderer.linebuf_wridx[9:0]
 @28
@@ -115,9 +115,16 @@ tb.top.layer1_renderer.linebuf_wridx[9:0]
 -group_end
 @22
 tb.top.layer1_renderer.linebuf_wrdata[7:0]
-@28
+@29
 tb.top.layer1_renderer.linebuf_wren
+@28
 tb.top.layer1_renderer.render_busy
+@200
+-
+@28
+tb.top.layer1_renderer.line_done
+tb.top.layer1_renderer.start_of_line
+tb.top.layer1_renderer.start_of_screen
 tb.top.layer1_renderer.state_r[2:0]
 tb.top.layer1_bm_strobe
 tb.top.layer1_bm_ack

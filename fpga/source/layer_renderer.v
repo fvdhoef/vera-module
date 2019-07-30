@@ -66,7 +66,7 @@ module layer_renderer(
     // Register interface write data
     always @(posedge clk or posedge rst) begin
         if (rst) begin
-            reg_mode_r          <= 2'b00;
+            reg_mode_r          <= 3'd0;
             reg_vscale_r        <= 2'd0;
             reg_hscale_r        <= 2'd0;
             reg_enable_r        <= 0;
@@ -154,6 +154,19 @@ module layer_renderer(
         3'd7: lines_per_word_minus1 = 2'd0;                              // 8bpp bitmap mode
     endcase
 
+    // Decode words per tile line - 1 from mode register
+    reg [1:0] words_per_line_minus1;
+    always @* case (reg_mode_r)
+        3'd0: words_per_line_minus1 = 2'd0;                              // Tile mode 1bpp; 16 color fg/bg color
+        3'd1: words_per_line_minus1 = 2'd0;                              // Tile mode 1bpp; 256 color fg color, fixed bg color 0
+        3'd2: words_per_line_minus1 = 2'd0;                              // 2bpp tile mode
+        3'd3: words_per_line_minus1 = reg_tile_width_r ? 2'd1: 2'd0;     // 4bpp tile mode
+        3'd4: words_per_line_minus1 = reg_tile_width_r ? 2'd3: 2'd1;     // 8bpp tile mode
+        3'd5: words_per_line_minus1 = 2'd0;                              // 2bpp bitmap mode
+        3'd6: words_per_line_minus1 = 2'd0;                              // 4bpp bitmap mode
+        3'd7: words_per_line_minus1 = 2'd0;                              // 8bpp bitmap mode
+    endcase
+
     reg [11:0] vcnt_r;  // Current line
 
     // Handle vertical scrolling
@@ -170,6 +183,8 @@ module layer_renderer(
 
     // Handle horizontal scrolling
     reg [7:0] htile_cnt_r;
+    reg [1:0] word_cnt_r;
+
     wire [7:0] scrolled_htile_cnt = htile_cnt_r + (reg_tile_width_r ? reg_hscroll_r[11:4] : {reg_hscroll_r[10:3]});
 
     reg [15:0] map_idx;
@@ -192,13 +207,44 @@ module layer_renderer(
     // Get tile index from map data (mode 0/1 only has 8-bit tile index, other tile modes have 10-bit tile index)
     wire  [9:0] cur_tile_idx = (reg_mode_r == 'd0 || reg_mode_r == 'd1) ? {2'b0, cur_map_data[7:0]} : cur_map_data[9:0];
 
-    // Calculate tile address
-    wire [17:0] tile_addr_1bpp = reg_tile_height_r ? {4'b0, cur_tile_idx, scrolled_line_idx[3:2], 2'b0} : {5'b0, cur_tile_idx, scrolled_line_idx[2], 2'b0};
-    wire [17:0] tile_addr_2bpp = reg_tile_height_r ? {3'b0, cur_tile_idx, scrolled_line_idx[3:1], 2'b0} : {4'b0, cur_tile_idx, scrolled_line_idx[2:1], 2'b0};
-    wire [17:0] tile_addr_4bpp = reg_tile_height_r ? {2'b0, cur_tile_idx, scrolled_line_idx[3:0], 2'b0} : {3'b0, cur_tile_idx, scrolled_line_idx[2:0], 2'b0};
-    wire [17:0] tile_addr_8bpp = reg_tile_height_r ? {1'b0, cur_tile_idx, scrolled_line_idx[3:0], htile_cnt_r[0], 2'b0} : {2'b0, cur_tile_idx, scrolled_line_idx[2:0], htile_cnt_r[0], 2'b0};
+    // Calculate tile address 1bpp
+    wire [15:0] tile_addr_1bpp_x8    = {5'b0, cur_tile_idx, scrolled_line_idx[2]};
+    wire [15:0] tile_addr_1bpp_x16   = {4'b0, cur_tile_idx, scrolled_line_idx[3:2]};
+    wire [15:0] tile_addr_1bpp       = reg_tile_height_r ? tile_addr_1bpp_x16 : tile_addr_1bpp_x8;
 
-    reg  [17:0] tile_addr_xbpp;
+    // Calculate tile address 2bpp
+    wire [15:0] tile_addr_2bpp_x8    = {4'b0, cur_tile_idx, scrolled_line_idx[2:1]};
+    wire [15:0] tile_addr_2bpp_x16   = {3'b0, cur_tile_idx, scrolled_line_idx[3:1]};
+    wire [15:0] tile_addr_2bpp       = reg_tile_height_r ? tile_addr_2bpp_x16 : tile_addr_2bpp_x8;
+
+    // Calculate tile address 4bpp
+    wire [15:0] tile_addr_4bpp_8x8   = {3'b0, cur_tile_idx, scrolled_line_idx[2:0]};
+    wire [15:0] tile_addr_4bpp_8x16  = {2'b0, cur_tile_idx, scrolled_line_idx[3:0]};
+    wire [15:0] tile_addr_4bpp_16x8  = {2'b0, cur_tile_idx, scrolled_line_idx[2:0], word_cnt_r[0]};
+    wire [15:0] tile_addr_4bpp_16x16 = {1'b0, cur_tile_idx, scrolled_line_idx[3:0], word_cnt_r[0]};
+    reg  [15:0] tile_addr_4bpp;
+    always @* case ({reg_tile_width_r, reg_tile_height_r})
+        2'b00: tile_addr_4bpp = tile_addr_4bpp_8x8;
+        2'b01: tile_addr_4bpp = tile_addr_4bpp_8x16;
+        2'b10: tile_addr_4bpp = tile_addr_4bpp_16x8;
+        2'b11: tile_addr_4bpp = tile_addr_4bpp_16x16;
+    endcase
+
+    // Calculate tile address 8bpp
+    wire [15:0] tile_addr_8bpp_8x8   = {2'b0, cur_tile_idx, scrolled_line_idx[2:0], word_cnt_r[0]};
+    wire [15:0] tile_addr_8bpp_8x16  = {1'b0, cur_tile_idx, scrolled_line_idx[3:0], word_cnt_r[0]};
+    wire [15:0] tile_addr_8bpp_16x8  = {1'b0, cur_tile_idx, scrolled_line_idx[2:0], word_cnt_r[1:0]};
+    wire [15:0] tile_addr_8bpp_16x16 = {      cur_tile_idx, scrolled_line_idx[3:0], word_cnt_r[1:0]};
+    reg  [15:0] tile_addr_8bpp;
+    always @* case ({reg_tile_width_r, reg_tile_height_r})
+        2'b00: tile_addr_8bpp = tile_addr_8bpp_8x8;
+        2'b01: tile_addr_8bpp = tile_addr_8bpp_8x16;
+        2'b10: tile_addr_8bpp = tile_addr_8bpp_16x8;
+        2'b11: tile_addr_8bpp = tile_addr_8bpp_16x16;
+    endcase
+
+    // Select tile address based on color depth
+    reg  [15:0] tile_addr_xbpp;
     always @* case (color_depth)
         2'd0: tile_addr_xbpp = tile_addr_1bpp;
         2'd1: tile_addr_xbpp = tile_addr_2bpp;
@@ -206,7 +252,8 @@ module layer_renderer(
         2'd3: tile_addr_xbpp = tile_addr_8bpp;
     endcase
 
-    wire [17:0] tile_addr = {reg_tile_baseaddr_r, 2'b00} + tile_addr_xbpp;
+    // Calculate actual tile address
+    wire [17:0] tile_addr = {reg_tile_baseaddr_r + tile_addr_xbpp, 2'b00};
 
     // Generate bus strobe
     reg bus_strobe_r;
@@ -245,6 +292,7 @@ module layer_renderer(
             vscale_cnt_r    <= 0;
 
             htile_cnt_r     <= 0;
+            word_cnt_r      <= 0;
 
         end else begin
             render_start <= 0;
@@ -299,9 +347,16 @@ module layer_renderer(
                         render_mapdata_r <= next_render_mapdata_r;
                         render_start     <= 1;
 
-                        state_r <= map_idx[0] ? FETCH_MAP : FETCH_TILE;
-                        
-                        htile_cnt_r <= htile_cnt_r + 1;
+                        if (word_cnt_r == words_per_line_minus1) begin
+                            word_cnt_r <= 0;
+                            htile_cnt_r <= htile_cnt_r + 1;
+
+                            // Two map entries per word
+                            state_r <= scrolled_htile_cnt[0] ? FETCH_MAP : FETCH_TILE;
+                        end else begin
+                            word_cnt_r <= word_cnt_r + 1;
+                            state_r <= FETCH_TILE;
+                        end
                     end
 
                     if (line_done) begin
@@ -313,6 +368,7 @@ module layer_renderer(
             if (start_of_line) begin
                 state_r         <= FETCH_MAP;
                 htile_cnt_r     <= 0;
+                word_cnt_r      <= 0;
                 vcnt_r          <= vcnt_next_r;
 
                 if (vscale_cnt_r == reg_vscale_r) begin
