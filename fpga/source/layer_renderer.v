@@ -167,6 +167,9 @@ module layer_renderer(
         3'd7: words_per_line_minus1 = 2'd0;                              // 8bpp bitmap mode
     endcase
 
+    // Determine if this is a bitmap mode
+    wire is_bitmap_mode = reg_mode_r >= 3'd5;
+
     reg [11:0] vcnt_r;  // Current line
 
     // Handle vertical scrolling
@@ -277,6 +280,11 @@ module layer_renderer(
         WAIT_FETCH_TILE = 3'b100,
         RENDER          = 3'b101;
 
+    // Bitmap addresses
+    reg [15:0] bitmap_line_addr_r;
+    reg [15:0] bitmap_addr_r;
+    wire [15:0] bitmap_next_line_addr = bitmap_line_addr_r + reg_hscroll_r[7:0];
+
     // Various registers used by state machine
     reg [31:0] tile_data_r, render_data_r;
     reg  [7:0] next_render_mapdata_r;
@@ -289,18 +297,21 @@ module layer_renderer(
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
-            state_r         <= WAIT_START;
+            state_r            <= WAIT_START;
 
-            bus_addr        <= 0;
-            bus_strobe_r    <= 0;
+            bus_addr           <= 0;
+            bus_strobe_r       <= 0;
 
-            vcnt_r          <= 0;
-            vcnt_next_r     <= 0;
+            vcnt_r             <= 0;
+            vcnt_next_r        <= 0;
 
-            vscale_cnt_r    <= 0;
+            vscale_cnt_r       <= 0;
 
-            htile_cnt_r     <= 0;
-            word_cnt_r      <= 0;
+            htile_cnt_r        <= 0;
+            word_cnt_r         <= 0;
+
+            bitmap_addr_r      <= 0;
+            bitmap_line_addr_r <= 0;
 
         end else begin
             render_start <= 0;
@@ -324,9 +335,10 @@ module layer_renderer(
                 end
 
                 FETCH_TILE: begin
-                    bus_addr     <= tile_addr;
-                    bus_strobe_r <= 1;
-                    state_r      <= WAIT_FETCH_TILE;
+                    bus_addr      <= is_bitmap_mode ? {bitmap_addr_r, 2'b0} : tile_addr;
+                    bitmap_addr_r <= bitmap_addr_r + 1;
+                    bus_strobe_r  <= 1;
+                    state_r       <= WAIT_FETCH_TILE;
                 end
 
                 WAIT_FETCH_TILE: begin
@@ -352,18 +364,22 @@ module layer_renderer(
                             default: render_data_r <= tile_data_r;
                         endcase
 
-                        render_mapdata_r <= next_render_mapdata_r;
+                        render_mapdata_r <= is_bitmap_mode ? {reg_hscroll_r[11:8], 4'b0} : next_render_mapdata_r;
                         render_start     <= 1;
 
-                        if (word_cnt_r == words_per_line_minus1) begin
-                            word_cnt_r <= 0;
-                            htile_cnt_r <= htile_cnt_r + 1;
-
-                            // Two map entries per word
-                            state_r <= scrolled_htile_cnt[0] ? FETCH_MAP : FETCH_TILE;
-                        end else begin
-                            word_cnt_r <= word_cnt_r + 1;
+                        if (is_bitmap_mode) begin
                             state_r <= FETCH_TILE;
+                        end else begin
+                            if (word_cnt_r == words_per_line_minus1) begin
+                                word_cnt_r <= 0;
+                                htile_cnt_r <= htile_cnt_r + 1;
+
+                                // Two map entries per word
+                                state_r <= scrolled_htile_cnt[0] ? FETCH_MAP : FETCH_TILE;
+                            end else begin
+                                word_cnt_r <= word_cnt_r + 1;
+                                state_r <= FETCH_TILE;
+                            end
                         end
                     end
 
@@ -374,24 +390,30 @@ module layer_renderer(
             endcase
 
             if (start_of_line) begin
-                state_r         <= FETCH_MAP;
+                state_r         <= is_bitmap_mode ? FETCH_TILE : FETCH_MAP;
                 htile_cnt_r     <= 0;
                 word_cnt_r      <= 0;
                 vcnt_r          <= vcnt_next_r;
 
                 if (vscale_cnt_r == reg_vscale_r) begin
-                    vcnt_next_r     <= vcnt_next_r + 1;
-                    vscale_cnt_r    <= 0;
+                    vcnt_next_r        <= vcnt_next_r + 1;
+                    vscale_cnt_r       <= 0;
+                    bitmap_line_addr_r <= bitmap_next_line_addr;
+                    bitmap_addr_r      <= bitmap_next_line_addr;
 
                 end else begin
-                    vscale_cnt_r <= vscale_cnt_r + 1;
+                    vscale_cnt_r  <= vscale_cnt_r + 1;
+                    bitmap_addr_r <= bitmap_line_addr_r;
                 end
+
             end
 
             if (start_of_screen) begin
-                vcnt_r         <= 0;
-                vcnt_next_r    <= (reg_vscale_r == 0) ? 1 : 0;
-                vscale_cnt_r   <= 0;
+                vcnt_r             <= 0;
+                vcnt_next_r        <= (reg_vscale_r == 0) ? 1 : 0;
+                vscale_cnt_r       <= 0;
+                bitmap_line_addr_r <= reg_tile_baseaddr_r;
+                bitmap_addr_r      <= reg_tile_baseaddr_r;
             end
         end
     end
@@ -600,7 +622,7 @@ module layer_renderer(
             render_busy_next = 0;
 
             // Handle sub-tile horizontal scrolling
-            lb_wridx_next = lb_wridx_start;
+            lb_wridx_next = is_bitmap_mode ? 0 : lb_wridx_start;
         end
     end
 
