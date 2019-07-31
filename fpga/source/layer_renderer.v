@@ -199,7 +199,7 @@ module layer_renderer(
     wire [17:0] map_addr = {reg_map_baseaddr_r + {1'b0, map_idx[15:1]}, 2'b0};
 
     // Data as fetched from memory
-    reg [31:0] map_data_r;
+    reg  [31:0] map_data_r;
 
     // Select correct 16-bit map data from 32-bit bus data
     wire [15:0] cur_map_data = map_idx[0] ? map_data_r[31:16] : map_data_r[15:0];
@@ -207,21 +207,28 @@ module layer_renderer(
     // Get tile index from map data (mode 0/1 only has 8-bit tile index, other tile modes have 10-bit tile index)
     wire  [9:0] cur_tile_idx = (reg_mode_r == 'd0 || reg_mode_r == 'd1) ? {2'b0, cur_map_data[7:0]} : cur_map_data[9:0];
 
+    // Get H-flip / V-flip from map data
+    wire        cur_tile_hflip = (reg_mode_r == 'd0 || reg_mode_r == 'd1) ? 1'b0 : cur_map_data[10];
+    wire        cur_tile_vflip = (reg_mode_r == 'd0 || reg_mode_r == 'd1) ? 1'b0 : cur_map_data[11];
+
+    // Handle V-flip
+    wire  [3:0] vflipped_line_idx = cur_tile_vflip ? ~scrolled_line_idx[3:0] : scrolled_line_idx[3:0];
+
     // Calculate tile address 1bpp
-    wire [15:0] tile_addr_1bpp_x8    = {5'b0, cur_tile_idx, scrolled_line_idx[2]};
-    wire [15:0] tile_addr_1bpp_x16   = {4'b0, cur_tile_idx, scrolled_line_idx[3:2]};
+    wire [15:0] tile_addr_1bpp_x8    = {5'b0, cur_tile_idx, vflipped_line_idx[2]};
+    wire [15:0] tile_addr_1bpp_x16   = {4'b0, cur_tile_idx, vflipped_line_idx[3:2]};
     wire [15:0] tile_addr_1bpp       = reg_tile_height_r ? tile_addr_1bpp_x16 : tile_addr_1bpp_x8;
 
     // Calculate tile address 2bpp
-    wire [15:0] tile_addr_2bpp_x8    = {4'b0, cur_tile_idx, scrolled_line_idx[2:1]};
-    wire [15:0] tile_addr_2bpp_x16   = {3'b0, cur_tile_idx, scrolled_line_idx[3:1]};
+    wire [15:0] tile_addr_2bpp_x8    = {4'b0, cur_tile_idx, vflipped_line_idx[2:1]};
+    wire [15:0] tile_addr_2bpp_x16   = {3'b0, cur_tile_idx, vflipped_line_idx[3:1]};
     wire [15:0] tile_addr_2bpp       = reg_tile_height_r ? tile_addr_2bpp_x16 : tile_addr_2bpp_x8;
 
     // Calculate tile address 4bpp
-    wire [15:0] tile_addr_4bpp_8x8   = {3'b0, cur_tile_idx, scrolled_line_idx[2:0]};
-    wire [15:0] tile_addr_4bpp_8x16  = {2'b0, cur_tile_idx, scrolled_line_idx[3:0]};
-    wire [15:0] tile_addr_4bpp_16x8  = {2'b0, cur_tile_idx, scrolled_line_idx[2:0], word_cnt_r[0]};
-    wire [15:0] tile_addr_4bpp_16x16 = {1'b0, cur_tile_idx, scrolled_line_idx[3:0], word_cnt_r[0]};
+    wire [15:0] tile_addr_4bpp_8x8   = {3'b0, cur_tile_idx, vflipped_line_idx[2:0]};
+    wire [15:0] tile_addr_4bpp_8x16  = {2'b0, cur_tile_idx, vflipped_line_idx[3:0]};
+    wire [15:0] tile_addr_4bpp_16x8  = {2'b0, cur_tile_idx, vflipped_line_idx[2:0], word_cnt_r[0]};
+    wire [15:0] tile_addr_4bpp_16x16 = {1'b0, cur_tile_idx, vflipped_line_idx[3:0], word_cnt_r[0]};
     reg  [15:0] tile_addr_4bpp;
     always @* case ({reg_tile_width_r, reg_tile_height_r})
         2'b00: tile_addr_4bpp = tile_addr_4bpp_8x8;
@@ -231,10 +238,10 @@ module layer_renderer(
     endcase
 
     // Calculate tile address 8bpp
-    wire [15:0] tile_addr_8bpp_8x8   = {2'b0, cur_tile_idx, scrolled_line_idx[2:0], word_cnt_r[0]};
-    wire [15:0] tile_addr_8bpp_8x16  = {1'b0, cur_tile_idx, scrolled_line_idx[3:0], word_cnt_r[0]};
-    wire [15:0] tile_addr_8bpp_16x8  = {1'b0, cur_tile_idx, scrolled_line_idx[2:0], word_cnt_r[1:0]};
-    wire [15:0] tile_addr_8bpp_16x16 = {      cur_tile_idx, scrolled_line_idx[3:0], word_cnt_r[1:0]};
+    wire [15:0] tile_addr_8bpp_8x8   = {2'b0, cur_tile_idx, vflipped_line_idx[2:0], word_cnt_r[0]};
+    wire [15:0] tile_addr_8bpp_8x16  = {1'b0, cur_tile_idx, vflipped_line_idx[3:0], word_cnt_r[0]};
+    wire [15:0] tile_addr_8bpp_16x8  = {1'b0, cur_tile_idx, vflipped_line_idx[2:0], word_cnt_r[1:0]};
+    wire [15:0] tile_addr_8bpp_16x16 = {      cur_tile_idx, vflipped_line_idx[3:0], word_cnt_r[1:0]};
     reg  [15:0] tile_addr_8bpp;
     always @* case ({reg_tile_width_r, reg_tile_height_r})
         2'b00: tile_addr_8bpp = tile_addr_8bpp_8x8;
@@ -333,8 +340,8 @@ module layer_renderer(
                 RENDER: begin
                     if (!render_busy) begin
                         case (lines_per_word_minus1)
-                            2'd1: render_data_r <= {16'b0, scrolled_line_idx[0] ? tile_data_r[31:16] : tile_data_r[15:0]};
-                            2'd3: case (scrolled_line_idx[1:0])
+                            2'd1: render_data_r <= {16'b0, vflipped_line_idx[0] ? tile_data_r[31:16] : tile_data_r[15:0]};
+                            2'd3: case (vflipped_line_idx[1:0])
                                 2'd0: render_data_r <= {24'b0, tile_data_r[7:0]};
                                 2'd1: render_data_r <= {24'b0, tile_data_r[15:8]};
                                 2'd2: render_data_r <= {24'b0, tile_data_r[23:16]};
