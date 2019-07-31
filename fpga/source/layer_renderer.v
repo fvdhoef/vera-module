@@ -207,12 +207,13 @@ module layer_renderer(
     // Get tile index from map data (mode 0/1 only has 8-bit tile index, other tile modes have 10-bit tile index)
     wire  [9:0] cur_tile_idx = (reg_mode_r == 'd0 || reg_mode_r == 'd1) ? {2'b0, cur_map_data[7:0]} : cur_map_data[9:0];
 
-    // Get H-flip / V-flip from map data
-    wire        cur_tile_hflip = (reg_mode_r == 'd0 || reg_mode_r == 'd1) ? 1'b0 : cur_map_data[10];
+    // Get V-flip / H-flip from map data
     wire        cur_tile_vflip = (reg_mode_r == 'd0 || reg_mode_r == 'd1) ? 1'b0 : cur_map_data[11];
+    wire        cur_tile_hflip = (reg_mode_r == 'd0 || reg_mode_r == 'd1) ? 1'b0 : cur_map_data[10];
 
-    // Handle V-flip
+    // Handle V-flip / H-flip
     wire  [3:0] vflipped_line_idx = cur_tile_vflip ? ~scrolled_line_idx[3:0] : scrolled_line_idx[3:0];
+    wire  [1:0] hflipped_word_cnt = cur_tile_hflip ? ~word_cnt_r : word_cnt_r;
 
     // Calculate tile address 1bpp
     wire [15:0] tile_addr_1bpp_x8    = {5'b0, cur_tile_idx, vflipped_line_idx[2]};
@@ -227,8 +228,8 @@ module layer_renderer(
     // Calculate tile address 4bpp
     wire [15:0] tile_addr_4bpp_8x8   = {3'b0, cur_tile_idx, vflipped_line_idx[2:0]};
     wire [15:0] tile_addr_4bpp_8x16  = {2'b0, cur_tile_idx, vflipped_line_idx[3:0]};
-    wire [15:0] tile_addr_4bpp_16x8  = {2'b0, cur_tile_idx, vflipped_line_idx[2:0], word_cnt_r[0]};
-    wire [15:0] tile_addr_4bpp_16x16 = {1'b0, cur_tile_idx, vflipped_line_idx[3:0], word_cnt_r[0]};
+    wire [15:0] tile_addr_4bpp_16x8  = {2'b0, cur_tile_idx, vflipped_line_idx[2:0], hflipped_word_cnt[0]};
+    wire [15:0] tile_addr_4bpp_16x16 = {1'b0, cur_tile_idx, vflipped_line_idx[3:0], hflipped_word_cnt[0]};
     reg  [15:0] tile_addr_4bpp;
     always @* case ({reg_tile_width_r, reg_tile_height_r})
         2'b00: tile_addr_4bpp = tile_addr_4bpp_8x8;
@@ -238,10 +239,10 @@ module layer_renderer(
     endcase
 
     // Calculate tile address 8bpp
-    wire [15:0] tile_addr_8bpp_8x8   = {2'b0, cur_tile_idx, vflipped_line_idx[2:0], word_cnt_r[0]};
-    wire [15:0] tile_addr_8bpp_8x16  = {1'b0, cur_tile_idx, vflipped_line_idx[3:0], word_cnt_r[0]};
-    wire [15:0] tile_addr_8bpp_16x8  = {1'b0, cur_tile_idx, vflipped_line_idx[2:0], word_cnt_r[1:0]};
-    wire [15:0] tile_addr_8bpp_16x16 = {      cur_tile_idx, vflipped_line_idx[3:0], word_cnt_r[1:0]};
+    wire [15:0] tile_addr_8bpp_8x8   = {2'b0, cur_tile_idx, vflipped_line_idx[2:0], hflipped_word_cnt[0]};
+    wire [15:0] tile_addr_8bpp_8x16  = {1'b0, cur_tile_idx, vflipped_line_idx[3:0], hflipped_word_cnt[0]};
+    wire [15:0] tile_addr_8bpp_16x8  = {1'b0, cur_tile_idx, vflipped_line_idx[2:0], hflipped_word_cnt[1:0]};
+    wire [15:0] tile_addr_8bpp_16x16 = {      cur_tile_idx, vflipped_line_idx[3:0], hflipped_word_cnt[1:0]};
     reg  [15:0] tile_addr_8bpp;
     always @* case ({reg_tile_width_r, reg_tile_height_r})
         2'b00: tile_addr_8bpp = tile_addr_8bpp_8x8;
@@ -398,6 +399,7 @@ module layer_renderer(
     //////////////////////////////////////////////////////////////////////////
     // Pixel renderer
     //////////////////////////////////////////////////////////////////////////
+    wire [3:0] hflipped_xcnt = render_mapdata_r[2] ? ~xcnt_r[3:0] : xcnt_r[3:0];
 
     // Select current pixel for 1bpp modes
     reg cur_pixel_data_1bpp;
@@ -425,7 +427,7 @@ module layer_renderer(
 
     // Select current pixel for 2bpp modes
     reg [1:0] cur_pixel_data_2bpp;
-    always @* case (xcnt_r[3:0])
+    always @* case (hflipped_xcnt[3:0])
         // Byte 0
         4'd0:  cur_pixel_data_2bpp = render_data_r[7:6];
         4'd1:  cur_pixel_data_2bpp = render_data_r[5:4];
@@ -453,7 +455,7 @@ module layer_renderer(
 
     // Select current pixel for 4bpp modes
     reg [3:0] cur_pixel_data_4bpp;
-    always @* case (xcnt_r[2:0])
+    always @* case (hflipped_xcnt[2:0])
         // Byte 0
         3'd0: cur_pixel_data_4bpp = render_data_r[7:4];
         3'd1: cur_pixel_data_4bpp = render_data_r[3:0];
@@ -473,7 +475,7 @@ module layer_renderer(
 
     // Select current pixel for 8bpp modes
     reg [7:0] cur_pixel_data_8bpp;
-    always @* case (xcnt_r[1:0])
+    always @* case (hflipped_xcnt[1:0])
         // Byte 0
         3'd0: cur_pixel_data_8bpp = render_data_r[7:0];
 
