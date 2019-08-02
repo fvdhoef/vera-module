@@ -14,7 +14,7 @@ module layer_renderer(
     input  wire        regs_write,
 
     // Bus master interface
-    output reg  [17:0] bus_addr,
+    output reg  [15:0] bus_addr,
     input  wire [31:0] bus_rddata,
     output wire        bus_strobe,
     input  wire        bus_ack,
@@ -199,7 +199,7 @@ module layer_renderer(
     endcase
 
     // Calculate map address
-    wire [17:0] map_addr = {reg_map_baseaddr_r + {1'b0, map_idx[15:1]}, 2'b0};
+    wire [15:0] map_addr = reg_map_baseaddr_r + {1'b0, map_idx[15:1]};
 
     // Data as fetched from memory
     reg  [31:0] map_data_r;
@@ -264,7 +264,7 @@ module layer_renderer(
     endcase
 
     // Calculate actual tile address
-    wire [17:0] tile_addr = {reg_tile_baseaddr_r + tile_addr_xbpp, 2'b00};
+    wire [15:0] tile_addr = reg_tile_baseaddr_r + tile_addr_xbpp;
 
     // Generate bus strobe
     reg bus_strobe_r;
@@ -335,7 +335,7 @@ module layer_renderer(
                 end
 
                 FETCH_TILE: begin
-                    bus_addr      <= is_bitmap_mode ? {bitmap_addr_r, 2'b0} : tile_addr;
+                    bus_addr      <= is_bitmap_mode ? bitmap_addr_r : tile_addr;
                     bitmap_addr_r <= bitmap_addr_r + 1;
                     bus_strobe_r  <= 1;
                     state_r       <= WAIT_FETCH_TILE;

@@ -45,12 +45,12 @@ module top(
     wire [31:0] mainram_rddata;
     wire [31:0] charrom_rddata;
 
-    wire [17:0] layer1_bm_addr;
+    wire [15:0] layer1_bm_addr;
     wire        layer1_bm_strobe;
     reg         layer1_bm_ack;
     reg         layer1_bm_ack_next;
 
-    wire [17:0] layer2_bm_addr;
+    wire [15:0] layer2_bm_addr;
     wire        layer2_bm_strobe;
     reg         layer2_bm_ack;
     reg         layer2_bm_ack_next;
@@ -192,11 +192,11 @@ module top(
             membus_write = regbus_write;
 
         end else if (layer1_bm_strobe) begin
-            membus_addr        = layer1_bm_addr[17:0];
+            membus_addr        = {layer1_bm_addr, 2'b0};
             layer1_bm_ack_next = 1'b1;
 
         end else if (layer2_bm_strobe) begin
-            membus_addr        = layer2_bm_addr[17:0];
+            membus_addr        = {layer2_bm_addr, 2'b0};
             layer2_bm_ack_next = 1'b1;
         end
     end
