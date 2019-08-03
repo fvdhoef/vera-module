@@ -1468,6 +1468,8 @@
 <smd name="3B" x="0.4" y="-0.8" dx="0.4" dy="0.8" layer="1"/>
 <smd name="4A" x="1.2" y="0.8" dx="0.4" dy="0.8" layer="1"/>
 <smd name="4B" x="1.2" y="-0.8" dx="0.4" dy="0.8" layer="1"/>
+<wire x1="-1.6" y1="0.8" x2="-1.6" y2="-0.8" width="0.2" layer="21"/>
+<wire x1="1.6" y1="0.8" x2="1.6" y2="-0.8" width="0.2" layer="21"/>
 </package>
 </packages>
 <symbols>

@@ -6,7 +6,7 @@
 <setting alwaysvectorfont="yes"/>
 <setting verticaltext="up"/>
 </settings>
-<grid distance="0.1" unitdist="mm" unit="mm" style="lines" multiple="10" display="no" altdistance="0.025" altunitdist="inch" altunit="inch"/>
+<grid distance="0.05" unitdist="mm" unit="mm" style="lines" multiple="10" display="no" altdistance="0.025" altunitdist="inch" altunit="inch"/>
 <layers>
 <layer number="1" name="Top" color="4" fill="1" visible="yes" active="yes"/>
 <layer number="2" name="Route2" color="1" fill="3" visible="no" active="no"/>
@@ -26,8 +26,8 @@
 <layer number="26" name="bNames" color="7" fill="1" visible="no" active="yes"/>
 <layer number="27" name="tValues" color="7" fill="1" visible="no" active="yes"/>
 <layer number="28" name="bValues" color="7" fill="1" visible="no" active="yes"/>
-<layer number="29" name="tStop" color="4" fill="3" visible="yes" active="yes"/>
-<layer number="30" name="bStop" color="1" fill="6" visible="yes" active="yes"/>
+<layer number="29" name="tStop" color="4" fill="3" visible="no" active="yes"/>
+<layer number="30" name="bStop" color="1" fill="6" visible="no" active="yes"/>
 <layer number="31" name="tCream" color="7" fill="4" visible="no" active="yes"/>
 <layer number="32" name="bCream" color="7" fill="5" visible="no" active="yes"/>
 <layer number="33" name="tFinish" color="6" fill="3" visible="no" active="yes"/>
@@ -668,6 +668,8 @@
 <smd name="3B" x="0.4" y="-0.8" dx="0.4" dy="0.8" layer="1"/>
 <smd name="4A" x="1.2" y="0.8" dx="0.4" dy="0.8" layer="1"/>
 <smd name="4B" x="1.2" y="-0.8" dx="0.4" dy="0.8" layer="1"/>
+<wire x1="-1.6" y1="0.8" x2="-1.6" y2="-0.8" width="0.2" layer="21"/>
+<wire x1="1.6" y1="0.8" x2="1.6" y2="-0.8" width="0.2" layer="21"/>
 </package>
 </packages>
 </library>
@@ -1406,7 +1408,7 @@
 <via x="53.5" y="38.5" extent="1-16" drill="0.3"/>
 <via x="49" y="38.5" extent="1-16" drill="0.3"/>
 <via x="53.5" y="43.5" extent="1-16" drill="0.3"/>
-<via x="8.5" y="13.5" extent="1-16" drill="0.3"/>
+<via x="7.5" y="13.5" extent="1-16" drill="0.3"/>
 <via x="13.5" y="13.5" extent="1-16" drill="0.3"/>
 <via x="18.5" y="13.5" extent="1-16" drill="0.3"/>
 <via x="23.5" y="13.5" extent="1-16" drill="0.3"/>
@@ -1601,9 +1603,8 @@
 <contactref element="J4" pad="2"/>
 <wire x1="12.05" y1="17.3107375" x2="12.05" y2="26.8" width="0.5" layer="1"/>
 <wire x1="6.91" y1="5" x2="6.91" y2="9.66" width="0.5" layer="1"/>
-<wire x1="12.05" y1="17.3107375" x2="12.05" y2="13.8" width="0.5" layer="1"/>
-<wire x1="12.05" y1="13.8" x2="10.1" y2="11.85" width="0.5" layer="1"/>
-<wire x1="10.1" y1="11.85" x2="7.65" y2="11.85" width="0.5" layer="1"/>
+<wire x1="12.05" y1="17.3107375" x2="12.05" y2="16.25" width="0.5" layer="1"/>
+<wire x1="12.05" y1="16.25" x2="6.92" y2="11.12" width="0.5" layer="1"/>
 <wire x1="12.05" y1="17.3107375" x2="17.4892625" y2="17.3107375" width="0.5" layer="1"/>
 <wire x1="17.4892625" y1="17.3107375" x2="17.57" y2="17.23" width="0.5" layer="1"/>
 <wire x1="6.91" y1="9.66" x2="4.38" y2="9.66" width="0.5" layer="1"/>
@@ -1613,7 +1614,6 @@
 <wire x1="4" y1="46.39" x2="4.74" y2="45.65" width="0.5" layer="1"/>
 <wire x1="4.74" y1="45.65" x2="7.5" y2="45.65" width="0.5" layer="1"/>
 <wire x1="6.91" y1="11.12" x2="6.92" y2="11.12" width="0.5" layer="1"/>
-<wire x1="6.92" y1="11.12" x2="7.65" y2="11.85" width="0.5" layer="1"/>
 </signal>
 <signal name="VGA_G1">
 <contactref element="R17" pad="1"/>
@@ -2449,8 +2449,9 @@
 <wire x1="24.85" y1="12.25" x2="25.5" y2="11.6" width="0.2" layer="1"/>
 <wire x1="25.5" y1="11.6" x2="26.4" y2="11.6" width="0.2" layer="1"/>
 <via x="26.4" y="11.6" extent="1-16" drill="0.3"/>
-<wire x1="26.4" y1="11.6" x2="27" y2="11.6" width="0.2" layer="16"/>
-<wire x1="27" y1="11.6" x2="30.8" y2="15.4" width="0.2" layer="16"/>
+<wire x1="26.4" y1="11.6" x2="26.9" y2="12.1" width="0.2" layer="16"/>
+<wire x1="26.9" y1="12.1" x2="27.5" y2="12.1" width="0.2" layer="16"/>
+<wire x1="27.5" y1="12.1" x2="30.8" y2="15.4" width="0.2" layer="16"/>
 <wire x1="30.8" y1="15.4" x2="34.05" y2="15.4" width="0.2" layer="16"/>
 <wire x1="34.05" y1="15.4" x2="34.3" y2="15.15" width="0.2" layer="16"/>
 <wire x1="34.3" y1="15.15" x2="35.05" y2="15.15" width="0.2" layer="16"/>
@@ -2536,12 +2537,11 @@
 <wire x1="36.6" y1="17.8" x2="35.35" y2="19.05" width="0.2" layer="1"/>
 <wire x1="35.35" y1="19.05" x2="35.35" y2="19.77" width="0.2" layer="1"/>
 <via x="14.05" y="10.5" extent="1-16" drill="0.3"/>
-<wire x1="14.05" y1="10.5" x2="27.7" y2="10.5" width="0.2" layer="1"/>
-<wire x1="27.7" y1="10.5" x2="27.95" y2="10.75" width="0.2" layer="1"/>
-<via x="27.95" y="10.75" extent="1-16" drill="0.3"/>
-<wire x1="27.95" y1="10.75" x2="27.95" y2="11.2" width="0.2" layer="16"/>
-<wire x1="27.95" y1="11.2" x2="31.25" y2="14.5" width="0.2" layer="16"/>
-<wire x1="31.25" y1="14.5" x2="33.4" y2="14.5" width="0.2" layer="16"/>
+<wire x1="14.05" y1="10.5" x2="27.35" y2="10.5" width="0.2" layer="1"/>
+<wire x1="27.35" y1="10.5" x2="27.6" y2="10.75" width="0.2" layer="1"/>
+<via x="27.6" y="10.75" extent="1-16" drill="0.3"/>
+<wire x1="27.6" y1="10.75" x2="31.35" y2="14.5" width="0.2" layer="16"/>
+<wire x1="31.35" y1="14.5" x2="33.4" y2="14.5" width="0.2" layer="16"/>
 <wire x1="33.4" y1="14.5" x2="34.05" y2="13.85" width="0.2" layer="16"/>
 </signal>
 <signal name="BUS_A0_5V">
