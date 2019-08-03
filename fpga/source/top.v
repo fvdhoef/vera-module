@@ -31,6 +31,7 @@ module top(
     // Register bus read outputs
     wire  [7:0] layer1_regs_rddata;
     wire  [7:0] layer2_regs_rddata;
+    wire  [7:0] composer_regs_rddata;
     wire  [7:0] palette_rddata;
 
     // Memory bus signals
@@ -59,15 +60,21 @@ module top(
     wire  [9:0] layer1_linebuf_wridx;
     wire  [7:0] layer1_linebuf_wrdata;
     wire        layer1_linebuf_wren;
+    wire  [9:0] layer1_linebuf_rdidx;
+    wire  [7:0] layer1_linebuf_rddata;
 
     wire  [9:0] layer2_linebuf_wridx;
     wire  [7:0] layer2_linebuf_wrdata;
     wire        layer2_linebuf_wren;
+    wire  [9:0] layer2_linebuf_rdidx;
+    wire  [7:0] layer2_linebuf_rddata;
 
+    wire  [9:0] sprite_linebuf_wridx = 0;
+    wire [15:0] sprite_linebuf_wrdata = 0;
+    wire        sprite_linebuf_wren = 0;
+    wire  [9:0] sprite_linebuf_rdidx;
+    wire [15:0] sprite_linebuf_rddata;
 
-
-    wire  [9:0] linebuf_rdidx;
-    wire  [7:0] linebuf_rddata;
 
     wire start_of_screen;
     wire start_of_line;
@@ -122,11 +129,13 @@ module top(
     // 20000-20FFF  Character ROM
     // 40000-4000F  Layer 1 registers
     // 40010-4001F  Layer 2 registers
+    // 40020-4003F  Composer registers
     // 40200-403FF  Palette
-    wire membus_sel      = !regbus_addr[18];
-    wire layer1_regs_sel = regbus_addr[18] && regbus_addr[17:4] == 'b00_00000000_0000;
-    wire layer2_regs_sel = regbus_addr[18] && regbus_addr[17:4] == 'b00_00000000_0001;
-    wire palette_sel     = regbus_addr[18] && regbus_addr[17:9] == 'b00_0000001;
+    wire membus_sel        = !regbus_addr[18];
+    wire layer1_regs_sel   = regbus_addr[18] && regbus_addr[17:4] == 'b00_00000000_0000;
+    wire layer2_regs_sel   = regbus_addr[18] && regbus_addr[17:4] == 'b00_00000000_0001;
+    wire composer_regs_sel = regbus_addr[18] && regbus_addr[17:5] == 'b00_00000000_001;
+    wire palette_sel       = regbus_addr[18] && regbus_addr[17:9] == 'b00_0000001;
 
     // Memory bus read data selection
     reg [7:0] membus_rddata8;
@@ -140,10 +149,11 @@ module top(
     // Register bus read data mux
     always @* begin
         regbus_rddata = 8'h00;
-        if (membus_sel)      regbus_rddata = membus_rddata8;
-        if (layer1_regs_sel) regbus_rddata = layer1_regs_rddata;
-        if (layer2_regs_sel) regbus_rddata = layer2_regs_rddata;
-        if (palette_sel)     regbus_rddata = palette_rddata;
+        if (membus_sel)        regbus_rddata = membus_rddata8;
+        if (layer1_regs_sel)   regbus_rddata = layer1_regs_rddata;
+        if (layer2_regs_sel)   regbus_rddata = layer2_regs_rddata;
+        if (composer_regs_sel) regbus_rddata = composer_regs_rddata;
+        if (palette_sel)       regbus_rddata = palette_rddata;
     end
 
     //////////////////////////////////////////////////////////////////////////
@@ -208,13 +218,18 @@ module top(
     // Layer 1 renderer
     //////////////////////////////////////////////////////////////////////////
     wire layer1_regs_write = layer1_regs_sel && regbus_strobe && regbus_write;
+    wire layer1_start_of_screen;
+    wire layer1_start_of_line;
+    wire layer1_enabled;
 
     layer_renderer layer1_renderer(
         .rst(reset),
         .clk(clk),
 
-        .start_of_screen(start_of_screen),
-        .start_of_line(start_of_line),
+        .start_of_screen(layer1_start_of_screen),
+        .start_of_line(layer1_start_of_line),
+
+        .layer_enabled(layer1_enabled),
 
         // Register interface (on register bus)
         .regs_addr(regbus_addr[3:0]),
@@ -237,13 +252,18 @@ module top(
     // Layer 2 renderer
     //////////////////////////////////////////////////////////////////////////
     wire layer2_regs_write = layer2_regs_sel && regbus_strobe && regbus_write;
+    wire layer2_start_of_screen;
+    wire layer2_start_of_line;
+    wire layer2_enabled;
 
     layer_renderer layer2_renderer(
         .rst(reset),
         .clk(clk),
 
-        .start_of_screen(start_of_screen),
-        .start_of_line(start_of_line),
+        .start_of_screen(layer2_start_of_screen),
+        .start_of_line(layer2_start_of_line),
+
+        .layer_enabled(layer2_enabled),
 
         // Register interface (on register bus)
         .regs_addr(regbus_addr[3:0]),
@@ -261,6 +281,56 @@ module top(
         .linebuf_wridx(layer2_linebuf_wridx),
         .linebuf_wrdata(layer2_linebuf_wrdata),
         .linebuf_wren(layer2_linebuf_wren));
+
+    //////////////////////////////////////////////////////////////////////////
+    // Sprite renderer
+    //////////////////////////////////////////////////////////////////////////
+    wire sprite_start_of_screen;
+    wire sprite_start_of_line;
+    wire sprite_enabled = 0;
+
+    //////////////////////////////////////////////////////////////////////////
+    // Composer
+    //////////////////////////////////////////////////////////////////////////
+    wire composer_regs_write = composer_regs_sel && regbus_strobe && regbus_write;
+    wire [7:0] composer_display_data;
+
+    composer composer(
+        .rst(reset),
+        .clk(clk),
+
+        // Register interface
+        .regs_addr(regbus_addr[4:0]),
+        .regs_wrdata(regbus_wrdata),
+        .regs_rddata(composer_regs_rddata),
+        .regs_write(composer_regs_write),
+
+        // Layer 1 interface
+        .layer1_enabled(layer1_enabled),
+        .layer1_start_of_screen(layer1_start_of_screen),
+        .layer1_start_of_line(layer1_start_of_line),
+        .layer1_lb_idx(layer1_linebuf_rdidx),
+        .layer1_lb_data(layer1_linebuf_rddata),
+
+        // Layer 2 interface
+        .layer2_enabled(layer2_enabled),
+        .layer2_start_of_screen(layer2_start_of_screen),
+        .layer2_start_of_line(layer2_start_of_line),
+        .layer2_lb_idx(layer2_linebuf_rdidx),
+        .layer2_lb_data(layer2_linebuf_rddata),
+
+        // Sprite interface
+        .sprite_enabled(sprite_enabled),
+        .sprite_start_of_screen(sprite_start_of_screen),
+        .sprite_start_of_line(sprite_start_of_line),
+        .sprite_lb_idx(sprite_linebuf_rdidx),
+        .sprite_lb_data(sprite_linebuf_rddata),
+
+        // Display interface
+        .display_start_of_screen(start_of_screen),
+        .display_start_of_line(start_of_line),
+        .display_next_pixel(1'b1),
+        .display_data(composer_display_data));
 
     //////////////////////////////////////////////////////////////////////////
     // Palette (2 instances to allow for readback of palette entries)
@@ -283,7 +353,7 @@ module top(
         .wr_data_i({2{regbus_wrdata}}),
         .ben_i(palette_bytesel),
         .wr_addr_i(regbus_addr[8:1]),
-        .rd_addr_i(linebuf_rddata),
+        .rd_addr_i(composer_display_data),
         .rd_data_o(palette_rgb_data));
 
     palette_ram palette_ram_readback(
@@ -341,8 +411,8 @@ module top(
         .wr_data(layer1_linebuf_wrdata),
 
         .rd_clk(clk),
-        .rd_addr({!active_line_buf_r, linebuf_rdidx}),
-        .rd_data(linebuf_rddata));
+        .rd_addr({!active_line_buf_r, layer1_linebuf_rdidx}),
+        .rd_data(layer1_linebuf_rddata));
 
     dpram #(.ADDR_WIDTH(11), .DATA_WIDTH(8)) layer2_linebuf(
         .wr_clk(clk),
@@ -351,8 +421,18 @@ module top(
         .wr_data(layer2_linebuf_wrdata),
 
         .rd_clk(clk),
-        .rd_addr(11'b0),    //{!active_line_buf_r, linebuf_rdidx}),
-        .rd_data());
+        .rd_addr({!active_line_buf_r, layer2_linebuf_rdidx}),
+        .rd_data(layer2_linebuf_rddata));
+
+    dpram #(.ADDR_WIDTH(11), .DATA_WIDTH(16)) sprite_linebuf(
+        .wr_clk(clk),
+        .wr_addr({active_line_buf_r, sprite_linebuf_wridx}),
+        .wr_en(sprite_linebuf_wren),
+        .wr_data(sprite_linebuf_wrdata),
+
+        .rd_clk(clk),
+        .rd_addr({!active_line_buf_r, sprite_linebuf_rdidx}),
+        .rd_data(sprite_linebuf_rddata));
 
 
 // `define COMPOSITE
@@ -386,9 +466,8 @@ module top(
         .rst(reset),
         .clk(clk),
 
-        // Line buffer / palette interface
-        .linebuf_idx(linebuf_rdidx),
-        .linebuf_rgb_data(palette_rgb_data[11:0]),
+        // Palette interface
+        .palette_rgb_data(palette_rgb_data[11:0]),
 
         .start_of_screen(start_of_screen),
         .start_of_line(start_of_line),

@@ -7,6 +7,8 @@ module layer_renderer(
     input  wire        start_of_screen,
     input  wire        start_of_line,
 
+    output wire        layer_enabled,
+
     // Register interface
     input  wire  [3:0] regs_addr,
     input  wire  [7:0] regs_wrdata,
@@ -45,6 +47,8 @@ module layer_renderer(
     reg [15:0] reg_tile_baseaddr_r;
     reg [11:0] reg_hscroll_r;
     reg [11:0] reg_vscroll_r;
+
+    assign layer_enabled = reg_enable_r;
 
     // Register interface read data
     always @* begin
@@ -421,6 +425,8 @@ module layer_renderer(
     //////////////////////////////////////////////////////////////////////////
     // Pixel renderer
     //////////////////////////////////////////////////////////////////////////
+    reg [3:0] xcnt_r, xcnt_next;
+
     wire [3:0] hflipped_xcnt = render_mapdata_r[2] ? ~xcnt_r[3:0] : xcnt_r[3:0];
 
     // Select current pixel for 1bpp modes
@@ -554,8 +560,6 @@ module layer_renderer(
     reg [9:0] linebuf_wridx_next;
     reg [7:0] linebuf_wrdata_next;
     reg       linebuf_wren_next;
-
-    reg [3:0] xcnt_r, xcnt_next;
 
     reg [9:0] lb_wridx_next;
 

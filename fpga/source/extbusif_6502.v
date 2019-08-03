@@ -274,8 +274,8 @@ module extbusif_6502(
 
 `ifndef __ICARUS__
     WARMBOOT warmboot(
-        .S1(0),
-        .S0(0),
+        .S1(1'b0),
+        .S0(1'b0),
         .BOOT(do_warmboot_r));
 `endif
 

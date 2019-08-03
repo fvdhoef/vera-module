@@ -4,9 +4,8 @@ module video_vga(
     input  wire        rst,
     input  wire        clk,
 
-    // Line buffer / palette interface
-    output wire  [9:0] linebuf_idx,
-    input  wire [11:0] linebuf_rgb_data,
+    // Palette interface
+    input  wire [11:0] palette_rgb_data,
 
     output wire        start_of_screen,
     output wire        start_of_line,
@@ -66,8 +65,6 @@ module video_vga(
     assign start_of_screen = h_last && v_last2;
     assign start_of_line   = h_last;
 
-    assign linebuf_idx = x_counter;
-
     // Compensate pipeline delays
     reg [1:0] hsync_r, vsync_r, active_r;
     always @(posedge clk) hsync_r  <= {hsync_r[0], hsync};
@@ -84,9 +81,9 @@ module video_vga(
 
         end else begin
             if (active_r[1]) begin
-                vga_r <= linebuf_rgb_data[11:8];
-                vga_g <= linebuf_rgb_data[7:4];
-                vga_b <= linebuf_rgb_data[3:0];
+                vga_r <= palette_rgb_data[11:8];
+                vga_g <= palette_rgb_data[7:4];
+                vga_b <= palette_rgb_data[3:0];
             end else begin
                 vga_r <= 4'd0;
                 vga_g <= 4'd0;

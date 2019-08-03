@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <fcntl.h>
 #include <termios.h>
 #include <string.h>
@@ -183,11 +184,16 @@ void set_tile_size(uint8_t width, uint8_t height) {
     bus_vwrite(0x40001, (bus_vread(0x40001) & 0xCF) | (width ? 0x10 : 0) | (height ? 0x20 : 0));
 }
 
+void layer1_enable(bool enable) {
+    bus_vwrite(0x40000, (bus_vread(0x40000) & 0xFE) | (enable ? 1 : 0));
+}
+
 void test_8bpp_tile_mode(void) {
     set_tile_base(0x10000);
     set_video_mode(MODE_TILE_8BPP);
     set_video_scale(2, 2);
     set_tile_size(1, 1);
+    layer1_enable(true);
 
     bus_vwrite(0x040006, 0);
     bus_vwrite(0x040007, 0);
@@ -434,7 +440,11 @@ void test_stuff(void) {
 void test_8bpp_bitmap_mode(void) {
     set_tile_base(0);
     set_video_mode(MODE_BITMAP_8BPP);
-    set_video_scale(1, 1);
+    set_video_scale(2, 2);
+    layer1_enable(true);
+    
+
+
     bus_vwrite(0x40006, 80);
     bus_vwrite(0x40007, 0);
 
