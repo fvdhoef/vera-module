@@ -14,22 +14,25 @@ module composer(
     input  wire        layer1_enabled,
     output wire        layer1_start_of_screen,
     output wire        layer1_start_of_line,
-    output wire  [9:0] layer1_lb_idx,
-    input  wire  [7:0] layer1_lb_data,
+    output wire  [9:0] layer1_lb_rdidx,
+    input  wire  [7:0] layer1_lb_rddata,
 
     // Layer 2 interface
     input  wire        layer2_enabled,
     output wire        layer2_start_of_screen,
     output wire        layer2_start_of_line,
-    output wire  [9:0] layer2_lb_idx,
-    input  wire  [7:0] layer2_lb_data,
+    output wire  [9:0] layer2_lb_rdidx,
+    input  wire  [7:0] layer2_lb_rddata,
 
     // Sprite interface
-    input  wire        sprite_enabled,
+    input  wire        sprites_enabled,
     output wire        sprite_start_of_screen,
     output wire        sprite_start_of_line,
-    output wire  [9:0] sprite_lb_idx,
-    input  wire [15:0] sprite_lb_data,
+    output wire  [9:0] sprite_lb_rdidx,
+    input  wire [15:0] sprite_lb_rddata,
+    output reg   [9:0] sprite_lb_wridx,
+    output wire [15:0] sprite_lb_wrdata,
+    output reg         sprite_lb_wren,
 
     // Display interface
     input  wire        display_start_of_screen,
@@ -41,31 +44,33 @@ module composer(
 
     assign layer1_start_of_screen = display_start_of_screen;
     assign layer1_start_of_line   = display_start_of_line;
-    assign layer1_lb_idx          = x_counter;
+    assign layer1_lb_rdidx        = x_counter;
 
     assign layer2_start_of_screen = display_start_of_screen;
     assign layer2_start_of_line   = display_start_of_line;
-    assign layer2_lb_idx          = x_counter;
+    assign layer2_lb_rdidx        = x_counter;
 
     assign sprite_start_of_screen = display_start_of_screen;
     assign sprite_start_of_line   = display_start_of_line;
-    assign sprite_lb_idx          = x_counter;
+    assign sprite_lb_rdidx        = x_counter;
 
-    wire layer1_opaque = layer1_lb_data[7:0] != 8'h0;
-    wire layer2_opaque = layer2_lb_data[7:0] != 8'h0;
-    wire sprite_opaque = sprite_lb_data[7:0] != 8'h0;
+    assign sprite_lb_wrdata = 16'h0000;
 
-    wire sprite_z1 = sprite_lb_data[9:8] != 2'd1;
-    wire sprite_z2 = sprite_lb_data[9:8] != 2'd2;
-    wire sprite_z3 = sprite_lb_data[9:8] != 2'd3;
+    wire layer1_opaque = layer1_lb_rddata[7:0] != 8'h0;
+    wire layer2_opaque = layer2_lb_rddata[7:0] != 8'h0;
+    wire sprite_opaque = sprite_lb_rddata[7:0] != 8'h0;
+
+    wire sprite_z1 = sprite_lb_rddata[9:8] != 2'd1;
+    wire sprite_z2 = sprite_lb_rddata[9:8] != 2'd2;
+    wire sprite_z3 = sprite_lb_rddata[9:8] != 2'd3;
 
     always @* begin
         display_data = 8'h00;
-        if (sprite_enabled && sprite_opaque && sprite_z1) display_data = sprite_lb_data[7:0];
-        if (layer1_enabled && layer1_opaque)              display_data = layer1_lb_data;
-        if (sprite_enabled && sprite_opaque && sprite_z2) display_data = sprite_lb_data[7:0];
-        if (layer2_enabled && layer2_opaque)              display_data = layer2_lb_data;
-        if (sprite_enabled && sprite_opaque && sprite_z3) display_data = sprite_lb_data[7:0];
+        if (sprites_enabled && sprite_opaque && sprite_z1) display_data = sprite_lb_rddata[7:0];
+        if (layer1_enabled  && layer1_opaque)              display_data = layer1_lb_rddata;
+        if (sprites_enabled && sprite_opaque && sprite_z2) display_data = sprite_lb_rddata[7:0];
+        if (layer2_enabled  && layer2_opaque)              display_data = layer2_lb_rddata;
+        if (sprites_enabled && sprite_opaque && sprite_z3) display_data = sprite_lb_rddata[7:0];
     end
 
     assign regs_rddata = 8'h00;
@@ -77,8 +82,21 @@ module composer(
 `else
             x_counter <= 10'd0;
 `endif
+            sprite_lb_wren  <= 0;
+            sprite_lb_wridx <= 0;
+
         end else begin
-            x_counter <= display_start_of_line ? 0 : (x_counter + 1);
+            sprite_lb_wren <= 0;
+
+            if (x_counter < 'd640) begin
+                x_counter <= x_counter + 1;
+
+                sprite_lb_wridx <= x_counter;
+                sprite_lb_wren  <= 1;
+            end
+            if (display_start_of_line) begin
+                x_counter <= 0;
+            end
         end
     end
 

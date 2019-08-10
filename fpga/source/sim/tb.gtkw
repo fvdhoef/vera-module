@@ -1,135 +1,101 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Mon Jul 29 13:56:10 2019
+[*] Sat Aug 10 14:19:32 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Mon Jul 29 13:52:52 2019"
-[dumpfile_size] 38729108
+[dumpfile_mtime] "Sat Aug 10 14:17:31 2019"
+[dumpfile_size] 67749347
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
-[timestart] 1916
-[size] 2560 1371
-[pos] -10 -32
-*-8.378208 2577 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[timestart] 0
+[size] 2560 1377
+[pos] -9 -33
+*-17.378208 258380 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
 [sst_width] 275
 [signals_width] 426
 [sst_expanded] 1
-[sst_vpaned_height] 474
-@28
-tb.top.extbus_res_n
-tb.top.extbus_phy2
-tb.top.extbus_cs_n
-tb.top.extbus_rw_n
-@22
-tb.top.extbus_a[2:0]
-tb.top.extbus_d[7:0]
-@28
-tb.top.extbus.extbus_rdy
-tb.top.extbus.extbus_irq_n
+[sst_vpaned_height] 476
 @200
--Internal
-@28
-tb.top.extbus.eb_addr_rrr[2:0]
+-Memory bus
 @22
-tb.top.extbus.eb_wrdata_rrr[7:0]
+tb.top.membus_addr[17:0]
+tb.top.membus_wrdata[31:0]
+tb.top.membus_rddata[31:0]
 @28
-tb.top.extbus.eb_rw_rrr
+tb.top.membus_bytesel[3:0]
 @22
-tb.top.extbus.bm_wrdata[7:0]
-tb.top.por_cnt_r[3:0]
+tb.top.membus_rddata8[7:0]
 @28
-tb.top.reset
-@200
--
-@28
-tb.top.extbus.bm_clk
-@22
-tb.top.extbus.bm_addr[18:0]
-tb.top.extbus.bm_wrdata[7:0]
-tb.top.extbus.bm_rddata[7:0]
-@28
-tb.top.extbus.bm_strobe
-tb.top.extbus.bm_write
-tb.top.extbus.bm_do_access
-@22
-tb.top.extbus.bm_rddata_r[7:0]
-@200
--
-@22
-tb.top.layer1_renderer.bus_addr[17:0]
-tb.top.layer1_renderer.bus_rddata[31:0]
-@28
-tb.top.layer1_renderer.bus_strobe
-tb.top.layer1_renderer.bus_ack
+tb.top.membus_sel
+tb.top.membus_write
 tb.top.membus_strobe
-tb.top.layer1_renderer.bus_strobe
-tb.top.layer2_renderer.bus_strobe
-@20000
--
-@2028
-^1 /c/Work/vera-module/fpga/source/sim/layer_renderer_state.txt
-tb.top.layer1_renderer.state_r[2:0]
-@22
-tb.top.layer1_renderer.tile_addr[17:0]
-tb.top.layer1_renderer.map_addr[17:0]
-@24
-tb.top.layer1_renderer.wrapped_vmap_idx[7:0]
-tb.top.layer1_renderer.htile_cnt_r[7:0]
-tb.top.layer1_renderer.scrolled_htile_cnt[7:0]
-@22
-tb.top.layer1_renderer.map_idx[15:0]
-@24
-tb.top.layer1_renderer.map_addr[17:0]
-tb.top.layer1_renderer.lb_wridx_start[9:0]
-tb.top.layer1_renderer.lb_wridx_r[9:0]
-@28
-tb.top.layer1_renderer.render_start
-@24
-tb.top.layer1_renderer.linebuf_wridx[9:0]
-@22
-tb.top.layer1_renderer.linebuf_wrdata[7:0]
-@28
-tb.top.layer1_renderer.linebuf_wren
-@22
-tb.top.layer1_renderer.xcnt_r[3:0]
-@28
-tb.top.layer1_renderer.hscale_cnt_r[1:0]
-@200
--
-@c00024
-tb.top.layer1_renderer.linebuf_wridx[9:0]
-@28
-(0)tb.top.layer1_renderer.linebuf_wridx[9:0]
-(1)tb.top.layer1_renderer.linebuf_wridx[9:0]
-(2)tb.top.layer1_renderer.linebuf_wridx[9:0]
-(3)tb.top.layer1_renderer.linebuf_wridx[9:0]
-(4)tb.top.layer1_renderer.linebuf_wridx[9:0]
-(5)tb.top.layer1_renderer.linebuf_wridx[9:0]
-(6)tb.top.layer1_renderer.linebuf_wridx[9:0]
-(7)tb.top.layer1_renderer.linebuf_wridx[9:0]
-(8)tb.top.layer1_renderer.linebuf_wridx[9:0]
-(9)tb.top.layer1_renderer.linebuf_wridx[9:0]
-@1401200
--group_end
-@22
-tb.top.layer1_renderer.linebuf_wrdata[7:0]
-@29
-tb.top.layer1_renderer.linebuf_wren
-@28
-tb.top.layer1_renderer.render_busy
 @200
 -
 @28
-tb.top.layer1_renderer.line_done
-tb.top.layer1_renderer.start_of_line
-tb.top.layer1_renderer.start_of_screen
-tb.top.layer1_renderer.state_r[2:0]
+tb.top.regbus_bm_strobe
 tb.top.layer1_bm_strobe
-tb.top.layer1_bm_ack
 tb.top.layer2_bm_strobe
-tb.top.layer2_bm_ack
-tb.top.membus_strobe
+tb.top.sprite_bm_strobe
+@200
+-
+-Line buffers
+@24
+tb.top.sprite_linebuf_a_rdidx[9:0]
+@22
+tb.top.sprite_linebuf_a_rddata[15:0]
+@24
+tb.top.sprite_linebuf_a_wridx[9:0]
+@22
+tb.top.sprite_linebuf_a_wrdata[15:0]
+@28
+tb.top.sprite_linebuf_a_wren
+@200
+-
+@24
+tb.top.sprite_linebuf_b_rdidx[9:0]
+@22
+tb.top.sprite_linebuf_b_rddata[15:0]
+@24
+tb.top.sprite_linebuf_b_wridx[9:0]
+@22
+tb.top.sprite_linebuf_b_wrdata[15:0]
+@28
+tb.top.sprite_linebuf_b_wren
+@200
+-
+-Sprite renderer
+@28
+tb.top.sprite_renderer.clk
+tb.top.sprite_renderer.start_of_screen
+tb.top.sprite_renderer.start_of_line
+@200
+-
+@28
+tb.top.sprite_renderer.reg_enable_r
+@24
+tb.top.sprite_renderer.reg_hscale_r[1:0]
+tb.top.sprite_renderer.reg_vscale_r[1:0]
+@200
+-
+@28
+tb.top.sprite_renderer.render_busy
+@200
+-
+@24
+tb.top.sprite_renderer.sprite_idx_r[8:0]
+tb.top.sprite_renderer.sprite_y[8:0]
+tb.top.sprite_renderer.sprite_z[1:0]
+@200
+-
+@25
+tb.top.sprite_renderer.ycnt_r[8:0]
+@24
+tb.top.sprite_renderer.sprite_height_pixels[8:0]
+tb.top.sprite_renderer.ydiff[8:0]
+@28
+tb.top.sprite_renderer.sprite_on_line
+tb.top.sprite_renderer.sprites_enabled
 [pattern_trace] 1
 [pattern_trace] 0
