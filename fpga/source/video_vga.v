@@ -8,6 +8,7 @@ module video_vga(
     input  wire [11:0] palette_rgb_data,
 
     output wire        start_of_screen,
+    output wire        end_of_screen,
     output wire        start_of_line,
 
     // VGA interface
@@ -61,6 +62,8 @@ module video_vga(
     wire h_active = (x_counter < H_ACTIVE);
     wire v_active = (y_counter < V_ACTIVE);
     wire active   = h_active && v_active;
+
+    assign end_of_screen = h_last && (y_counter == V_ACTIVE - 1);
 
     assign start_of_screen = h_last && v_last2;
     assign start_of_line   = h_last;

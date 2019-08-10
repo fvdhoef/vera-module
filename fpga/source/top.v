@@ -77,6 +77,7 @@ module top(
 
 
     wire start_of_screen;
+    wire end_of_screen;
     wire start_of_line;
 
 
@@ -122,7 +123,7 @@ module top(
         
         .irqs(irqs));
 
-    assign irqs = {7'b0, start_of_screen};
+    assign irqs = {7'b0, end_of_screen};
 
     // Register bus memory map:
     // 00000-1FFFF  Main RAM
@@ -470,6 +471,7 @@ module top(
         .palette_rgb_data(palette_rgb_data[11:0]),
 
         .start_of_screen(start_of_screen),
+        .end_of_screen(end_of_screen),
         .start_of_line(start_of_line),
 
         // VGA interface

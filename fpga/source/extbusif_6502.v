@@ -211,7 +211,7 @@ module extbusif_6502(
         end
 
         // Handle interrupts
-        reg_isr_next = reg_isr_r | irqs;
+        reg_isr_next = reg_isr_next | irqs;
 
         if (bm_do_access) begin
             if (!access_port) begin
