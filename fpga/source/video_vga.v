@@ -6,7 +6,9 @@ module video_vga(
 
     // Palette interface
     input  wire [11:0] palette_rgb_data,
+    output wire        next_pixel,
 
+    output reg   [8:0] display_line_idx,
     output wire        start_of_screen,
     output wire        end_of_screen,
     output wire        start_of_line,
@@ -17,6 +19,8 @@ module video_vga(
     output reg   [3:0] vga_b,
     output reg         vga_hsync,
     output reg         vga_vsync);
+
+    assign next_pixel = 1'b1;
 
     //
     // Video timing (640x480@60Hz)
@@ -67,6 +71,19 @@ module video_vga(
 
     assign start_of_screen = h_last && v_last2;
     assign start_of_line   = h_last;
+
+    // Generate line index for rendering
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            display_line_idx <= 0;
+
+        end else begin
+            if (h_last) begin
+                display_line_idx <= v_last2 ? 0 : display_line_idx + 1;
+            end
+        end
+    end
+
 
     // Compensate pipeline delays
     reg [1:0] hsync_r, vsync_r, active_r;

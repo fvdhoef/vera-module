@@ -31,7 +31,7 @@ module top(
     // Register bus read outputs
     wire  [7:0] layer1_regs_rddata;
     wire  [7:0] layer2_regs_rddata;
-    wire  [7:0] sprite_regs_rddata;
+    wire  [7:0] sprites_regs_rddata;
     wire  [7:0] composer_regs_rddata;
     wire  [7:0] palette_rddata;
     reg   [7:0] sprite_attr_rddata;
@@ -76,21 +76,22 @@ module top(
     wire  [9:0] layer2_linebuf_rdidx;
     wire  [7:0] layer2_linebuf_rddata;
 
-    wire  [9:0] sprite_linebuf_a_wridx;     // Port used by sprite renderer
-    wire [15:0] sprite_linebuf_a_wrdata;
-    wire        sprite_linebuf_a_wren;
-    wire  [9:0] sprite_linebuf_a_rdidx;
-    wire [15:0] sprite_linebuf_a_rddata;
+    wire  [9:0] sprites_linebuf_a_wridx;     // Port used by sprite renderer
+    wire [15:0] sprites_linebuf_a_wrdata;
+    wire        sprites_linebuf_a_wren;
+    wire  [9:0] sprites_linebuf_a_rdidx;
+    wire [15:0] sprites_linebuf_a_rddata;
 
-    wire  [9:0] sprite_linebuf_b_wridx;     // Port used by composer
-    wire [15:0] sprite_linebuf_b_wrdata;
-    wire        sprite_linebuf_b_wren;
-    wire  [9:0] sprite_linebuf_b_rdidx;
-    wire [15:0] sprite_linebuf_b_rddata;
+    wire  [9:0] sprites_linebuf_b_wridx;     // Port used by composer
+    wire [15:0] sprites_linebuf_b_wrdata;
+    wire        sprites_linebuf_b_wren;
+    wire  [9:0] sprites_linebuf_b_rdidx;
+    wire [15:0] sprites_linebuf_b_rddata;
 
     wire  [7:0] sprite_idx;
     wire [47:0] sprite_attr;
 
+    wire [8:0] display_line_idx;
     wire start_of_screen;
     wire end_of_screen;
     wire start_of_line;
@@ -152,7 +153,7 @@ module top(
     wire membus_sel        = !regbus_addr[18];
     wire layer1_regs_sel   = regbus_addr[18] && regbus_addr[17:4]  == 'b00_00000000_0000;
     wire layer2_regs_sel   = regbus_addr[18] && regbus_addr[17:4]  == 'b00_00000000_0001;
-    wire sprite_regs_sel   = regbus_addr[18] && regbus_addr[17:4]  == 'b00_00000000_0010;
+    wire sprites_regs_sel  = regbus_addr[18] && regbus_addr[17:4]  == 'b00_00000000_0010;
     wire composer_regs_sel = regbus_addr[18] && regbus_addr[17:5]  == 'b00_00000000_010;
     wire palette_sel       = regbus_addr[18] && regbus_addr[17:9]  == 'b00_0000001;
     wire sprite_attr_sel   = regbus_addr[18] && regbus_addr[17:11] == 'b00_00001;
@@ -172,7 +173,7 @@ module top(
         if (membus_sel)        regbus_rddata = membus_rddata8;
         if (layer1_regs_sel)   regbus_rddata = layer1_regs_rddata;
         if (layer2_regs_sel)   regbus_rddata = layer2_regs_rddata;
-        if (sprite_regs_sel)   regbus_rddata = sprite_regs_rddata;
+        if (sprites_regs_sel)  regbus_rddata = sprites_regs_rddata;
         if (composer_regs_sel) regbus_rddata = composer_regs_rddata;
         if (palette_sel)       regbus_rddata = palette_rddata;
         if (sprite_attr_sel)   regbus_rddata = sprite_attr_rddata;
@@ -245,18 +246,20 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     // Layer 1 renderer
     //////////////////////////////////////////////////////////////////////////
-    wire layer1_regs_write = layer1_regs_sel && regbus_strobe && regbus_write;
-    wire layer1_start_of_screen;
-    wire layer1_start_of_line;
-    wire layer1_enabled;
+    wire        layer1_regs_write = layer1_regs_sel && regbus_strobe && regbus_write;
+    wire  [8:0] layer1_line_idx;
+    wire        layer1_line_render_start;
+    wire        layer1_line_render_done;
+    wire        layer1_enabled;
 
     layer_renderer layer1_renderer(
         .rst(reset),
         .clk(clk),
 
-        .start_of_screen(layer1_start_of_screen),
-        .start_of_line(layer1_start_of_line),
-
+        // Composer interface
+        .line_idx(layer1_line_idx),
+        .line_render_start(layer1_line_render_start),
+        .line_render_done(layer1_line_render_done),
         .layer_enabled(layer1_enabled),
 
         // Register interface (on register bus)
@@ -279,18 +282,20 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     // Layer 2 renderer
     //////////////////////////////////////////////////////////////////////////
-    wire layer2_regs_write = layer2_regs_sel && regbus_strobe && regbus_write;
-    wire layer2_start_of_screen;
-    wire layer2_start_of_line;
-    wire layer2_enabled;
+    wire        layer2_regs_write = layer2_regs_sel && regbus_strobe && regbus_write;
+    wire  [8:0] layer2_line_idx;
+    wire        layer2_line_render_start;
+    wire        layer2_line_render_done;
+    wire        layer2_enabled;
 
     layer_renderer layer2_renderer(
         .rst(reset),
         .clk(clk),
 
-        .start_of_screen(layer2_start_of_screen),
-        .start_of_line(layer2_start_of_line),
-
+        // Composer interface
+        .line_idx(layer2_line_idx),
+        .line_render_start(layer2_line_render_start),
+        .line_render_done(layer2_line_render_done),
         .layer_enabled(layer2_enabled),
 
         // Register interface (on register bus)
@@ -313,25 +318,27 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     // Sprite renderer
     //////////////////////////////////////////////////////////////////////////
-    wire sprite_regs_write = sprite_regs_sel && regbus_strobe && regbus_write;
-    wire sprite_start_of_screen;
-    wire sprite_start_of_line;
-    wire sprites_enabled;
+    wire        sprites_regs_write = sprites_regs_sel && regbus_strobe && regbus_write;
+    wire  [8:0] sprites_line_idx;
+    wire        sprites_line_render_start;
+    wire        sprites_line_render_done;
+    wire        sprites_enabled;
 
     sprite_renderer sprite_renderer(
         .rst(reset),
         .clk(clk),
 
-        .start_of_screen(sprite_start_of_screen),
-        .start_of_line(sprite_start_of_line),
-
+        // Composer interface
+        .line_idx(sprites_line_idx),
+        .line_render_start(sprites_line_render_start),
+        .line_render_done(sprites_line_render_done),
         .sprites_enabled(sprites_enabled),
 
         // Register interface (on register bus)
         .regs_addr(regbus_addr[3:0]),
         .regs_wrdata(regbus_wrdata),
-        .regs_rddata(sprite_regs_rddata),
-        .regs_write(sprite_regs_write),
+        .regs_rddata(sprites_regs_rddata),
+        .regs_write(sprites_regs_write),
 
         // Bus master interface
         .bus_addr(sprite_bm_addr),
@@ -344,18 +351,19 @@ module top(
         .sprite_attr(sprite_attr),
 
         // Line buffer interface
-        .linebuf_rdidx(sprite_linebuf_a_rdidx),
-        .linebuf_rddata(sprite_linebuf_a_rddata),
+        .linebuf_rdidx(sprites_linebuf_a_rdidx),
+        .linebuf_rddata(sprites_linebuf_a_rddata),
 
-        .linebuf_wridx(sprite_linebuf_a_wridx),
-        .linebuf_wrdata(sprite_linebuf_a_wrdata),
-        .linebuf_wren(sprite_linebuf_a_wren));
+        .linebuf_wridx(sprites_linebuf_a_wridx),
+        .linebuf_wrdata(sprites_linebuf_a_wrdata),
+        .linebuf_wren(sprites_linebuf_a_wren));
 
     //////////////////////////////////////////////////////////////////////////
     // Composer
     //////////////////////////////////////////////////////////////////////////
     wire composer_regs_write = composer_regs_sel && regbus_strobe && regbus_write;
     wire [7:0] composer_display_data;
+    wire       compose_display_next_pixel;
 
     composer composer(
         .rst(reset),
@@ -368,33 +376,37 @@ module top(
         .regs_write(composer_regs_write),
 
         // Layer 1 interface
+        .layer1_line_idx(layer1_line_idx),
+        .layer1_line_render_start(layer1_line_render_start),
+        .layer1_line_render_done(layer1_line_render_done),
         .layer1_enabled(layer1_enabled),
-        .layer1_start_of_screen(layer1_start_of_screen),
-        .layer1_start_of_line(layer1_start_of_line),
         .layer1_lb_rdidx(layer1_linebuf_rdidx),
         .layer1_lb_rddata(layer1_linebuf_rddata),
 
         // Layer 2 interface
+        .layer2_line_idx(layer2_line_idx),
+        .layer2_line_render_start(layer2_line_render_start),
+        .layer2_line_render_done(layer2_line_render_done),
         .layer2_enabled(layer2_enabled),
-        .layer2_start_of_screen(layer2_start_of_screen),
-        .layer2_start_of_line(layer2_start_of_line),
         .layer2_lb_rdidx(layer2_linebuf_rdidx),
         .layer2_lb_rddata(layer2_linebuf_rddata),
 
         // Sprite interface
+        .sprites_line_idx(sprites_line_idx),
+        .sprites_line_render_start(sprites_line_render_start),
+        .sprites_line_render_done(sprites_line_render_done),
         .sprites_enabled(sprites_enabled),
-        .sprite_start_of_screen(sprite_start_of_screen),
-        .sprite_start_of_line(sprite_start_of_line),
-        .sprite_lb_rdidx(sprite_linebuf_b_rdidx),
-        .sprite_lb_rddata(sprite_linebuf_b_rddata),
-        .sprite_lb_wridx(sprite_linebuf_b_wridx),
-        .sprite_lb_wrdata(sprite_linebuf_b_wrdata),
-        .sprite_lb_wren(sprite_linebuf_b_wren),
+        .sprites_lb_rdidx(sprites_linebuf_b_rdidx),
+        .sprites_lb_rddata(sprites_linebuf_b_rddata),
+        .sprites_lb_wridx(sprites_linebuf_b_wridx),
+        .sprites_lb_wrdata(sprites_linebuf_b_wrdata),
+        .sprites_lb_wren(sprites_linebuf_b_wren),
 
         // Display interface
+        .display_line_idx(display_line_idx),
         .display_start_of_screen(start_of_screen),
         .display_start_of_line(start_of_line),
-        .display_next_pixel(1'b1),
+        .display_next_pixel(compose_display_next_pixel),
         .display_data(composer_display_data));
 
     //////////////////////////////////////////////////////////////////////////
@@ -535,16 +547,16 @@ module top(
         .rd_clk(clk), .rd_addr({!active_line_buf_r, layer2_linebuf_rdidx}), .rd_data(layer2_linebuf_rddata));
 
     // Sprite line buffers
-    wire  [9:0] sprite_linebuf1_wridx  = active_line_buf_r ? sprite_linebuf_a_wridx  : sprite_linebuf_b_wridx;
-    wire [15:0] sprite_linebuf1_wrdata = active_line_buf_r ? sprite_linebuf_a_wrdata : sprite_linebuf_b_wrdata;
-    wire        sprite_linebuf1_wren   = active_line_buf_r ? sprite_linebuf_a_wren   : sprite_linebuf_b_wren;
-    wire  [9:0] sprite_linebuf1_rdidx  = active_line_buf_r ? sprite_linebuf_a_rdidx  : sprite_linebuf_b_rdidx;
+    wire  [9:0] sprite_linebuf1_wridx  = active_line_buf_r ? sprites_linebuf_a_wridx  : sprites_linebuf_b_wridx;
+    wire [15:0] sprite_linebuf1_wrdata = active_line_buf_r ? sprites_linebuf_a_wrdata : sprites_linebuf_b_wrdata;
+    wire        sprite_linebuf1_wren   = active_line_buf_r ? sprites_linebuf_a_wren   : sprites_linebuf_b_wren;
+    wire  [9:0] sprite_linebuf1_rdidx  = active_line_buf_r ? sprites_linebuf_a_rdidx  : sprites_linebuf_b_rdidx;
     wire [15:0] sprite_linebuf1_rddata;
 
-    wire  [9:0] sprite_linebuf2_wridx  = active_line_buf_r ? sprite_linebuf_b_wridx  : sprite_linebuf_a_wridx;
-    wire [15:0] sprite_linebuf2_wrdata = active_line_buf_r ? sprite_linebuf_b_wrdata : sprite_linebuf_a_wrdata;
-    wire        sprite_linebuf2_wren   = active_line_buf_r ? sprite_linebuf_b_wren   : sprite_linebuf_a_wren;
-    wire  [9:0] sprite_linebuf2_rdidx  = active_line_buf_r ? sprite_linebuf_b_rdidx  : sprite_linebuf_a_rdidx;
+    wire  [9:0] sprite_linebuf2_wridx  = active_line_buf_r ? sprites_linebuf_b_wridx  : sprites_linebuf_a_wridx;
+    wire [15:0] sprite_linebuf2_wrdata = active_line_buf_r ? sprites_linebuf_b_wrdata : sprites_linebuf_a_wrdata;
+    wire        sprite_linebuf2_wren   = active_line_buf_r ? sprites_linebuf_b_wren   : sprites_linebuf_a_wren;
+    wire  [9:0] sprite_linebuf2_rdidx  = active_line_buf_r ? sprites_linebuf_b_rdidx  : sprites_linebuf_a_rdidx;
     wire [15:0] sprite_linebuf2_rddata;
 
     dpram #(.ADDR_WIDTH(10), .DATA_WIDTH(16)) sprite_linebuf1(
@@ -555,54 +567,75 @@ module top(
         .wr_clk(clk), .wr_addr(sprite_linebuf2_wridx), .wr_data(sprite_linebuf2_wrdata), .wr_en(sprite_linebuf2_wren),
         .rd_clk(clk), .rd_addr(sprite_linebuf2_rdidx), .rd_data(sprite_linebuf2_rddata));
 
-    assign sprite_linebuf_a_rddata = active_line_buf_r ? sprite_linebuf1_rddata : sprite_linebuf2_rddata;
-    assign sprite_linebuf_b_rddata = active_line_buf_r ? sprite_linebuf2_rddata : sprite_linebuf1_rddata;
+    assign sprites_linebuf_a_rddata = active_line_buf_r ? sprite_linebuf1_rddata : sprite_linebuf2_rddata;
+    assign sprites_linebuf_b_rddata = active_line_buf_r ? sprite_linebuf2_rddata : sprite_linebuf1_rddata;
 
 
 // `define COMPOSITE
 `ifdef COMPOSITE
-    wire [4:0] luma;
+    //////////////////////////////////////////////////////////////////////////
+    // Composite video
+    //////////////////////////////////////////////////////////////////////////
+    wire [3:0] video_composite_chroma;
+    wire [4:0] video_composite_luma;
+    wire       video_composite_sync_n;
 
     video_composite video_composite(
         .rst(reset),
         .clk(clk),
 
         // Line buffer / palette interface
-        .linebuf_idx(linebuf_rdidx),
-        .linebuf_rgb_data(palette_rgb_data[11:0]),
+        .palette_rgb_data(palette_rgb_data[11:0]),
+        .next_pixel(compose_display_next_pixel),
 
+        .display_line_idx(display_line_idx),
         .start_of_screen(start_of_screen),
+        .end_of_screen(end_of_screen),
         .start_of_line(start_of_line),
 
         // Composite interface
-        .luma(luma),
-        .sync_n(vga_hsync),
-        .chroma(vga_r));
+        .luma(video_composite_luma),
+        .sync_n(video_composite_sync_n),
+        .chroma(video_composite_chroma));
 
-    assign vga_g = luma[4:1];
-    assign vga_vsync = luma[0];
+    assign vga_r = video_composite_chroma;
+    assign vga_g = video_composite_luma[4:1];
+    assign vga_vsync = video_composite_luma[0];
+    assign vga_hsync = video_composite_sync_n;
 
 `else
     //////////////////////////////////////////////////////////////////////////
     // VGA video
     //////////////////////////////////////////////////////////////////////////
+    wire [3:0] video_vga_r, video_vga_g, video_vga_b;
+    wire       video_vga_hsync, video_vga_vsync;
+
     video_vga video_vga(
         .rst(reset),
         .clk(clk),
 
         // Palette interface
         .palette_rgb_data(palette_rgb_data[11:0]),
+        .next_pixel(compose_display_next_pixel),
 
+        .display_line_idx(display_line_idx),
         .start_of_screen(start_of_screen),
         .end_of_screen(end_of_screen),
         .start_of_line(start_of_line),
 
         // VGA interface
-        .vga_r(vga_r),
-        .vga_g(vga_g),
-        .vga_b(vga_b),
-        .vga_hsync(vga_hsync),
-        .vga_vsync(vga_vsync));
+        .vga_r(video_vga_r),
+        .vga_g(video_vga_g),
+        .vga_b(video_vga_b),
+        .vga_hsync(video_vga_hsync),
+        .vga_vsync(video_vga_vsync));
+
+    assign vga_r = video_vga_r;
+    assign vga_g = video_vga_g;
+    assign vga_b = video_vga_b;
+    assign vga_hsync = video_vga_hsync;
+    assign vga_vsync = video_vga_vsync;
+
 `endif
 
 endmodule

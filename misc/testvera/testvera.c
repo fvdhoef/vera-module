@@ -189,12 +189,15 @@ void layer1_enable(bool enable) {
 }
 
 void test_8bpp_tile_mode(void) {
-    set_tile_base(0x10000);
     set_video_mode(MODE_TILE_8BPP);
-    set_video_scale(2, 2);
-    set_tile_size(1, 1);
     layer1_enable(true);
+    set_tile_base(0x10000);
+    set_tile_size(1, 1);
+    // set_video_scale(1, 1);
 
+    // return;
+
+#if 0
     bus_vwrite(0x040006, 0);
     bus_vwrite(0x040007, 0);
     bus_vwrite(0x040008, 0);
@@ -272,22 +275,21 @@ void test_8bpp_tile_mode(void) {
     // bus_vwrite2(128, buf, sizeof(buf));
     // bus_vwrite2(192, buf, sizeof(buf));
     // bus_vwrite2(256, buf, sizeof(buf));
-
-    for (int i = 0; i <= 512; i++) {
-        bus_vwrite(0x040006, i & 0xff);
-        bus_vwrite(0x040007, i >> 8);
-        usleep(16400);
-    }
+#endif
+    // for (int i = 0; i <= 512; i++) {
+    //     bus_vwrite(0x040006, i & 0xff);
+    //     bus_vwrite(0x040007, i >> 8);
+    //     usleep(16400);
+    // }
 
     for (int i = 0; i <= 512; i++) {
         bus_vwrite(0x040008, i & 0xff);
         bus_vwrite(0x040009, i >> 8);
         usleep(16400);
     }
-
 }
 
-void test_stuff(void) { 
+void test_stuff(void) {
 
     // {
     //     uint8_t fontbuf[4096];
@@ -434,7 +436,6 @@ void test_stuff(void) {
         usleep(16400);
     }
 #endif
-
 }
 
 void test_8bpp_bitmap_mode(void) {
@@ -442,8 +443,10 @@ void test_8bpp_bitmap_mode(void) {
     set_video_mode(MODE_BITMAP_8BPP);
     set_video_scale(2, 2);
     layer1_enable(true);
-    
 
+    set_tile_size(0, 0);
+
+    // return;
 
     bus_vwrite(0x40006, 80);
     bus_vwrite(0x40007, 0);
@@ -465,7 +468,7 @@ void test_8bpp_bitmap_mode(void) {
         fclose(f);
 
         printf("Uploading %lu bytes\n", size);
-        bus_vwrite2(0, (const uint8_t*)image, size);
+        bus_vwrite2(0, (const uint8_t *)image, size);
         free(image);
     }
 }
@@ -480,9 +483,14 @@ int main(int argc, const char **argv) {
     // bus_write(0x8005, 0x80);
     // usleep(100000);
 
-    // test_8bpp_bitmap_mode();
+    test_8bpp_bitmap_mode();
 
-    test_8bpp_tile_mode();
+    // test_8bpp_tile_mode();
+
+    // set_video_mode(MODE_TILE_1BPP_16COL_FG_BG);
+    // set_video_scale(1, 1);
+    // set_tile_size(1, 1);
+    // layer1_enable(true);
 
     return 0;
 }

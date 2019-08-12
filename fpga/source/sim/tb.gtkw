@@ -1,22 +1,22 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Sat Aug 10 14:19:32 2019
+[*] Sun Aug 11 18:18:25 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Sat Aug 10 14:17:31 2019"
-[dumpfile_size] 67749347
+[dumpfile_mtime] "Sun Aug 11 18:17:29 2019"
+[dumpfile_size] 47184309
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
 [timestart] 0
-[size] 2560 1377
-[pos] -9 -33
-*-17.378208 258380 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[size] 1920 1007
+[pos] -9 -43
+*-14.378208 2380 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
 [sst_width] 275
-[signals_width] 426
+[signals_width] 295
 [sst_expanded] 1
-[sst_vpaned_height] 476
+[sst_vpaned_height] 447
 @200
 -Memory bus
 @22
@@ -40,36 +40,20 @@ tb.top.layer2_bm_strobe
 tb.top.sprite_bm_strobe
 @200
 -
+@28
+tb.top.layer1_renderer.line_render_done
+tb.top.layer2_renderer.line_render_done
+tb.top.sprite_renderer.line_render_done
+@200
 -Line buffers
-@24
-tb.top.sprite_linebuf_a_rdidx[9:0]
-@22
-tb.top.sprite_linebuf_a_rddata[15:0]
-@24
-tb.top.sprite_linebuf_a_wridx[9:0]
-@22
-tb.top.sprite_linebuf_a_wrdata[15:0]
-@28
-tb.top.sprite_linebuf_a_wren
-@200
 -
-@24
-tb.top.sprite_linebuf_b_rdidx[9:0]
-@22
-tb.top.sprite_linebuf_b_rddata[15:0]
-@24
-tb.top.sprite_linebuf_b_wridx[9:0]
-@22
-tb.top.sprite_linebuf_b_wrdata[15:0]
-@28
-tb.top.sprite_linebuf_b_wren
-@200
 -
 -Sprite renderer
 @28
 tb.top.sprite_renderer.clk
-tb.top.sprite_renderer.start_of_screen
-tb.top.sprite_renderer.start_of_line
+tb.top.sprite_renderer.line_render_start
+@23
+tb.top.sprite_renderer.line_idx[8:0]
 @200
 -
 @28
@@ -84,18 +68,25 @@ tb.top.sprite_renderer.render_busy
 @200
 -
 @24
+tb.top.sprite_renderer.sprite_idx[7:0]
+@22
+tb.top.sprite_renderer.sprite_attr[47:0]
+@24
 tb.top.sprite_renderer.sprite_idx_r[8:0]
 tb.top.sprite_renderer.sprite_y[8:0]
 tb.top.sprite_renderer.sprite_z[1:0]
 @200
 -
-@25
-tb.top.sprite_renderer.ycnt_r[8:0]
 @24
-tb.top.sprite_renderer.sprite_height_pixels[8:0]
 tb.top.sprite_renderer.ydiff[8:0]
 @28
 tb.top.sprite_renderer.sprite_on_line
-tb.top.sprite_renderer.sprites_enabled
+tb.top.sprite_renderer.sprite_enabled
+tb.top.sprite_renderer.next_sprite
+tb.top.sprite_renderer.start_render
+@24
+tb.top.sprite_renderer.sprite_line[5:0]
+@28
+tb.top.sprite_renderer.sprite_vflip
 [pattern_trace] 1
 [pattern_trace] 0

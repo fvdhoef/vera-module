@@ -4,9 +4,10 @@ module layer_renderer(
     input  wire        rst,
     input  wire        clk,
 
-    input  wire        start_of_screen,
-    input  wire        start_of_line,
-
+    // Composer interface
+    input  wire  [8:0] line_idx,
+    input  wire        line_render_start,
+    output wire        line_render_done,
     output wire        layer_enabled,
 
     // Register interface
@@ -32,8 +33,6 @@ module layer_renderer(
 
     // CTRL0
     reg  [2:0] reg_mode_r;
-    reg  [1:0] reg_vscale_r;
-    reg  [1:0] reg_hscale_r;
     reg        reg_enable_r;
 
     // CTRL1
@@ -53,7 +52,7 @@ module layer_renderer(
     // Register interface read data
     always @* begin
         case (regs_addr)
-            4'h0: regs_rddata = {reg_mode_r, reg_vscale_r, reg_hscale_r, reg_enable_r};
+            4'h0: regs_rddata = {reg_mode_r, 4'b0, reg_enable_r};
             4'h1: regs_rddata = {2'b0, reg_tile_height_r, reg_tile_width_r, reg_map_height_r, reg_map_width_r};
             4'h2: regs_rddata = reg_map_baseaddr_r[7:0];
             4'h3: regs_rddata = reg_map_baseaddr_r[15:8];
@@ -71,8 +70,6 @@ module layer_renderer(
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             reg_mode_r          <= 3'd0;
-            reg_vscale_r        <= 2'd0;
-            reg_hscale_r        <= 2'd0;
             reg_enable_r        <= 0;
 
             reg_tile_height_r   <= 0;
@@ -90,8 +87,6 @@ module layer_renderer(
                 case (regs_addr[3:0])
                     4'h0: begin
                         reg_mode_r   <= regs_wrdata[7:5];
-                        reg_vscale_r <= regs_wrdata[4:3];
-                        reg_hscale_r <= regs_wrdata[2:1];
                         reg_enable_r <= regs_wrdata[0];
                     end
 
@@ -174,10 +169,8 @@ module layer_renderer(
     // Determine if this is a bitmap mode
     wire is_bitmap_mode = reg_mode_r >= 3'd5;
 
-    reg [11:0] vcnt_r;  // Current line
-
     // Handle vertical scrolling
-    wire [11:0] scrolled_line_idx = vcnt_r + reg_vscroll_r;
+    wire [11:0] scrolled_line_idx = {3'b000, line_idx} + reg_vscroll_r;
     wire [7:0] vmap_idx = reg_tile_height_r ? {scrolled_line_idx[11:4]} : scrolled_line_idx[10:3];
 
     reg [7:0] wrapped_vmap_idx;
@@ -270,6 +263,17 @@ module layer_renderer(
     // Calculate actual tile address
     wire [15:0] tile_addr = reg_tile_baseaddr_r + tile_addr_xbpp;
 
+    // Calculate bitmap line address
+    wire [11:0] line_idx_mul5 = {3'b0, line_idx} + {1'b0, line_idx, 2'b0};
+    reg  [15:0] bm_line_addr_tmp;
+    always @* case (color_depth)
+        2'd0: bm_line_addr_tmp = reg_tile_width_r ? {2'b0, line_idx_mul5, 2'b0} : {3'b0, line_idx_mul5, 1'b0}; // 1bpp;
+        2'd1: bm_line_addr_tmp = reg_tile_width_r ? {1'b0, line_idx_mul5, 3'b0} : {2'b0, line_idx_mul5, 2'b0}; // 2bpp;
+        2'd2: bm_line_addr_tmp = reg_tile_width_r ? {line_idx_mul5,       4'b0} : {1'b0, line_idx_mul5, 3'b0}; // 4bpp;
+        2'd3: bm_line_addr_tmp = reg_tile_width_r ? {line_idx_mul5[10:0], 5'b0} : {      line_idx_mul5, 4'b0}; // 8bpp;
+    endcase
+    wire [15:0] bitmap_line_addr = reg_tile_baseaddr_r + bm_line_addr_tmp;
+
     // Generate bus strobe
     reg bus_strobe_r;
     assign bus_strobe = bus_strobe_r && !bus_ack;
@@ -284,20 +288,14 @@ module layer_renderer(
         WAIT_FETCH_TILE = 3'b100,
         RENDER          = 3'b101;
 
-    // Bitmap addresses
-    reg [15:0] bitmap_line_addr_r;
-    reg [15:0] bitmap_addr_r;
-    wire [15:0] bitmap_next_line_addr = bitmap_line_addr_r + reg_hscroll_r[7:0];
-
     // Various registers used by state machine
     reg [31:0] tile_data_r, render_data_r;
+    reg [15:0] bitmap_addr_r;
     reg  [7:0] next_render_mapdata_r;
     reg  [7:0] render_mapdata_r;
     reg        render_start;
     wire       render_busy;
     wire       line_done;
-    reg  [1:0] vscale_cnt_r;
-    reg [11:0] vcnt_next_r;
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
@@ -306,16 +304,10 @@ module layer_renderer(
             bus_addr           <= 0;
             bus_strobe_r       <= 0;
 
-            vcnt_r             <= 0;
-            vcnt_next_r        <= 0;
-
-            vscale_cnt_r       <= 0;
-
             htile_cnt_r        <= 0;
             word_cnt_r         <= 0;
 
             bitmap_addr_r      <= 0;
-            bitmap_line_addr_r <= 0;
 
         end else begin
             render_start <= 0;
@@ -393,31 +385,12 @@ module layer_renderer(
                 end
             endcase
 
-            if (start_of_line) begin
+            if (line_render_start) begin
                 state_r         <= is_bitmap_mode ? FETCH_TILE : FETCH_MAP;
                 htile_cnt_r     <= 0;
                 word_cnt_r      <= 0;
-                vcnt_r          <= vcnt_next_r;
 
-                if (vscale_cnt_r == reg_vscale_r) begin
-                    vcnt_next_r        <= vcnt_next_r + 1;
-                    vscale_cnt_r       <= 0;
-                    bitmap_line_addr_r <= bitmap_next_line_addr;
-                    bitmap_addr_r      <= bitmap_next_line_addr;
-
-                end else begin
-                    vscale_cnt_r  <= vscale_cnt_r + 1;
-                    bitmap_addr_r <= bitmap_line_addr_r;
-                end
-
-            end
-
-            if (start_of_screen) begin
-                vcnt_r             <= 0;
-                vcnt_next_r        <= (reg_vscale_r == 0) ? 1 : 0;
-                vscale_cnt_r       <= 0;
-                bitmap_line_addr_r <= reg_tile_baseaddr_r;
-                bitmap_addr_r      <= reg_tile_baseaddr_r;
+                bitmap_addr_r   <= bitmap_line_addr;
             end
         end
     end
@@ -554,8 +527,7 @@ module layer_renderer(
 
     reg [9:0] lb_wridx_r;
     assign line_done = lb_wridx_r[9:7] == 3'b101;
-
-    reg [1:0] hscale_cnt_r, hscale_cnt_next;
+    assign line_render_done = line_done;
 
     reg [9:0] linebuf_wridx_next;
     reg [7:0] linebuf_wrdata_next;
@@ -568,15 +540,7 @@ module layer_renderer(
     // horizontal scroll position and the selected horizontal pixel scaling.
     wire [3:0] subtile_hscroll = reg_tile_width_r ? reg_hscroll_r[3:0] : reg_hscroll_r[2:0];
 
-    reg [5:0] scaled_subtile_hscroll;
-    always @* case (reg_hscale_r)
-        2'd0: scaled_subtile_hscroll = {2'b0, subtile_hscroll};
-        2'd1: scaled_subtile_hscroll = {1'b0, subtile_hscroll, 1'b0};
-        2'd2: scaled_subtile_hscroll = {1'b0, subtile_hscroll, 1'b0} + {2'b0, subtile_hscroll};
-        2'd3: scaled_subtile_hscroll = {subtile_hscroll, 2'b0};
-    endcase
-
-    wire [9:0] lb_wridx_start = 10'd0 - scaled_subtile_hscroll;
+    wire [9:0] lb_wridx_start = 10'd0 - subtile_hscroll;
     // -----------------------------------------------------------------------
 
 
@@ -584,7 +548,6 @@ module layer_renderer(
     assign render_busy = render_busy_next;
 
     always @* begin
-        hscale_cnt_next     = hscale_cnt_r;
         xcnt_next           = xcnt_r;
         linebuf_wridx_next  = linebuf_wridx;
         linebuf_wrdata_next = linebuf_wrdata;
@@ -594,22 +557,15 @@ module layer_renderer(
         render_busy_next    = render_busy_r;
 
         if (!line_done && (render_busy_r || render_start)) begin
-            if (hscale_cnt_r == reg_hscale_r) begin
-                hscale_cnt_next = 0;
-
-                if (xcnt_r == pixels_per_word_minus1) begin
-                    render_busy_next = 0;
-                    xcnt_next = 0;
-                end else begin
-                    xcnt_next = xcnt_r + 1;
-                end
-
+            if (xcnt_r == pixels_per_word_minus1) begin
+                render_busy_next = 0;
+                xcnt_next = 0;
             end else begin
-                hscale_cnt_next = hscale_cnt_r + 1;
+                xcnt_next = xcnt_r + 1;
             end
 
             if (render_start) begin
-                xcnt_next = reg_hscale_r == 0 ? 'd1 : 0;
+                xcnt_next = 'd1;
                 render_busy_next = 1;
             end
 
@@ -620,9 +576,8 @@ module layer_renderer(
             lb_wridx_next = lb_wridx_r + 1;
         end
 
-        if (start_of_line) begin
+        if (line_render_start) begin
             xcnt_next = 0;
-            hscale_cnt_next = 0;
             render_busy_next = 0;
 
             // Handle sub-tile horizontal scrolling
@@ -632,7 +587,6 @@ module layer_renderer(
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
-            hscale_cnt_r    <= 0;
             xcnt_r          <= 0;
             linebuf_wridx   <= 0;
             linebuf_wrdata  <= 0;
@@ -641,7 +595,6 @@ module layer_renderer(
             render_busy_r   <= 0;
 
         end else begin
-            hscale_cnt_r    <= hscale_cnt_next;
             xcnt_r          <= xcnt_next;
             linebuf_wridx   <= linebuf_wridx_next;
             linebuf_wrdata  <= linebuf_wrdata_next;

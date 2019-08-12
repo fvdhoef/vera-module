@@ -16,12 +16,14 @@ module sprite_ram(
     reg [47:0] mem[0:255];
 
     always @(posedge wr_clk_i) begin
-        if (ben_i[5]) mem[wr_addr_i][47:40] <= wr_data_i[47:40];
-        if (ben_i[4]) mem[wr_addr_i][39:32] <= wr_data_i[39:32];
-        if (ben_i[3]) mem[wr_addr_i][31:24] <= wr_data_i[31:24];
-        if (ben_i[2]) mem[wr_addr_i][23:16] <= wr_data_i[23:16];
-        if (ben_i[1]) mem[wr_addr_i][15:8]  <= wr_data_i[15:8];
-        if (ben_i[0]) mem[wr_addr_i][7:0]   <= wr_data_i[7:0];
+        if (wr_en_i) begin
+            if (ben_i[5]) mem[wr_addr_i][47:40] <= wr_data_i[47:40];
+            if (ben_i[4]) mem[wr_addr_i][39:32] <= wr_data_i[39:32];
+            if (ben_i[3]) mem[wr_addr_i][31:24] <= wr_data_i[31:24];
+            if (ben_i[2]) mem[wr_addr_i][23:16] <= wr_data_i[23:16];
+            if (ben_i[1]) mem[wr_addr_i][15:8]  <= wr_data_i[15:8];
+            if (ben_i[0]) mem[wr_addr_i][7:0]   <= wr_data_i[7:0];
+        end
     end
 
     always @(posedge rd_clk_i) begin
@@ -40,8 +42,11 @@ module sprite_ram(
         mem[0][15:12] = 0;     // palette_offset
         mem[0][24:16] = 9'd3;  // y
         mem[0][25]    = 0;     // mode
-        mem[0][28:26] = 4'd3;  // height
-        mem[0][31:29] = 4'd0;  // width
+
+        mem[0][27:26] = 0;     // reserved
+
+        mem[0][29:28] = 4'd3;  // height
+        mem[0][31:30] = 4'd0;  // width
         mem[0][45:32] = 0;     // addr
         mem[0][47:46] = 3'd1;  // z
 

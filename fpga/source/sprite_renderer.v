@@ -4,9 +4,10 @@ module sprite_renderer(
     input  wire        rst,
     input  wire        clk,
 
-    input  wire        start_of_screen,
-    input  wire        start_of_line,
-
+    // Composer interface
+    input  wire  [8:0] line_idx,
+    input  wire        line_render_start,
+    output wire        line_render_done,
     output wire        sprites_enabled,
 
     // Register interface
@@ -77,52 +78,40 @@ module sprite_renderer(
     //////////////////////////////////////////////////////////////////////////
 
     reg [8:0] sprite_idx_r, sprite_idx_next;
-    reg [8:0] ycnt_r;
 
-    assign sprite_idx = sprite_idx_r;
+    assign sprite_idx = sprite_idx_r[7:0];
 
-    always @(posedge clk or posedge rst) begin
-        if (rst) begin
-            ycnt_r <= 9'd0;
-        end else begin
-            if (start_of_line) begin
-                ycnt_r <= ycnt_r + 1;
-            end
-            if (start_of_screen) begin
-                ycnt_r <= 9'd0;
-            end
-        end
-    end
 
+    // Decode fields from sprite attributes
     wire  [9:0] sprite_x              = sprite_attr[9:0];
     wire        sprite_vflip          = sprite_attr[10];
     wire        sprite_hflip          = sprite_attr[11];
     wire  [3:0] sprite_palette_offset = sprite_attr[15:12];
     wire  [8:0] sprite_y              = sprite_attr[24:16];
     wire        sprite_mode           = sprite_attr[25];
-    wire  [2:0] sprite_height         = sprite_attr[28:26];
-    wire  [2:0] sprite_width          = sprite_attr[31:29];
-    wire [13:0] sprite_addr           = sprite_attr[45:32];
+    wire  [1:0] sprite_height         = sprite_attr[29:28];
+    wire  [1:0] sprite_width          = sprite_attr[31:30];
+    wire [11:0] sprite_addr           = sprite_attr[43:32];
     wire  [1:0] sprite_z              = sprite_attr[47:46];
 
-    reg [8:0] sprite_height_pixels;
+    // Decode sprite height
+    reg [5:0] sprite_height_pixels;
     always @* case (sprite_height)
-        3'd0: sprite_height_pixels = 9'd8;
-        3'd1: sprite_height_pixels = 9'd16;
-        3'd2: sprite_height_pixels = 9'd24;
-        3'd3: sprite_height_pixels = 9'd32;
-        3'd4: sprite_height_pixels = 9'd40;
-        3'd5: sprite_height_pixels = 9'd48;
-        3'd6: sprite_height_pixels = 9'd56;
-        3'd7: sprite_height_pixels = 9'd64;
+        2'd0: sprite_height_pixels = 6'd7;
+        2'd1: sprite_height_pixels = 6'd15;
+        2'd2: sprite_height_pixels = 6'd31;
+        2'd3: sprite_height_pixels = 6'd63;
     endcase
 
-    //////////////////////////////////////////////////////////////////////////
     // Determine if sprite is on current line
-    //////////////////////////////////////////////////////////////////////////
-    wire [8:0] ydiff = ycnt_r - sprite_y;
-    wire sprite_on_line = ydiff < sprite_height_pixels;
-    wire sprite_enabled = sprite_z != 2'd0;
+    wire [8:0] ydiff          = line_idx - sprite_y;
+    wire       sprite_on_line = ydiff <= {3'b0, sprite_height_pixels};
+    wire       sprite_enabled = sprite_z != 2'd0;
+    wire [5:0] sprite_line    = sprite_vflip ? (sprite_height_pixels - ydiff[5:0]) : ydiff[5:0];
+
+    // reg [13:0] addr;
+    // always @* sprite_width
+
 
     wire render_busy;
     reg next_sprite;
@@ -148,7 +137,7 @@ module sprite_renderer(
         if (next_sprite) begin
             sprite_idx_next = sprite_idx_r + 1;
         end
-        if (start_of_line) begin
+        if (line_render_start) begin
             sprite_idx_next = 0;
         end
     end
@@ -187,10 +176,10 @@ module sprite_renderer(
             linebuf_wren   <= 0;
 
         end else begin
-            linebuf_rdidx  <= linebuf_rdidx + 1;
-            linebuf_wridx  <= linebuf_wridx + 1;
-            linebuf_wrdata <= linebuf_wrdata + 1;
-            linebuf_wren   <= 1;
+            linebuf_rdidx  <= 0;    //linebuf_rdidx + 1;
+            linebuf_wridx  <= 0;    //linebuf_wridx + 1;
+            linebuf_wrdata <= 0;    //linebuf_wrdata + 1;
+            linebuf_wren   <= 0;    //1;
         end
     end
 
