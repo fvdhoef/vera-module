@@ -7,7 +7,7 @@ module composer(
     // Register interface
     input  wire  [4:0] regs_addr,
     input  wire  [7:0] regs_wrdata,
-    output wire  [7:0] regs_rddata,
+    output reg   [7:0] regs_rddata,
     input  wire        regs_write,
 
     // Layer 1 interface
@@ -42,7 +42,50 @@ module composer(
     input  wire        display_start_of_screen,
     input  wire        display_start_of_line,
     input  wire        display_next_pixel,
-    output reg   [7:0] display_data);
+    output reg   [7:0] display_data,
+    
+    // Video selection
+    output wire  [1:0] display_mode);
+
+    // MODE:
+    // 0 - disabled, no video
+    // 1 - VGA
+    // 2 - NTSC video
+    // 3 - RGB interlaced, composite sync (via VGA connector)
+
+    //////////////////////////////////////////////////////////////////////////
+    // Register interface
+    //////////////////////////////////////////////////////////////////////////
+
+    // CTRL0
+    reg  [1:0] reg_mode_r;
+
+    // Register interface read data
+    always @* begin
+        case (regs_addr)
+            5'h0: regs_rddata = {6'b0, reg_mode_r};
+            default: regs_rddata = 8'h00;
+        endcase
+    end
+
+    // Register interface write data
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            reg_mode_r          <= 2'd0;
+
+        end else begin
+            if (regs_write) begin
+                case (regs_addr[3:0])
+                    5'h0: begin
+                        reg_mode_r <= regs_wrdata[1:0];
+                    end
+                endcase
+            end
+        end
+    end
+
+    assign display_mode = reg_mode_r;
+
 
     reg [9:0] x_counter;
 
@@ -79,8 +122,6 @@ module composer(
         if (layer2_enabled  && layer2_opaque)              display_data = layer2_lb_rddata;
         if (sprites_enabled && sprite_opaque && sprite_z3) display_data = sprites_lb_rddata[7:0];
     end
-
-    assign regs_rddata = 8'h00;
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin

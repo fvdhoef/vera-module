@@ -4,11 +4,11 @@ module top(
     input  wire       clk25,
 
     // VGA interface
-    output wire [3:0] vga_r       /* synthesis syn_useioff = 1 */,
-    output wire [3:0] vga_g       /* synthesis syn_useioff = 1 */,
-    output wire [3:0] vga_b       /* synthesis syn_useioff = 1 */,
-    output wire       vga_hsync   /* synthesis syn_useioff = 1 */,
-    output wire       vga_vsync   /* synthesis syn_useioff = 1 */,
+    output reg  [3:0] vga_r       /* synthesis syn_useioff = 1 */,
+    output reg  [3:0] vga_g       /* synthesis syn_useioff = 1 */,
+    output reg  [3:0] vga_b       /* synthesis syn_useioff = 1 */,
+    output reg        vga_hsync   /* synthesis syn_useioff = 1 */,
+    output reg        vga_vsync   /* synthesis syn_useioff = 1 */,
 
     // External 6502 bus interface
     input  wire       extbus_res_n,  /* Reset */
@@ -91,7 +91,6 @@ module top(
     wire  [7:0] sprite_idx;
     wire [47:0] sprite_attr;
 
-    wire [8:0] display_line_idx;
     wire start_of_screen;
     wire end_of_screen;
     wire start_of_line;
@@ -363,7 +362,10 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     wire composer_regs_write = composer_regs_sel && regbus_strobe && regbus_write;
     wire [7:0] composer_display_data;
-    wire       compose_display_next_pixel;
+    wire       composer_display_next_pixel;
+    wire [1:0] display_mode;
+
+    wire [8:0] composer_display_line_idx;
 
     composer composer(
         .rst(reset),
@@ -403,11 +405,14 @@ module top(
         .sprites_lb_wren(sprites_linebuf_b_wren),
 
         // Display interface
-        .display_line_idx(display_line_idx),
+        .display_line_idx(composer_display_line_idx),
         .display_start_of_screen(start_of_screen),
         .display_start_of_line(start_of_line),
-        .display_next_pixel(compose_display_next_pixel),
-        .display_data(composer_display_data));
+        .display_next_pixel(composer_display_next_pixel),
+        .display_data(composer_display_data),
+
+        // Video selection
+        .display_mode(display_mode));
 
     //////////////////////////////////////////////////////////////////////////
     // Palette (2 instances to allow for readback of palette entries)
@@ -570,12 +575,15 @@ module top(
     assign sprites_linebuf_a_rddata = active_line_buf_r ? sprite_linebuf1_rddata : sprite_linebuf2_rddata;
     assign sprites_linebuf_b_rddata = active_line_buf_r ? sprite_linebuf2_rddata : sprite_linebuf1_rddata;
 
-
-// `define COMPOSITE
-`ifdef COMPOSITE
     //////////////////////////////////////////////////////////////////////////
     // Composite video
     //////////////////////////////////////////////////////////////////////////
+    wire       video_composite_display_next_pixel;
+    wire [8:0] video_composite_display_line_idx;
+    wire       video_composite_start_of_screen;
+    wire       video_composite_end_of_screen;
+    wire       video_composite_start_of_line;
+
     wire [3:0] video_composite_chroma;
     wire [4:0] video_composite_luma;
     wire       video_composite_sync_n;
@@ -586,27 +594,27 @@ module top(
 
         // Line buffer / palette interface
         .palette_rgb_data(palette_rgb_data[11:0]),
-        .next_pixel(compose_display_next_pixel),
+        .next_pixel(video_composite_display_next_pixel),
 
-        .display_line_idx(display_line_idx),
-        .start_of_screen(start_of_screen),
-        .end_of_screen(end_of_screen),
-        .start_of_line(start_of_line),
+        .display_line_idx(video_composite_display_line_idx),
+        .start_of_screen(video_composite_start_of_screen),
+        .end_of_screen(video_composite_end_of_screen),
+        .start_of_line(video_composite_start_of_line),
 
         // Composite interface
         .luma(video_composite_luma),
         .sync_n(video_composite_sync_n),
         .chroma(video_composite_chroma));
 
-    assign vga_r = video_composite_chroma;
-    assign vga_g = video_composite_luma[4:1];
-    assign vga_vsync = video_composite_luma[0];
-    assign vga_hsync = video_composite_sync_n;
-
-`else
     //////////////////////////////////////////////////////////////////////////
     // VGA video
     //////////////////////////////////////////////////////////////////////////
+    wire       video_vga_display_next_pixel;
+    wire [8:0] video_vga_display_line_idx;
+    wire       video_vga_start_of_screen;
+    wire       video_vga_end_of_screen;
+    wire       video_vga_start_of_line;
+
     wire [3:0] video_vga_r, video_vga_g, video_vga_b;
     wire       video_vga_hsync, video_vga_vsync;
 
@@ -616,12 +624,12 @@ module top(
 
         // Palette interface
         .palette_rgb_data(palette_rgb_data[11:0]),
-        .next_pixel(compose_display_next_pixel),
+        .next_pixel(video_vga_display_next_pixel),
 
-        .display_line_idx(display_line_idx),
-        .start_of_screen(start_of_screen),
-        .end_of_screen(end_of_screen),
-        .start_of_line(start_of_line),
+        .display_line_idx(video_vga_display_line_idx),
+        .start_of_screen(video_vga_start_of_screen),
+        .end_of_screen(video_vga_end_of_screen),
+        .start_of_line(video_vga_start_of_line),
 
         // VGA interface
         .vga_r(video_vga_r),
@@ -630,12 +638,37 @@ module top(
         .vga_hsync(video_vga_hsync),
         .vga_vsync(video_vga_vsync));
 
-    assign vga_r = video_vga_r;
-    assign vga_g = video_vga_g;
-    assign vga_b = video_vga_b;
-    assign vga_hsync = video_vga_hsync;
-    assign vga_vsync = video_vga_vsync;
 
-`endif
+    assign composer_display_next_pixel = display_mode[1] ? video_composite_display_next_pixel : video_vga_display_next_pixel;
+    assign composer_display_line_idx   = display_mode[1] ? video_composite_display_line_idx   : video_vga_display_line_idx;
+    assign start_of_screen             = display_mode[1] ? video_composite_start_of_screen    : video_vga_start_of_screen;
+    assign end_of_screen               = display_mode[1] ? video_composite_end_of_screen      : video_vga_end_of_screen;
+    assign start_of_line               = display_mode[1] ? video_composite_start_of_line      : video_vga_start_of_line;
+
+    always @* case (display_mode)
+        2'b01: begin
+            vga_r     = video_vga_r;
+            vga_g     = video_vga_g;
+            vga_b     = video_vga_b;
+            vga_hsync = video_vga_hsync;
+            vga_vsync = video_vga_vsync;
+        end
+
+        2'b10: begin
+            vga_r     = video_composite_chroma;
+            vga_g     = video_composite_luma[4:1];
+            vga_b     = 0;
+            vga_vsync = video_composite_luma[0];
+            vga_hsync = video_composite_sync_n;
+        end
+
+        default: begin
+            vga_r     = 0;
+            vga_g     = 0;
+            vga_b     = 0;
+            vga_hsync = 0;
+            vga_vsync = 0;
+        end
+    endcase
 
 endmodule
