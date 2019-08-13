@@ -61,11 +61,13 @@ module composer(
     // CTRL0
     reg  [1:0] reg_mode_r;
     reg        chroma_disable_r;
+    reg  [7:0] frac_x_incr_r;
 
     // Register interface read data
     always @* begin
         case (regs_addr)
             5'h0: regs_rddata = {5'b0, chroma_disable_r, reg_mode_r};
+            5'h1: regs_rddata = frac_x_incr_r;
             default: regs_rddata = 8'h00;
         endcase
     end
@@ -75,6 +77,7 @@ module composer(
         if (rst) begin
             reg_mode_r          <= 2'd0;
             chroma_disable_r    <= 0;
+            frac_x_incr_r       <= 8'd128;
 
         end else begin
             if (regs_write) begin
@@ -83,10 +86,15 @@ module composer(
                         reg_mode_r       <= regs_wrdata[1:0];
                         chroma_disable_r <= regs_wrdata[2];
                     end
+                    5'h1: begin
+                        frac_x_incr_r    <= regs_wrdata;
+                    end
                 endcase
             end
         end
     end
+
+    wire [7:0] frac_x_incr = reg_mode_r[1] ? {1'b0, frac_x_incr_r[7:1]} : frac_x_incr_r;
 
     assign display_mode = reg_mode_r;
     assign chroma_disable = chroma_disable_r;
@@ -94,7 +102,8 @@ module composer(
     //////////////////////////////////////////////////////////////////////////
     // Composer
     //////////////////////////////////////////////////////////////////////////
-    reg [9:0] x_counter;
+    reg [16:0] x_counter_r;
+    wire [9:0] x_counter = x_counter_r[16:7];
 
     reg render_start_r;
     always @(posedge clk) render_start_r <= display_start_of_line;
@@ -131,11 +140,8 @@ module composer(
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
-`ifdef __ICARUS__
-            x_counter <= 10'd750;
-`else
-            x_counter <= 10'd0;
-`endif
+            x_counter_r <= 'd0;
+
             sprites_lb_wren  <= 0;
             sprites_lb_wridx <= 0;
 
@@ -144,7 +150,7 @@ module composer(
 
             if (display_next_pixel) begin
                 if (x_counter < 'd640) begin
-                    x_counter <= x_counter + 1;
+                    x_counter_r <= x_counter_r + frac_x_incr;
 
                     sprites_lb_wridx <= x_counter;
                     sprites_lb_wren  <= 1;
@@ -152,7 +158,7 @@ module composer(
             end
             
             if (display_start_of_line) begin
-                x_counter <= 0;
+                x_counter_r <= 0;
             end
         end
     end

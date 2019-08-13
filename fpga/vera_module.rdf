@@ -48,6 +48,12 @@
         <Source name="source/composer.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
+        <Source name="source/sprite_renderer.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/generated/sprite_ram/sprite_ram.ipx" type="IPX_Module" type_short="IPX">
+            <Options/>
+        </Source>
         <Source name="source/vera_module.ldc" type="LSE Design Constraints File" type_short="LDC">
             <Options/>
         </Source>

@@ -150,22 +150,7 @@ module video_composite(
     end
 
 
-    reg pixel_done_r;
-    assign next_pixel = pixel_done_r;
-
-    always @(posedge clk or posedge rst) begin
-        if (rst) begin
-            pixel_done_r <= 0;
-        end else begin
-            if (h_active) begin
-                pixel_done_r <= !pixel_done_r;
-            end
-
-            if (start_of_line) begin
-                pixel_done_r <= 0;
-            end
-        end
-    end
+    assign next_pixel = h_active;
 
     wire [3:0] r = palette_rgb_data[11:8];
     wire [3:0] g = palette_rgb_data[7:4];
