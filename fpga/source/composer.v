@@ -45,7 +45,8 @@ module composer(
     output reg   [7:0] display_data,
     
     // Video selection
-    output wire  [1:0] display_mode);
+    output wire  [1:0] display_mode,
+    output wire        chroma_disable);
 
     // MODE:
     // 0 - disabled, no video
@@ -59,11 +60,12 @@ module composer(
 
     // CTRL0
     reg  [1:0] reg_mode_r;
+    reg        chroma_disable_r;
 
     // Register interface read data
     always @* begin
         case (regs_addr)
-            5'h0: regs_rddata = {6'b0, reg_mode_r};
+            5'h0: regs_rddata = {5'b0, chroma_disable_r, reg_mode_r};
             default: regs_rddata = 8'h00;
         endcase
     end
@@ -72,12 +74,14 @@ module composer(
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             reg_mode_r          <= 2'd0;
+            chroma_disable_r    <= 0;
 
         end else begin
             if (regs_write) begin
                 case (regs_addr[3:0])
                     5'h0: begin
-                        reg_mode_r <= regs_wrdata[1:0];
+                        reg_mode_r       <= regs_wrdata[1:0];
+                        chroma_disable_r <= regs_wrdata[2];
                     end
                 endcase
             end
@@ -85,21 +89,23 @@ module composer(
     end
 
     assign display_mode = reg_mode_r;
+    assign chroma_disable = chroma_disable_r;
 
-
+    //////////////////////////////////////////////////////////////////////////
+    // Composer
+    //////////////////////////////////////////////////////////////////////////
     reg [9:0] x_counter;
 
     reg render_start_r;
     always @(posedge clk) render_start_r <= display_start_of_line;
 
-
+    // Output control signals to other units
     assign layer1_line_idx           = display_line_idx;
     assign layer1_line_render_start  = render_start_r;
     assign layer2_line_idx           = display_line_idx;
     assign layer2_line_render_start  = render_start_r;
     assign sprites_line_idx          = display_line_idx;
     assign sprites_line_render_start = render_start_r;
-
     assign layer1_lb_rdidx           = x_counter;
     assign layer2_lb_rdidx           = x_counter;
     assign sprites_lb_rdidx          = x_counter;

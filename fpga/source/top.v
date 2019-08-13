@@ -364,6 +364,7 @@ module top(
     wire [7:0] composer_display_data;
     wire       composer_display_next_pixel;
     wire [1:0] display_mode;
+    wire       display_chroma_disable;
 
     wire [8:0] composer_display_line_idx;
 
@@ -412,7 +413,8 @@ module top(
         .display_data(composer_display_data),
 
         // Video selection
-        .display_mode(display_mode));
+        .display_mode(display_mode),
+        .chroma_disable(display_chroma_disable));
 
     //////////////////////////////////////////////////////////////////////////
     // Palette (2 instances to allow for readback of palette entries)
@@ -588,6 +590,11 @@ module top(
     wire [4:0] video_composite_luma;
     wire       video_composite_sync_n;
 
+    wire [3:0] video_rgb_r;
+    wire [3:0] video_rgb_g;
+    wire [3:0] video_rgb_b;
+    wire       video_rgb_sync_n;
+
     video_composite video_composite(
         .rst(reset),
         .clk(clk),
@@ -604,7 +611,13 @@ module top(
         // Composite interface
         .luma(video_composite_luma),
         .sync_n(video_composite_sync_n),
-        .chroma(video_composite_chroma));
+        .chroma(video_composite_chroma),
+    
+        // RGB interface
+        .rgb_r(video_rgb_r),
+        .rgb_g(video_rgb_g),
+        .rgb_b(video_rgb_b),
+        .rgb_sync_n(video_rgb_sync_n));
 
     //////////////////////////////////////////////////////////////////////////
     // VGA video
@@ -645,29 +658,37 @@ module top(
     assign end_of_screen               = display_mode[1] ? video_composite_end_of_screen      : video_vga_end_of_screen;
     assign start_of_line               = display_mode[1] ? video_composite_start_of_line      : video_vga_start_of_line;
 
-    always @* case (display_mode)
+    always @(posedge clk) case (display_mode)
         2'b01: begin
-            vga_r     = video_vga_r;
-            vga_g     = video_vga_g;
-            vga_b     = video_vga_b;
-            vga_hsync = video_vga_hsync;
-            vga_vsync = video_vga_vsync;
+            vga_r     <= video_vga_r;
+            vga_g     <= video_vga_g;
+            vga_b     <= video_vga_b;
+            vga_hsync <= video_vga_hsync;
+            vga_vsync <= video_vga_vsync;
         end
 
         2'b10: begin
-            vga_r     = video_composite_chroma;
-            vga_g     = video_composite_luma[4:1];
-            vga_b     = 0;
-            vga_vsync = video_composite_luma[0];
-            vga_hsync = video_composite_sync_n;
+            vga_r     <= display_chroma_disable ? 4'b0 : video_composite_chroma;
+            vga_g     <= video_composite_luma[4:1];
+            vga_b     <= 0;
+            vga_hsync <= video_composite_sync_n;
+            vga_vsync <= video_composite_luma[0];
+        end
+
+        2'b11: begin
+            vga_r     <= video_rgb_r;
+            vga_g     <= video_rgb_g;
+            vga_b     <= video_rgb_b;
+            vga_hsync <= video_rgb_sync_n;
+            vga_vsync <= 0;
         end
 
         default: begin
-            vga_r     = 0;
-            vga_g     = 0;
-            vga_b     = 0;
-            vga_hsync = 0;
-            vga_vsync = 0;
+            vga_r     <= 0;
+            vga_g     <= 0;
+            vga_b     <= 0;
+            vga_hsync <= 0;
+            vga_vsync <= 0;
         end
     endcase
 

@@ -16,7 +16,13 @@ module video_composite(
     // Composite interface
     output wire  [4:0] luma,
     output wire        sync_n,
-    output wire  [3:0] chroma);
+    output wire  [3:0] chroma,
+    
+    // RGB interface
+    output wire  [3:0] rgb_r,
+    output wire  [3:0] rgb_g,
+    output wire  [3:0] rgb_b,
+    output wire        rgb_sync_n);
 
     //
     // Video timing (NTSC 60Hz)
@@ -178,5 +184,10 @@ module video_composite(
         .luma(luma),
         .sync_n(sync_n),
         .chroma(chroma));
+
+    assign rgb_r = r;
+    assign rgb_g = g;
+    assign rgb_b = b;
+    assign rgb_sync_n = mod_sync_n;
 
 endmodule
