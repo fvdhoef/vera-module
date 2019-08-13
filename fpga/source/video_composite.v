@@ -6,12 +6,14 @@ module video_composite(
 
     // Line buffer / palette interface
     input  wire [11:0] palette_rgb_data,
-    output wire        next_pixel,
 
     output wire  [8:0] display_line_idx,
-    output wire        start_of_screen,
-    output wire        end_of_screen,
-    output wire        start_of_line,
+
+    output wire        next_frame,
+    output wire        next_line,
+    output wire        next_pixel,
+    output wire        vblank_pulse,
+    output wire        current_field,
 
     // Composite interface
     output wire  [4:0] luma,
@@ -97,9 +99,10 @@ module video_composite(
     wire v_last            = (vcnt == 1049);
     wire v_even_field_last = (vcnt == 524);
 
-    assign start_of_line   = h_last;
-    assign start_of_screen = h_last && v_last2;
-    assign end_of_screen   = h_last && (vcnt == 524 || vcnt == 1049);
+    assign next_line     = h_last;
+    assign next_frame    = h_last && v_last2;
+    assign vblank_pulse  = h_last && (vcnt == 524 || vcnt == 1049);
+    assign current_field = field;
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin

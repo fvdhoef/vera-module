@@ -38,10 +38,10 @@ module composer(
     output reg         sprites_lb_wren,
 
     // Display interface
-    input  wire  [8:0] display_line_idx,
-    input  wire        display_start_of_screen,
-    input  wire        display_start_of_line,
+    input  wire        display_next_frame,
+    input  wire        display_next_line,
     input  wire        display_next_pixel,
+    input  wire        display_current_field,
     output reg   [7:0] display_data,
     
     // Video selection
@@ -62,12 +62,14 @@ module composer(
     reg  [1:0] reg_mode_r;
     reg        chroma_disable_r;
     reg  [7:0] frac_x_incr_r;
+    reg  [7:0] frac_y_incr_r;
 
     // Register interface read data
     always @* begin
         case (regs_addr)
             5'h0: regs_rddata = {5'b0, chroma_disable_r, reg_mode_r};
             5'h1: regs_rddata = frac_x_incr_r;
+            5'h2: regs_rddata = frac_y_incr_r;
             default: regs_rddata = 8'h00;
         endcase
     end
@@ -78,6 +80,7 @@ module composer(
             reg_mode_r          <= 2'd0;
             chroma_disable_r    <= 0;
             frac_x_incr_r       <= 8'd128;
+            frac_y_incr_r       <= 8'd128;
 
         end else begin
             if (regs_write) begin
@@ -88,6 +91,9 @@ module composer(
                     end
                     5'h1: begin
                         frac_x_incr_r    <= regs_wrdata;
+                    end
+                    5'h2: begin
+                        frac_y_incr_r    <= regs_wrdata;
                     end
                 endcase
             end
@@ -105,15 +111,18 @@ module composer(
     reg [16:0] x_counter_r;
     wire [9:0] x_counter = x_counter_r[16:7];
 
+    reg [15:0] y_counter_r;
+    wire [8:0] y_counter = y_counter_r[15:7];
+
     reg render_start_r;
-    always @(posedge clk) render_start_r <= display_start_of_line;
+    always @(posedge clk) render_start_r <= display_next_line;
 
     // Output control signals to other units
-    assign layer1_line_idx           = display_line_idx;
+    assign layer1_line_idx           = y_counter;
     assign layer1_line_render_start  = render_start_r;
-    assign layer2_line_idx           = display_line_idx;
+    assign layer2_line_idx           = y_counter;
     assign layer2_line_render_start  = render_start_r;
-    assign sprites_line_idx          = display_line_idx;
+    assign sprites_line_idx          = y_counter;
     assign sprites_line_render_start = render_start_r;
     assign layer1_lb_rdidx           = x_counter;
     assign layer2_lb_rdidx           = x_counter;
@@ -138,6 +147,23 @@ module composer(
         if (sprites_enabled && sprite_opaque && sprite_z3) display_data = sprites_lb_rddata[7:0];
     end
 
+    // Vertical counter
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            y_counter_r <= 'd0;
+
+        end else begin
+            if (display_next_line && y_counter < 'd480) begin
+                y_counter_r <= y_counter_r + (reg_mode_r[1] ? {7'b0, frac_y_incr_r, 1'b0} : {8'b0, frac_y_incr_r});
+            end
+
+            if (display_next_frame) begin
+                y_counter_r <= (reg_mode_r[1] && !display_current_field) ? {8'b0, frac_y_incr_r} : 'd0;
+            end
+        end
+    end
+
+    // Horizontal counter
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             x_counter_r <= 'd0;
@@ -148,16 +174,14 @@ module composer(
         end else begin
             sprites_lb_wren <= 0;
 
-            if (display_next_pixel) begin
-                if (x_counter < 'd640) begin
-                    x_counter_r <= x_counter_r + frac_x_incr;
+            if (display_next_pixel && x_counter < 'd640) begin
+                x_counter_r <= x_counter_r + frac_x_incr;
 
-                    sprites_lb_wridx <= x_counter;
-                    sprites_lb_wren  <= 1;
-                end
+                sprites_lb_wridx <= x_counter;
+                sprites_lb_wren  <= 1;
             end
             
-            if (display_start_of_line) begin
+            if (display_next_line) begin
                 x_counter_r <= 0;
             end
         end

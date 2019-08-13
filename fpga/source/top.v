@@ -91,9 +91,9 @@ module top(
     wire  [7:0] sprite_idx;
     wire [47:0] sprite_attr;
 
-    wire start_of_screen;
-    wire end_of_screen;
-    wire start_of_line;
+    wire next_frame;
+    wire vblank_pulse;
+    wire next_line;
 
     //////////////////////////////////////////////////////////////////////////
     // Synchronize external asynchronous reset signal to clk25 domain
@@ -137,7 +137,7 @@ module top(
         
         .irqs(irqs));
 
-    assign irqs = {7'b0, end_of_screen};
+    assign irqs = {7'b0, vblank_pulse};
 
     // Register bus memory map:
     // 00000-1FFFF  Main RAM
@@ -362,11 +362,11 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     wire composer_regs_write = composer_regs_sel && regbus_strobe && regbus_write;
     wire [7:0] composer_display_data;
-    wire       composer_display_next_pixel;
+    wire       next_pixel;
     wire [1:0] display_mode;
     wire       display_chroma_disable;
 
-    wire [8:0] composer_display_line_idx;
+    wire       composer_display_current_field;
 
     composer composer(
         .rst(reset),
@@ -406,10 +406,10 @@ module top(
         .sprites_lb_wren(sprites_linebuf_b_wren),
 
         // Display interface
-        .display_line_idx(composer_display_line_idx),
-        .display_start_of_screen(start_of_screen),
-        .display_start_of_line(start_of_line),
-        .display_next_pixel(composer_display_next_pixel),
+        .display_next_frame(next_frame),
+        .display_next_line(next_line),
+        .display_next_pixel(next_pixel),
+        .display_current_field(composer_display_current_field),
         .display_data(composer_display_data),
 
         // Video selection
@@ -537,7 +537,7 @@ module top(
         if (reset) begin
             active_line_buf_r <= 0;
         end else begin
-            if (start_of_line) begin
+            if (next_line) begin
                 active_line_buf_r <= !active_line_buf_r;
             end
         end
@@ -580,11 +580,10 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     // Composite video
     //////////////////////////////////////////////////////////////////////////
+    wire       video_composite_next_frame;
+    wire       video_composite_next_line;
     wire       video_composite_display_next_pixel;
-    wire [8:0] video_composite_display_line_idx;
-    wire       video_composite_start_of_screen;
-    wire       video_composite_end_of_screen;
-    wire       video_composite_start_of_line;
+    wire       video_composite_vblank_pulse;
 
     wire [3:0] video_composite_chroma;
     wire [4:0] video_composite_luma;
@@ -601,12 +600,12 @@ module top(
 
         // Line buffer / palette interface
         .palette_rgb_data(palette_rgb_data[11:0]),
-        .next_pixel(video_composite_display_next_pixel),
 
-        .display_line_idx(video_composite_display_line_idx),
-        .start_of_screen(video_composite_start_of_screen),
-        .end_of_screen(video_composite_end_of_screen),
-        .start_of_line(video_composite_start_of_line),
+        .next_frame(video_composite_next_frame),
+        .next_line(video_composite_next_line),
+        .next_pixel(video_composite_display_next_pixel),
+        .vblank_pulse(video_composite_vblank_pulse),
+        .current_field(composer_display_current_field),
 
         // Composite interface
         .luma(video_composite_luma),
@@ -622,11 +621,10 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     // VGA video
     //////////////////////////////////////////////////////////////////////////
+    wire       video_vga_next_frame;
+    wire       video_vga_next_line;
     wire       video_vga_display_next_pixel;
-    wire [8:0] video_vga_display_line_idx;
-    wire       video_vga_start_of_screen;
-    wire       video_vga_end_of_screen;
-    wire       video_vga_start_of_line;
+    wire       video_vga_vblank_pulse;
 
     wire [3:0] video_vga_r, video_vga_g, video_vga_b;
     wire       video_vga_hsync, video_vga_vsync;
@@ -637,12 +635,11 @@ module top(
 
         // Palette interface
         .palette_rgb_data(palette_rgb_data[11:0]),
-        .next_pixel(video_vga_display_next_pixel),
 
-        .display_line_idx(video_vga_display_line_idx),
-        .start_of_screen(video_vga_start_of_screen),
-        .end_of_screen(video_vga_end_of_screen),
-        .start_of_line(video_vga_start_of_line),
+        .next_frame(video_vga_next_frame),
+        .next_line(video_vga_next_line),
+        .next_pixel(video_vga_display_next_pixel),
+        .vblank_pulse(video_vga_vblank_pulse),
 
         // VGA interface
         .vga_r(video_vga_r),
@@ -651,12 +648,10 @@ module top(
         .vga_hsync(video_vga_hsync),
         .vga_vsync(video_vga_vsync));
 
-
-    assign composer_display_next_pixel = display_mode[1] ? video_composite_display_next_pixel : video_vga_display_next_pixel;
-    assign composer_display_line_idx   = display_mode[1] ? video_composite_display_line_idx   : video_vga_display_line_idx;
-    assign start_of_screen             = display_mode[1] ? video_composite_start_of_screen    : video_vga_start_of_screen;
-    assign end_of_screen               = display_mode[1] ? video_composite_end_of_screen      : video_vga_end_of_screen;
-    assign start_of_line               = display_mode[1] ? video_composite_start_of_line      : video_vga_start_of_line;
+    assign next_frame   = display_mode[1] ? video_composite_next_frame         : video_vga_next_frame;
+    assign next_line    = display_mode[1] ? video_composite_next_line          : video_vga_next_line;
+    assign next_pixel   = display_mode[1] ? video_composite_display_next_pixel : video_vga_display_next_pixel;
+    assign vblank_pulse = display_mode[1] ? video_composite_vblank_pulse       : video_vga_vblank_pulse;
 
     always @(posedge clk) case (display_mode)
         2'b01: begin

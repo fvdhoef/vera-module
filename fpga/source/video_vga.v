@@ -6,12 +6,13 @@ module video_vga(
 
     // Palette interface
     input  wire [11:0] palette_rgb_data,
-    output wire        next_pixel,
 
     output reg   [8:0] display_line_idx,
-    output wire        start_of_screen,
-    output wire        end_of_screen,
-    output wire        start_of_line,
+
+    output wire        next_frame,
+    output wire        next_line,
+    output wire        next_pixel,
+    output wire        vblank_pulse,
 
     // VGA interface
     output reg   [3:0] vga_r,
@@ -67,10 +68,10 @@ module video_vga(
     wire v_active = (y_counter < V_ACTIVE);
     wire active   = h_active && v_active;
 
-    assign end_of_screen = h_last && (y_counter == V_ACTIVE - 1);
+    assign vblank_pulse = h_last && (y_counter == V_ACTIVE - 1);
 
-    assign start_of_screen = h_last && v_last2;
-    assign start_of_line   = h_last;
+    assign next_frame = h_last && v_last2;
+    assign next_line = h_last;
 
     // Generate line index for rendering
     always @(posedge clk or posedge rst) begin
