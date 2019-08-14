@@ -7,8 +7,6 @@ module video_vga(
     // Palette interface
     input  wire [11:0] palette_rgb_data,
 
-    output reg   [8:0] display_line_idx,
-
     output wire        next_frame,
     output wire        next_line,
     output wire        next_pixel,
@@ -72,19 +70,6 @@ module video_vga(
 
     assign next_frame = h_last && v_last2;
     assign next_line = h_last;
-
-    // Generate line index for rendering
-    always @(posedge clk or posedge rst) begin
-        if (rst) begin
-            display_line_idx <= 0;
-
-        end else begin
-            if (h_last) begin
-                display_line_idx <= v_last2 ? 0 : display_line_idx + 1;
-            end
-        end
-    end
-
 
     // Compensate pipeline delays
     reg [1:0] hsync_r, vsync_r, active_r;

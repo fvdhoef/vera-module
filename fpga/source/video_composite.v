@@ -7,8 +7,6 @@ module video_composite(
     // Line buffer / palette interface
     input  wire [11:0] palette_rgb_data,
 
-    output wire  [8:0] display_line_idx,
-
     output wire        next_frame,
     output wire        next_line,
     output wire        next_pixel,
@@ -138,8 +136,6 @@ module video_composite(
             end
         end
     end
-
-    assign display_line_idx = frame_line_cnt[8:0];
 
     reg mod_sync_n;
     always @* begin
