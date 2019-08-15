@@ -1,22 +1,22 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Sun Aug 11 18:18:25 2019
+[*] Thu Aug 15 12:09:47 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Sun Aug 11 18:17:29 2019"
-[dumpfile_size] 47184309
+[dumpfile_mtime] "Thu Aug 15 12:08:30 2019"
+[dumpfile_size] 73621959
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
-[timestart] 0
-[size] 1920 1007
-[pos] -9 -43
-*-14.378208 2380 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[timestart] 95070
+[size] 1278 1361
+[pos] 1281 38
+*-11.378208 98660 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
-[sst_width] 275
-[signals_width] 295
+[sst_width] 261
+[signals_width] 332
 [sst_expanded] 1
-[sst_vpaned_height] 447
+[sst_vpaned_height] 498
 @200
 -Memory bus
 @22
@@ -49,32 +49,70 @@ tb.top.sprite_renderer.line_render_done
 -
 -
 -Sprite renderer
+@22
+tb.top.sprite_renderer.bus_addr[15:0]
+tb.top.sprite_renderer.bus_rddata[31:0]
+@28
+tb.top.sprite_renderer.bus_strobe
+tb.top.sprite_renderer.bus_ack
+@200
+-
+@25
+tb.top.sprite_renderer.xcnt_r[5:0]
+@24
+tb.top.sprite_renderer.sprite_width_pixels[5:0]
+tb.top.sprite_renderer.linebuf_wridx[9:0]
+@22
+tb.top.sprite_renderer.linebuf_wrdata[15:0]
+@28
+tb.top.sprite_renderer.linebuf_wren
+@200
+-
+@22
+tb.top.sprite_renderer.render_data_r[31:0]
+tb.top.sprite_renderer.line_addr[15:0]
 @28
 tb.top.sprite_renderer.clk
 tb.top.sprite_renderer.line_render_start
-@23
+@22
 tb.top.sprite_renderer.line_idx[8:0]
+tb.top.sprite_renderer.cur_pixel_data_4bpp[3:0]
+tb.top.sprite_renderer.cur_pixel_data_8bpp[7:0]
 @200
 -
 @28
 tb.top.sprite_renderer.reg_enable_r
-@24
-tb.top.sprite_renderer.reg_hscale_r[1:0]
-tb.top.sprite_renderer.reg_vscale_r[1:0]
 @200
 -
-@28
-tb.top.sprite_renderer.render_busy
+@2028
+^1 /c/Work/vera-module/fpga/source/sim/sprite_renderer_state.txt
+tb.top.sprite_renderer.state_r[1:0]
 @200
 -
 @24
-tb.top.sprite_renderer.sprite_idx[7:0]
+tb.top.sprite_renderer.sprite_idx_r[8:0]
+@200
+-
 @22
 tb.top.sprite_renderer.sprite_attr[47:0]
 @24
-tb.top.sprite_renderer.sprite_idx_r[8:0]
+tb.top.sprite_renderer.sprite_x[9:0]
+@28
+tb.top.sprite_renderer.sprite_vflip
+tb.top.sprite_renderer.sprite_hflip
+@22
+tb.top.sprite_renderer.sprite_palette_offset[3:0]
+@24
 tb.top.sprite_renderer.sprite_y[8:0]
+@28
+tb.top.sprite_renderer.sprite_mode
+@24
 tb.top.sprite_renderer.sprite_z[1:0]
+tb.top.sprite_renderer.sprite_height[1:0]
+tb.top.sprite_renderer.sprite_width[1:0]
+@22
+tb.top.sprite_renderer.sprite_addr[15:0]
+tb.top.sprite_renderer.line_addr[15:0]
 @200
 -
 @24
@@ -82,11 +120,21 @@ tb.top.sprite_renderer.ydiff[8:0]
 @28
 tb.top.sprite_renderer.sprite_on_line
 tb.top.sprite_renderer.sprite_enabled
-tb.top.sprite_renderer.next_sprite
-tb.top.sprite_renderer.start_render
 @24
 tb.top.sprite_renderer.sprite_line[5:0]
+@200
+-
 @28
 tb.top.sprite_renderer.sprite_vflip
+tb.top.sprite_line_buffer.composer_erase_start
+tb.top.active_line_buf_r
+tb.top.sprite_line_buffer.composer_erase_busy
+@24
+tb.top.sprite_line_buffer.composer_wr_idx[7:0]
+@28
+tb.top.sprite_line_buffer.composer_wr_en
+@24
+tb.top.sprite_line_buffer.composer_rd_idx[9:0]
+tb.top.layer1_linebuf_rdidx[9:0]
 [pattern_trace] 1
 [pattern_trace] 0

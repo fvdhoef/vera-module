@@ -498,13 +498,15 @@ int main(int argc, const char **argv) {
     signal(SIGINT, sigint_handler);
     init_serial();
 
-    bus_vwrite(0x40040, 2);
+    bus_vwrite(0x40040, 1);
 
-    bus_vwrite(0x40041, 144);
-    bus_vwrite(0x40042, 144);
+    bus_vwrite(0x40041, 144/2);
+    bus_vwrite(0x40042, 144/2);
+    // bus_vwrite(0x40041, 64);
+    // bus_vwrite(0x40042, 64);
     bus_vwrite(0x40043, 6);
 
-    set_active_area(23, 24, 570, 429);
+    set_active_area(23, 24, 569, 429);
 
 
     // for (int i=255; i>=0; i++) {
@@ -519,6 +521,30 @@ int main(int argc, const char **argv) {
     // test_8bpp_bitmap_mode();
 
     // test_8bpp_tile_mode();
+
+    bus_vwrite(0x40020, 1);
+
+    unsigned offset = (0x10000 + (11 * 16*16)) /4;
+
+    uint8_t reg3 = (1<<6) | (2<<4) | (3<<2) | (1<<1);
+
+    bus_vwrite(0x40800, 20);
+    bus_vwrite(0x40801, (0<<3) | 0);
+    bus_vwrite(0x40802, 50);
+    bus_vwrite(0x40803, (1<<6) | (2<<4) | (3<<2) | (1<<1));
+    bus_vwrite(0x40804, offset & 0xFF);
+    bus_vwrite(0x40805, (offset >> 8) & 0xFF);
+
+    // for (int i=0; i<6; i++) {
+    //     printf("%u: %02x\n", i, bus_vread(0x40800 + i));
+    // }
+
+    // for (int i=350; i>=-64; i--) {
+    //     bus_vwrite(0x40800, i & 0xFF);
+    //     bus_vwrite(0x40801, ((unsigned)(i >> 8) & 3));
+
+    //     usleep(10000);
+    // }
 
     // set_video_mode(MODE_TILE_1BPP_16COL_FG_BG);
     // set_video_scale(1, 1);

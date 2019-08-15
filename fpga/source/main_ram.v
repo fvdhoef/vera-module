@@ -75,6 +75,8 @@ module main_ram(
         // blk10[1] = 32'h02100011;
         // blk10[2] = 32'h56000011;
         // blk10[3] = 32'h03FFFCFF;
+
+        blk10['h1000] = 32'h12345678;
     end
 
 `else

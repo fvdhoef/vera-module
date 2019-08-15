@@ -76,17 +76,15 @@ module top(
     wire  [9:0] layer2_linebuf_rdidx;
     wire  [7:0] layer2_linebuf_rddata;
 
-    wire  [9:0] sprites_linebuf_a_wridx;     // Port used by sprite renderer
-    wire [15:0] sprites_linebuf_a_wrdata;
-    wire        sprites_linebuf_a_wren;
-    wire  [9:0] sprites_linebuf_a_rdidx;
-    wire [15:0] sprites_linebuf_a_rddata;
-
-    wire  [9:0] sprites_linebuf_b_wridx;     // Port used by composer
-    wire [15:0] sprites_linebuf_b_wrdata;
-    wire        sprites_linebuf_b_wren;
-    wire  [9:0] sprites_linebuf_b_rdidx;
-    wire [15:0] sprites_linebuf_b_rddata;
+    wire  [9:0] sprite_lb_renderer_rd_idx;
+    wire [15:0] sprite_lb_renderer_rd_data;
+    wire  [9:0] sprite_lb_renderer_wr_idx;
+    wire [15:0] sprite_lb_renderer_wr_data;
+    wire        sprite_lb_renderer_wr_en;
+    wire  [9:0] sprite_lb_composer_rd_idx;
+    wire [15:0] sprite_lb_composer_rd_data;
+    wire        sprite_lb_composer_erase_start;
+    wire        sprite_lb_composer_erase_busy;
 
     wire  [7:0] sprite_idx;
     wire [47:0] sprite_attr;
@@ -350,12 +348,12 @@ module top(
         .sprite_attr(sprite_attr),
 
         // Line buffer interface
-        .linebuf_rdidx(sprites_linebuf_a_rdidx),
-        .linebuf_rddata(sprites_linebuf_a_rddata),
+        .linebuf_rdidx(sprite_lb_renderer_rd_idx),
+        .linebuf_rddata(sprite_lb_renderer_rd_data),
 
-        .linebuf_wridx(sprites_linebuf_a_wridx),
-        .linebuf_wrdata(sprites_linebuf_a_wrdata),
-        .linebuf_wren(sprites_linebuf_a_wren));
+        .linebuf_wridx(sprite_lb_renderer_wr_idx),
+        .linebuf_wrdata(sprite_lb_renderer_wr_data),
+        .linebuf_wren(sprite_lb_renderer_wr_en));
 
     //////////////////////////////////////////////////////////////////////////
     // Composer
@@ -399,11 +397,11 @@ module top(
         .sprites_line_render_start(sprites_line_render_start),
         .sprites_line_render_done(sprites_line_render_done),
         .sprites_enabled(sprites_enabled),
-        .sprites_lb_rdidx(sprites_linebuf_b_rdidx),
-        .sprites_lb_rddata(sprites_linebuf_b_rddata),
-        .sprites_lb_wridx(sprites_linebuf_b_wridx),
-        .sprites_lb_wrdata(sprites_linebuf_b_wrdata),
-        .sprites_lb_wren(sprites_linebuf_b_wren),
+
+        .sprite_lb_rdidx(sprite_lb_composer_rd_idx),
+        .sprite_lb_rddata(sprite_lb_composer_rd_data),
+        .sprite_lb_erase_start(sprite_lb_composer_erase_start),
+        .sprite_lb_erase_busy(sprite_lb_composer_erase_busy),
 
         // Display interface
         .display_next_frame(next_frame),
@@ -554,28 +552,24 @@ module top(
         .rd_clk(clk), .rd_addr({!active_line_buf_r, layer2_linebuf_rdidx}), .rd_data(layer2_linebuf_rddata));
 
     // Sprite line buffers
-    wire  [9:0] sprite_linebuf1_wridx  = active_line_buf_r ? sprites_linebuf_a_wridx  : sprites_linebuf_b_wridx;
-    wire [15:0] sprite_linebuf1_wrdata = active_line_buf_r ? sprites_linebuf_a_wrdata : sprites_linebuf_b_wrdata;
-    wire        sprite_linebuf1_wren   = active_line_buf_r ? sprites_linebuf_a_wren   : sprites_linebuf_b_wren;
-    wire  [9:0] sprite_linebuf1_rdidx  = active_line_buf_r ? sprites_linebuf_a_rdidx  : sprites_linebuf_b_rdidx;
-    wire [15:0] sprite_linebuf1_rddata;
+    sprite_line_buffer sprite_line_buffer(
+        .rst(reset),
+        .clk(clk),
 
-    wire  [9:0] sprite_linebuf2_wridx  = active_line_buf_r ? sprites_linebuf_b_wridx  : sprites_linebuf_a_wridx;
-    wire [15:0] sprite_linebuf2_wrdata = active_line_buf_r ? sprites_linebuf_b_wrdata : sprites_linebuf_a_wrdata;
-    wire        sprite_linebuf2_wren   = active_line_buf_r ? sprites_linebuf_b_wren   : sprites_linebuf_a_wren;
-    wire  [9:0] sprite_linebuf2_rdidx  = active_line_buf_r ? sprites_linebuf_b_rdidx  : sprites_linebuf_a_rdidx;
-    wire [15:0] sprite_linebuf2_rddata;
+        .active_render_buffer(active_line_buf_r),
 
-    dpram #(.ADDR_WIDTH(10), .DATA_WIDTH(16)) sprite_linebuf1(
-        .wr_clk(clk), .wr_addr(sprite_linebuf1_wridx), .wr_data(sprite_linebuf1_wrdata), .wr_en(sprite_linebuf1_wren),
-        .rd_clk(clk), .rd_addr(sprite_linebuf1_rdidx), .rd_data(sprite_linebuf1_rddata));
+        // Renderer interface
+        .renderer_rd_idx(sprite_lb_renderer_rd_idx),
+        .renderer_rd_data(sprite_lb_renderer_rd_data),
+        .renderer_wr_idx(sprite_lb_renderer_wr_idx),
+        .renderer_wr_data(sprite_lb_renderer_wr_data),
+        .renderer_wr_en(sprite_lb_renderer_wr_en),
 
-    dpram #(.ADDR_WIDTH(10), .DATA_WIDTH(16)) sprite_linebuf2(
-        .wr_clk(clk), .wr_addr(sprite_linebuf2_wridx), .wr_data(sprite_linebuf2_wrdata), .wr_en(sprite_linebuf2_wren),
-        .rd_clk(clk), .rd_addr(sprite_linebuf2_rdidx), .rd_data(sprite_linebuf2_rddata));
-
-    assign sprites_linebuf_a_rddata = active_line_buf_r ? sprite_linebuf1_rddata : sprite_linebuf2_rddata;
-    assign sprites_linebuf_b_rddata = active_line_buf_r ? sprite_linebuf2_rddata : sprite_linebuf1_rddata;
+        // Composer interface
+        .composer_rd_idx(sprite_lb_composer_rd_idx),
+        .composer_rd_data(sprite_lb_composer_rd_data),
+        .composer_erase_start(sprite_lb_composer_erase_start),
+        .composer_erase_busy(sprite_lb_composer_erase_busy));
 
     //////////////////////////////////////////////////////////////////////////
     // Composite video
@@ -588,10 +582,7 @@ module top(
     wire [3:0] video_composite_chroma;
     wire [4:0] video_composite_luma;
     wire       video_composite_sync_n;
-
-    wire [3:0] video_rgb_r;
-    wire [3:0] video_rgb_g;
-    wire [3:0] video_rgb_b;
+    wire [3:0] video_rgb_r, video_rgb_g, video_rgb_b;
     wire       video_rgb_sync_n;
 
     video_composite video_composite(
@@ -648,6 +639,9 @@ module top(
         .vga_hsync(video_vga_hsync),
         .vga_vsync(video_vga_vsync));
 
+    //////////////////////////////////////////////////////////////////////////
+    // Video output selection
+    //////////////////////////////////////////////////////////////////////////
     assign next_frame   = display_mode[1] ? video_composite_next_frame         : video_vga_next_frame;
     assign next_line    = display_mode[1] ? video_composite_next_line          : video_vga_next_line;
     assign next_pixel   = display_mode[1] ? video_composite_display_next_pixel : video_vga_display_next_pixel;

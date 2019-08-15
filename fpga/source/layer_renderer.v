@@ -462,8 +462,8 @@ module layer_renderer(
         3'd1: cur_pixel_data_4bpp = render_data_r[3:0];
 
         // Byte 1
-        3'd2: cur_pixel_data_4bpp = render_data_r[15:11];
-        3'd3: cur_pixel_data_4bpp = render_data_r[10:8];
+        3'd2: cur_pixel_data_4bpp = render_data_r[15:12];
+        3'd3: cur_pixel_data_4bpp = render_data_r[11:8];
 
         // Byte 2
         3'd4: cur_pixel_data_4bpp = render_data_r[23:20];

@@ -2,7 +2,7 @@
 <RadiantProject version="4.1" title="vera_module" device="iCE40UP5K-SG48I" performance_grade="High-Performance_1.2V" default_implementation="impl">
     <Options/>
     <Implementation title="impl" dir="impl" description="impl" synthesis="synplify" default_strategy="Strategy1">
-        <Options def_top="video_composite" top="top"/>
+        <Options def_top="pulse2pulse" top="top"/>
         <Source name="source/top.v" type="Verilog" type_short="Verilog">
             <Options top_module="top"/>
         </Source>
@@ -52,6 +52,9 @@
             <Options/>
         </Source>
         <Source name="source/generated/sprite_ram/sprite_ram.ipx" type="IPX_Module" type_short="IPX">
+            <Options/>
+        </Source>
+        <Source name="source/sprite_line_buffer.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
         <Source name="source/vera_module.ldc" type="LSE Design Constraints File" type_short="LDC">

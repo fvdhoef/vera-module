@@ -31,11 +31,11 @@ module composer(
     output wire        sprites_line_render_start,
     input  wire        sprites_line_render_done,
     input  wire        sprites_enabled,
-    output wire  [9:0] sprites_lb_rdidx,
-    input  wire [15:0] sprites_lb_rddata,
-    output reg   [9:0] sprites_lb_wridx,
-    output wire [15:0] sprites_lb_wrdata,
-    output reg         sprites_lb_wren,
+
+    output wire  [9:0] sprite_lb_rdidx,
+    input  wire [15:0] sprite_lb_rddata,
+    output wire        sprite_lb_erase_start,
+    input  wire        sprite_lb_erase_busy,
 
     // Display interface
     input  wire        display_next_frame,
@@ -97,10 +97,10 @@ module composer(
             frac_x_incr_r       <= 8'd128;
             frac_y_incr_r       <= 8'd128;
             border_color_r      <= 8'd0;
-            active_hstart_r     <= 8'd0;
-            active_hstop_r      <= 8'd255;
-            active_vstart_r     <= 8'd0;
-            active_vstop_r      <= 8'd255;
+            active_hstart_r     <= 10'd0;
+            active_hstop_r      <= 10'd640;
+            active_vstart_r     <= 9'd0;
+            active_vstop_r      <= 9'd480;
 
         end else begin
             if (regs_write) begin
@@ -153,17 +153,15 @@ module composer(
     assign sprites_line_render_start = render_start_r;
     assign layer1_lb_rdidx           = scaled_x_counter;
     assign layer2_lb_rdidx           = scaled_x_counter;
-    assign sprites_lb_rdidx          = scaled_x_counter;
-
-    assign sprites_lb_wrdata = 16'h0000;
+    assign sprite_lb_rdidx           = scaled_x_counter;
 
     wire layer1_opaque = layer1_lb_rddata[7:0] != 8'h0;
     wire layer2_opaque = layer2_lb_rddata[7:0] != 8'h0;
-    wire sprite_opaque = sprites_lb_rddata[7:0] != 8'h0;
+    wire sprite_opaque = sprite_lb_rddata[7:0] != 8'h0;
 
-    wire sprite_z1 = sprites_lb_rddata[9:8] != 2'd1;
-    wire sprite_z2 = sprites_lb_rddata[9:8] != 2'd2;
-    wire sprite_z3 = sprites_lb_rddata[9:8] != 2'd3;
+    wire sprite_z1 = sprite_lb_rddata[9:8] == 2'd1;
+    wire sprite_z2 = sprite_lb_rddata[9:8] == 2'd2;
+    wire sprite_z3 = sprite_lb_rddata[9:8] == 2'd3;
 
     // Regular vertical counter
     reg  [8:0] y_counter_r;
@@ -199,6 +197,8 @@ module composer(
     wire [9:0] x_counter = x_counter_r[10:1];
     wire [8:0] y_counter = y_counter_r;
 
+    assign sprite_lb_erase_start = (x_counter == 'd540);
+
     wire hactive = (x_counter >= active_hstart_r) && (x_counter < active_hstop_r);
     wire vactive = (y_counter >= active_vstart_r) && (y_counter < active_vstop_r);
     wire display_active = hactive && vactive;
@@ -224,19 +224,11 @@ module composer(
         if (rst) begin
             scaled_x_counter_r <= 'd0;
 
-            sprites_lb_wren  <= 0;
-            sprites_lb_wridx <= 0;
-
         end else begin
-            sprites_lb_wren <= 0;
-
             if (display_next_pixel && hactive) begin
                 if (scaled_x_counter < 'd640) begin
                     scaled_x_counter_r <= scaled_x_counter_r + frac_x_incr;
                 end
-
-                sprites_lb_wridx <= scaled_x_counter;
-                sprites_lb_wren  <= 1;
             end
             
             if (display_next_line) begin
@@ -251,11 +243,11 @@ module composer(
 
         if (display_active) begin
             display_data = 8'h00;
-            if (sprites_enabled && sprite_opaque && sprite_z1) display_data = sprites_lb_rddata[7:0];
+            if (sprites_enabled && sprite_opaque && sprite_z1) display_data = sprite_lb_rddata[7:0];
             if (layer1_enabled  && layer1_opaque)              display_data = layer1_lb_rddata;
-            if (sprites_enabled && sprite_opaque && sprite_z2) display_data = sprites_lb_rddata[7:0];
+            if (sprites_enabled && sprite_opaque && sprite_z2) display_data = sprite_lb_rddata[7:0];
             if (layer2_enabled  && layer2_opaque)              display_data = layer2_lb_rddata;
-            if (sprites_enabled && sprite_opaque && sprite_z3) display_data = sprites_lb_rddata[7:0];
+            if (sprites_enabled && sprite_opaque && sprite_z3) display_data = sprite_lb_rddata[7:0];
         end
     end
 
