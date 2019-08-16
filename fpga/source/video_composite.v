@@ -97,7 +97,7 @@ module video_composite(
     wire v_last            = (vcnt == 1049);
     wire v_even_field_last = (vcnt == 524);
 
-    assign next_line     = h_last;
+    assign next_line     = (hcnt == H_SYNC + H_BACK_PORCH - 1);
     assign next_frame    = h_last && v_last2;
     assign vblank_pulse  = h_last && (vcnt == 524 || vcnt == 1049);
     assign current_field = field;

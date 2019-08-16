@@ -197,7 +197,7 @@ module composer(
     wire [9:0] x_counter = x_counter_r[10:1];
     wire [8:0] y_counter = y_counter_r;
 
-    assign sprite_lb_erase_start = (x_counter == 'd540);
+    assign sprite_lb_erase_start = (x_counter_r == {10'd639, reg_mode_r[1]});
 
     wire hactive = (x_counter >= active_hstart_r) && (x_counter < active_hstop_r);
     wire vactive = (y_counter >= active_vstart_r) && (y_counter < active_vstop_r);

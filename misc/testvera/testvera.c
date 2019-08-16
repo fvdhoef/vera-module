@@ -233,6 +233,7 @@ void test_8bpp_tile_mode(void) {
         bus_vwrite2(0x40200, palette, 512);
     }
 
+    // clang-format off
     uint16_t tilemap[32*32] = {
         0x0D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -267,7 +268,9 @@ void test_8bpp_tile_mode(void) {
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     };
-    bus_vwrite2(0, (const uint8_t*)tilemap, sizeof(tilemap));
+    // clang-format on
+
+    bus_vwrite2(0, (const uint8_t *)tilemap, sizeof(tilemap));
 
     // uint8_t tiledata_2bpp[] = {0x03, 0xC0, 0x0F, 0xF0, 0x3C, 0x3C, 0x3F, 0xFC, 0x3C, 0x3C, 0x3C, 0x3C, 0x3C, 0x3C, 0x00, 0x00};
     // bus_vwrite2(0x10000, tiledata_2bpp, sizeof(tiledata_2bpp));
@@ -484,11 +487,31 @@ void set_active_area(unsigned x, unsigned y, unsigned w, unsigned h) {
     bus_vwrite(0x40045, x2 & 0xFF);
     bus_vwrite(0x40046, y & 0xFF);
     bus_vwrite(0x40047, y2 & 0xFF);
-    bus_vwrite(0x40048, 
-        (((y2 >> 8) & 1) << 5) |
-        (((y  >> 8) & 1) << 4) |
-        (((x2 >> 8) & 3) << 2) |
-        (((x  >> 8) & 3) << 0));
+    bus_vwrite(0x40048, (((y2 >> 8) & 1) << 5) | (((y >> 8) & 1) << 4) | (((x2 >> 8) & 3) << 2) | (((x >> 8) & 3) << 0));
+}
+
+struct sprite_entry {
+    int      x;
+    int      y;
+    int      z;
+    bool     hflip;
+    bool     vflip;
+    unsigned palette_offset;
+    bool     mode;
+    unsigned width;
+    unsigned height;
+    unsigned address;
+};
+
+void set_sprite(unsigned idx, struct sprite_entry *entry) {
+    unsigned offset = 0x40800 + 8 * idx;
+
+    bus_vwrite(offset + 0, entry->x & 0xFF);
+    bus_vwrite(offset + 1, ((entry->palette_offset & 0xF) << 4) | (entry->hflip ? 0x08 : 0) | (entry->vflip ? 0x04 : 0) | ((entry->x >> 8) & 3));
+    bus_vwrite(offset + 2, entry->y & 0xFF);
+    bus_vwrite(offset + 3, ((entry->width & 3) << 6) | ((entry->height & 3) << 4) | ((entry->z & 3) << 2) | (entry->mode ? 2 : 0) | ((entry->y >> 8) & 1));
+    bus_vwrite(offset + 4, (entry->address >> 2) & 0xFF);
+    bus_vwrite(offset + 5, (entry->address >> 10) & 0xFF);
 }
 
 int main(int argc, const char **argv) {
@@ -500,20 +523,21 @@ int main(int argc, const char **argv) {
 
     bus_vwrite(0x40040, 1);
 
-    bus_vwrite(0x40041, 144/2);
-    bus_vwrite(0x40042, 144/2);
-    // bus_vwrite(0x40041, 64);
-    // bus_vwrite(0x40042, 64);
+    // bus_vwrite(0x40041, 144); // / 2);
+    // bus_vwrite(0x40042, 144); // / 2);
+    bus_vwrite(0x40041, 128);
+    bus_vwrite(0x40042, 128);
     bus_vwrite(0x40043, 6);
 
-    set_active_area(23, 24, 569, 429);
+    // set_active_area(23, 24, 569, 429);
+    set_active_area(0, 0, 641, 481);
 
-
-    // for (int i=255; i>=0; i++) {
-    // bus_vwrite(0x40041, i);
-    // bus_vwrite(0x40042, i);
-    // usleep(10000);
+    // for (int i = 255; i >= 0; i++) {
+    //     bus_vwrite(0x40041, i);
+    //     bus_vwrite(0x40042, i);
+    //     usleep(50000);
     // }
+    return;
 
     // bus_write(0x8005, 0x80);
     // usleep(100000);
@@ -524,16 +548,43 @@ int main(int argc, const char **argv) {
 
     bus_vwrite(0x40020, 1);
 
-    unsigned offset = (0x10000 + (11 * 16*16)) /4;
+    unsigned offset = (0x10000 + (11 * 16 * 16)) / 4;
 
-    uint8_t reg3 = (1<<6) | (2<<4) | (3<<2) | (1<<1);
+    uint8_t reg3 = (1 << 6) | (2 << 4) | (3 << 2) | (1 << 1);
 
-    bus_vwrite(0x40800, 20);
-    bus_vwrite(0x40801, (0<<3) | 0);
-    bus_vwrite(0x40802, 50);
-    bus_vwrite(0x40803, (1<<6) | (2<<4) | (3<<2) | (1<<1));
-    bus_vwrite(0x40804, offset & 0xFF);
-    bus_vwrite(0x40805, (offset >> 8) & 0xFF);
+    struct sprite_entry entry;
+    memset(&entry, 0, sizeof(entry));
+
+    entry.x       = 20;
+    entry.y       = 130;
+    entry.z       = 2;
+    entry.mode    = true;
+    entry.width   = 1;
+    entry.height  = 2;
+    entry.address = 0x10000 + (11 * 16 * 16);
+
+    int idx = 0;
+    int y   = 10;
+    do {
+        for (int i = 0; i < 28 && idx < 256; i++, idx++) {
+            entry.x = i * 22;
+            entry.y = y;
+            set_sprite(idx, &entry);
+        }
+        // entry.vflip = !entry.vflip;
+        y += 32;
+    } while (idx < 256);
+
+    // for (int i = 256; i >= -16; i--) {
+
+    //     // entry.x = i + 30;
+    //     // entry.y = 10;
+    //     // set_sprite(1, &entry);
+
+    //     // entry.x = i + 60;
+    //     // entry.y = 10;
+    //     // set_sprite(2, &entry);
+    // }
 
     // for (int i=0; i<6; i++) {
     //     printf("%u: %02x\n", i, bus_vread(0x40800 + i));

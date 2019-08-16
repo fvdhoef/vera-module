@@ -1,22 +1,22 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Thu Aug 15 12:09:47 2019
+[*] Fri Aug 16 08:55:50 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Thu Aug 15 12:08:30 2019"
-[dumpfile_size] 73621959
+[dumpfile_mtime] "Fri Aug 16 08:53:16 2019"
+[dumpfile_size] 38705604
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
-[timestart] 95070
-[size] 1278 1361
-[pos] 1281 38
-*-11.378208 98660 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[timestart] 61584
+[size] 2560 1371
+[pos] 0 29
+*-7.378208 62387 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
 [sst_width] 261
 [signals_width] 332
 [sst_expanded] 1
-[sst_vpaned_height] 498
+[sst_vpaned_height] 502
 @200
 -Memory bus
 @22
@@ -57,9 +57,8 @@ tb.top.sprite_renderer.bus_strobe
 tb.top.sprite_renderer.bus_ack
 @200
 -
-@25
-tb.top.sprite_renderer.xcnt_r[5:0]
 @24
+tb.top.sprite_renderer.xcnt_r[5:0]
 tb.top.sprite_renderer.sprite_width_pixels[5:0]
 tb.top.sprite_renderer.linebuf_wridx[9:0]
 @22
@@ -133,7 +132,10 @@ tb.top.sprite_line_buffer.composer_erase_busy
 tb.top.sprite_line_buffer.composer_wr_idx[7:0]
 @28
 tb.top.sprite_line_buffer.composer_wr_en
+@25
+tb.top.composer.x_counter_r[10:0]
 @24
+tb.top.composer.x_counter[9:0]
 tb.top.sprite_line_buffer.composer_rd_idx[9:0]
 tb.top.layer1_linebuf_rdidx[9:0]
 [pattern_trace] 1
