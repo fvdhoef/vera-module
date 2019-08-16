@@ -521,23 +521,30 @@ int main(int argc, const char **argv) {
     signal(SIGINT, sigint_handler);
     init_serial();
 
-    bus_vwrite(0x40040, 1);
+    bool vga = true;
 
-    // bus_vwrite(0x40041, 144); // / 2);
-    // bus_vwrite(0x40042, 144); // / 2);
-    bus_vwrite(0x40041, 128);
-    bus_vwrite(0x40042, 128);
+    bus_vwrite(0x40040, vga ? 1 : 2);
+
+    if (vga) {
+        bus_vwrite(0x40041, 64);
+        bus_vwrite(0x40042, 64);
+        set_active_area(0, 0, 641, 481);
+    } else {
+        bus_vwrite(0x40041, 144 / 2);
+        bus_vwrite(0x40042, 144 / 2);
+        set_active_area(23, 24, 569, 429);
+    }
+
     bus_vwrite(0x40043, 6);
 
-    // set_active_area(23, 24, 569, 429);
-    set_active_area(0, 0, 641, 481);
+#if 1
 
     // for (int i = 255; i >= 0; i++) {
     //     bus_vwrite(0x40041, i);
     //     bus_vwrite(0x40042, i);
     //     usleep(50000);
     // }
-    return;
+    // return;
 
     // bus_write(0x8005, 0x80);
     // usleep(100000);
@@ -563,17 +570,27 @@ int main(int argc, const char **argv) {
     entry.height  = 2;
     entry.address = 0x10000 + (11 * 16 * 16);
 
+    entry.vflip = 0;
+
     int idx = 0;
-    int y   = 10;
+    int y   = -5;
     do {
-        for (int i = 0; i < 28 && idx < 256; i++, idx++) {
-            entry.x = i * 22;
+        for (int i = 0; i < 25 && idx < 256; i++, idx++) {
+            entry.x = i * 10;
             entry.y = y;
+            entry.z = 2; //(i % 3) + 1;
+
             set_sprite(idx, &entry);
         }
         // entry.vflip = !entry.vflip;
-        y += 32;
+        y += 20;
     } while (idx < 256);
+#endif
+    for (int i = 0; i <= 512; i++) {
+        bus_vwrite(0x040006, i & 0xff);
+        bus_vwrite(0x040007, i >> 8);
+        // usleep(16400);
+    }
 
     // for (int i = 256; i >= -16; i--) {
 

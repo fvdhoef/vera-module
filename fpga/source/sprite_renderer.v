@@ -71,6 +71,7 @@ module sprite_renderer(
     // Line renderer
     //////////////////////////////////////////////////////////////////////////
 
+    reg  [9:0] render_time_r, render_time_next;
     reg  [8:0] sprite_idx_r, sprite_idx_next;
     wire [8:0] sprite_idx_incr = sprite_idx_r + 'd1;
 
@@ -132,13 +133,14 @@ module sprite_renderer(
     reg [15:0] bus_addr_r,      bus_addr_next;
     reg        bus_strobe_r,    bus_strobe_next;
     reg [31:0] render_data_r,   render_data_next;
-    reg  [9:0] linebuf_wridx_r, linebuf_wridx_next;
+    reg  [9:0] linebuf_idx_r,   linebuf_idx_next;
     reg        linebuf_wren_r,  linebuf_wren_next;
     reg  [5:0] xcnt_r,          xcnt_next;
 
     assign bus_addr      = bus_addr_r;
     assign bus_strobe    = bus_strobe_r && !bus_ack;
-    assign linebuf_wridx = linebuf_wridx_r;
+    assign linebuf_rdidx = linebuf_idx_next;
+    assign linebuf_wridx = linebuf_idx_r;
     assign linebuf_wren  = linebuf_wren_next;
 
     wire [5:0] hflipped_xcnt = sprite_hflip ? ~xcnt_r : xcnt_r;
@@ -180,7 +182,7 @@ module sprite_renderer(
     endcase
 
     // Select current pixel based on current color depth
-    wire [7:0] tmp_pixel_color = sprite_mode ? cur_pixel_data_8bpp : cur_pixel_data_4bpp;
+    wire [7:0] tmp_pixel_color = sprite_mode ? cur_pixel_data_8bpp : {4'b0, cur_pixel_data_4bpp};
 
     // Apply palette offset
     wire [7:0] cur_pixel_color = {
@@ -190,15 +192,18 @@ module sprite_renderer(
 
     assign linebuf_wrdata = {6'b0, sprite_z, cur_pixel_color};
 
+    wire render_pixel = (sprite_z >= linebuf_rddata[9:8]) && (tmp_pixel_color != 0);
+
     always @* begin
-        sprite_idx_next    = sprite_idx_r;
-        state_next         = state_r;
-        bus_addr_next      = bus_addr_r;
-        bus_strobe_next    = bus_strobe_r;
-        render_data_next   = render_data_r;
-        linebuf_wridx_next = linebuf_wridx_r;
-        linebuf_wren_next  = 0;
-        xcnt_next          = xcnt_r;
+        render_time_next  = render_time_r;
+        sprite_idx_next   = sprite_idx_r;
+        state_next        = state_r;
+        bus_addr_next     = bus_addr_r;
+        bus_strobe_next   = bus_strobe_r;
+        render_data_next  = render_data_r;
+        linebuf_idx_next  = linebuf_idx_r;
+        linebuf_wren_next = 0;
+        xcnt_next         = xcnt_r;
 
         case (state_r)
             STATE_FIND_SPRITE: begin
@@ -206,11 +211,11 @@ module sprite_renderer(
                     state_next = STATE_DONE;
                 end else begin
                     if (sprite_enabled && sprite_on_line) begin
-                        linebuf_wridx_next = sprite_x;
-                        bus_addr_next      = line_addr;
-                        bus_strobe_next    = 1;
-                        state_next         = STATE_WAIT_FETCH;
-                        xcnt_next          = 0;
+                        linebuf_idx_next = sprite_x;
+                        bus_addr_next    = line_addr;
+                        bus_strobe_next  = 1;
+                        state_next       = STATE_WAIT_FETCH;
+                        xcnt_next        = 0;
                     end else begin
                         sprite_idx_next = sprite_idx_incr;
                     end
@@ -228,9 +233,9 @@ module sprite_renderer(
             end
 
             STATE_RENDER: begin
-                xcnt_next          = xcnt_r + 1;
-                linebuf_wridx_next = linebuf_wridx_r + 1;
-                linebuf_wren_next  = 1;
+                xcnt_next         = xcnt_r + 1;
+                linebuf_idx_next  = linebuf_idx_r + 1;
+                linebuf_wren_next = render_pixel;
 
                 if ((sprite_mode && xcnt_r[1:0] == 3) || (!sprite_mode && xcnt_r[2:0] == 7)) begin
                     if (xcnt_r == sprite_width_pixels) begin
@@ -244,6 +249,7 @@ module sprite_renderer(
             end
 
             STATE_DONE: begin
+                bus_strobe_next = 0;
             end
 
         endcase
@@ -252,29 +258,41 @@ module sprite_renderer(
             sprite_idx_next = 0;
             state_next      = STATE_FIND_SPRITE;
             bus_strobe_next = 0;
+
+            render_time_next = 0;
+        end else begin
+            if (state_r != STATE_DONE) begin
+                if (render_time_r == 'd798) begin
+                    state_next = STATE_DONE;
+                end else begin
+                    render_time_next = render_time_r + 1;
+                end
+            end
         end
     end
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
-            sprite_idx_r    <= 0;
-            state_r         <= STATE_FIND_SPRITE;
-            bus_addr_r      <= 0;
-            bus_strobe_r    <= 0;
-            render_data_r   <= 0;
-            linebuf_wridx_r <= 0;
-            linebuf_wren_r  <= 0;
-            xcnt_r          <= 0;
+            render_time_r  <= 0;
+            sprite_idx_r   <= 0;
+            state_r        <= STATE_FIND_SPRITE;
+            bus_addr_r     <= 0;
+            bus_strobe_r   <= 0;
+            render_data_r  <= 0;
+            linebuf_idx_r  <= 0;
+            linebuf_wren_r <= 0;
+            xcnt_r         <= 0;
 
         end else begin
-            sprite_idx_r    <= sprite_idx_next;
-            state_r         <= state_next;
-            bus_addr_r      <= bus_addr_next;
-            bus_strobe_r    <= bus_strobe_next;
-            render_data_r   <= render_data_next;
-            linebuf_wridx_r <= linebuf_wridx_next;
-            linebuf_wren_r  <= linebuf_wren_next;
-            xcnt_r          <= xcnt_next;
+            render_time_r  <= render_time_next;
+            sprite_idx_r   <= sprite_idx_next;
+            state_r        <= state_next;
+            bus_addr_r     <= bus_addr_next;
+            bus_strobe_r   <= bus_strobe_next;
+            render_data_r  <= render_data_next;
+            linebuf_idx_r  <= linebuf_idx_next;
+            linebuf_wren_r <= linebuf_wren_next;
+            xcnt_r         <= xcnt_next;
         end
     end
 
