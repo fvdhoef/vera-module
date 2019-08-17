@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Fri Aug 16 11:47:41 2019
+[*] Sat Aug 17 09:16:43 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Fri Aug 16 11:45:57 2019"
-[dumpfile_size] 61276830
+[dumpfile_mtime] "Sat Aug 17 09:13:19 2019"
+[dumpfile_size] 61816081
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
-[timestart] 97984
+[timestart] 0
 [size] 2560 1371
-[pos] 0 29
-*-7.378208 98620 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] -10 -32
+*-17.378208 205200 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
@@ -46,7 +46,36 @@ tb.top.layer2_renderer.line_render_done
 tb.top.sprite_renderer.line_render_done
 @200
 -Line buffers
+@29
+tb.top.composer.reg_mode_r[1:0]
+@24
+tb.top.composer.layer1_line_idx[8:0]
+@28
+tb.top.composer.layer1_line_render_start
+@24
+tb.top.composer.y_counter_rr[8:0]
+tb.top.composer.y_counter_r[8:0]
+tb.top.composer.scaled_y_counter_r[15:0]
+tb.top.composer.y_counter[8:0]
+@28
+tb.top.composer.vactive
+@22
+tb.top.composer.display_data[7:0]
+@200
 -
+@28
+tb.top.composer.display_next_line
+tb.top.composer.display_next_frame
+tb.top.video_composite.current_field
+@22
+tb.top.layer1_renderer.line_idx[8:0]
+@28
+tb.top.layer1_renderer.line_render_start
+@24
+tb.top.video_vga.y_counter[9:0]
+@28
+tb.top.composer.display_active
+@200
 -
 -Sprite renderer
 @22
@@ -60,9 +89,7 @@ tb.top.sprite_renderer.bus_ack
 @24
 tb.top.sprite_renderer.xcnt_r[5:0]
 tb.top.sprite_renderer.sprite_width_pixels[5:0]
-@25
 tb.top.sprite_renderer.linebuf_rdidx[9:0]
-@24
 tb.top.sprite_renderer.linebuf_wridx[9:0]
 @22
 tb.top.sprite_renderer.linebuf_wrdata[15:0]

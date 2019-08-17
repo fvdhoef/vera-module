@@ -127,7 +127,10 @@ module composer(
         end
     end
 
-    wire [7:0] frac_x_incr = reg_mode_r[1] ? {1'b0, frac_x_incr_r[7:1]} : frac_x_incr_r;
+    wire is_interlaced = reg_mode_r[1];
+
+    // Interlaced modes have double the amount of horizontal clocks
+    wire [7:0] frac_x_incr = is_interlaced ? {1'b0, frac_x_incr_r[7:1]} : frac_x_incr_r;
 
     assign display_mode = reg_mode_r;
     assign chroma_disable = chroma_disable_r;
@@ -142,7 +145,6 @@ module composer(
     wire [8:0] scaled_y_counter = scaled_y_counter_r[15:7];
 
     reg render_start_r;
-    always @(posedge clk) render_start_r <= display_next_line;
 
     // Output control signals to other units
     assign layer1_line_idx           = scaled_y_counter;
@@ -164,17 +166,27 @@ module composer(
     wire sprite_z3 = sprite_lb_rddata[9:8] == 2'd3;
 
     // Regular vertical counter
-    reg  [8:0] y_counter_r;
+    reg  [8:0] y_counter_r, y_counter_rr;
+    reg  next_line_r;
+
     always @(posedge clk or posedge rst) begin
         if (rst) begin
-            y_counter_r <= 0;
+            y_counter_r  <= 0;
+            y_counter_rr <= 0;
+            next_line_r  <= 0;
         end else begin
+            next_line_r <= display_next_line;
             if (display_next_line) begin
-                y_counter_r <= y_counter_r + (reg_mode_r[1] ? 'd2 : 'd1);
+                // Interlaced mode skips every other line
+                y_counter_r  <= y_counter_r + (is_interlaced ? 'd2 : 'd1);
+
+                y_counter_rr <= y_counter_r;
             end
             if (display_next_frame) begin
                 current_field_r <= !display_current_field;
-                y_counter_r <= (reg_mode_r[1] && !display_current_field) ? 'd1 : 'd0;
+
+                // Interlaced mode starts at either the even or odd line
+                y_counter_r <= (is_interlaced && !display_current_field) ? 'd1 : 'd0;
             end
         end
     end
@@ -186,7 +198,7 @@ module composer(
             x_counter_r <= 0;
         end else begin
             if (display_next_pixel) begin
-                x_counter_r <= x_counter_r + (reg_mode_r[1] ? 'd1 : 'd2);
+                x_counter_r <= x_counter_r + (is_interlaced ? 'd1 : 'd2);
             end
             if (display_next_line) begin
                 x_counter_r <= 0;
@@ -195,26 +207,46 @@ module composer(
     end
 
     wire [9:0] x_counter = x_counter_r[10:1];
-    wire [8:0] y_counter = y_counter_r;
+    wire [8:0] y_counter = y_counter_rr;
 
-    assign sprite_lb_erase_start = (x_counter_r == {10'd639, reg_mode_r[1]});
+    // Generate start signal of sprite line buffer clearing
+    assign sprite_lb_erase_start = (x_counter_r == {10'd639, is_interlaced});
 
+    // Determine the active area of the screen where the border isn't shown
     wire hactive = (x_counter >= active_hstart_r) && (x_counter < active_hstop_r);
     wire vactive = (y_counter >= active_vstart_r) && (y_counter < active_vstop_r);
-    wire display_active = hactive && vactive;
+    reg display_active;
+    always @(posedge clk) display_active = hactive && vactive;
 
     // Scaled vertical counter
+    reg vactive_started_r;
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             scaled_y_counter_r <= 'd0;
+            render_start_r     <= 0;
+            vactive_started_r  <= 0;
 
         end else begin
-            if (display_next_line && scaled_y_counter < 'd480 && vactive) begin
-                scaled_y_counter_r <= scaled_y_counter_r + (reg_mode_r[1] ? {7'b0, frac_y_incr_r, 1'b0} : {8'b0, frac_y_incr_r});
+            render_start_r <= 0;
+
+            if (next_line_r) begin
+                if (!vactive_started_r && next_line_r && y_counter_r >= active_vstart_r) begin
+                    vactive_started_r  <= 1;
+                    render_start_r     <= 1;
+
+                    // Start line is dependent of current field in interlaced mode
+                    scaled_y_counter_r <= (is_interlaced && (current_field_r ^ active_vstart_r[0])) ? {8'b0, frac_y_incr_r} : 'd0;
+
+                end else if (scaled_y_counter < 'd480 && vactive) begin
+                    render_start_r     <= 1;
+
+                    // In interlaced modes we increment with twice the amount
+                    scaled_y_counter_r <= scaled_y_counter_r + (is_interlaced ? {7'b0, frac_y_incr_r, 1'b0} : {8'b0, frac_y_incr_r});
+                end
             end
 
             if (display_next_frame) begin
-                scaled_y_counter_r <= (reg_mode_r[1] && !display_current_field) ? {8'b0, frac_y_incr_r} : 'd0;
+                vactive_started_r <= 0;
             end
         end
     end

@@ -521,14 +521,14 @@ int main(int argc, const char **argv) {
     signal(SIGINT, sigint_handler);
     init_serial();
 
-    bool vga = true;
+    bool vga = false;
 
     bus_vwrite(0x40040, vga ? 1 : 2);
 
     if (vga) {
         bus_vwrite(0x40041, 64);
         bus_vwrite(0x40042, 64);
-        set_active_area(0, 0, 641, 481);
+        set_active_area(0, 0, 640, 480);
     } else {
         bus_vwrite(0x40041, 144 / 2);
         bus_vwrite(0x40042, 144 / 2);
@@ -537,6 +537,7 @@ int main(int argc, const char **argv) {
 
     bus_vwrite(0x40043, 6);
 
+    return;
 #if 1
 
     // for (int i = 255; i >= 0; i++) {
@@ -551,7 +552,8 @@ int main(int argc, const char **argv) {
 
     // test_8bpp_bitmap_mode();
 
-    // test_8bpp_tile_mode();
+    test_8bpp_tile_mode();
+    // return;
 
     bus_vwrite(0x40020, 1);
 

@@ -98,9 +98,28 @@ module video_composite(
     wire v_even_field_last = (vcnt == 524);
 
     assign next_line     = (hcnt == H_SYNC + H_BACK_PORCH - 1);
-    assign next_frame    = h_last && v_last2;
+
+    reg current_field_r;
+    reg next_frame_r;
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            next_frame_r    <= 0;
+            current_field_r <= 0;
+        end else begin
+            if (h_last && v_last2) begin
+                next_frame_r    <= 1;
+                current_field_r <= field;
+
+            end else if (next_line) begin
+                next_frame_r    <= 0;
+            end
+        end
+    end
+    assign next_frame = next_frame_r && next_line;
+    assign current_field = current_field_r;
+
+
     assign vblank_pulse  = h_last && (vcnt == 524 || vcnt == 1049);
-    assign current_field = field;
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
