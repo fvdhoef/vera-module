@@ -496,6 +496,7 @@ struct sprite_entry {
     int      z;
     bool     hflip;
     bool     vflip;
+    unsigned collision_mask;
     unsigned palette_offset;
     bool     mode;
     unsigned width;
@@ -507,11 +508,11 @@ void set_sprite(unsigned idx, struct sprite_entry *entry) {
     unsigned offset = 0x40800 + 8 * idx;
 
     bus_vwrite(offset + 0, entry->x & 0xFF);
-    bus_vwrite(offset + 1, ((entry->palette_offset & 0xF) << 4) | (entry->hflip ? 0x08 : 0) | (entry->vflip ? 0x04 : 0) | ((entry->x >> 8) & 3));
+    bus_vwrite(offset + 1, ((entry->palette_offset & 0xF) << 4) | (entry->vflip ? 0x08 : 0) | (entry->hflip ? 0x04 : 0) | ((entry->x >> 8) & 3));
     bus_vwrite(offset + 2, entry->y & 0xFF);
-    bus_vwrite(offset + 3, ((entry->width & 3) << 6) | ((entry->height & 3) << 4) | ((entry->z & 3) << 2) | (entry->mode ? 2 : 0) | ((entry->y >> 8) & 1));
-    bus_vwrite(offset + 4, (entry->address >> 2) & 0xFF);
-    bus_vwrite(offset + 5, (entry->address >> 10) & 0xFF);
+    bus_vwrite(offset + 3, ((entry->collision_mask & 0xF) << 4) | ((entry->z & 3) << 2) | (entry->mode ? 2 : 0) | ((entry->y >> 8) & 1));
+    bus_vwrite(offset + 4, (entry->address >> 5) & 0xFF);
+    bus_vwrite(offset + 5, ((entry->height & 3) << 6) | ((entry->width & 3) << 4) | ((entry->address >> 13) & 0xF));
 }
 
 int main(int argc, const char **argv) {
@@ -521,7 +522,7 @@ int main(int argc, const char **argv) {
     signal(SIGINT, sigint_handler);
     init_serial();
 
-    bool vga = false;
+    bool vga = true;
 
     bus_vwrite(0x40040, vga ? 1 : 2);
 
@@ -537,7 +538,7 @@ int main(int argc, const char **argv) {
 
     bus_vwrite(0x40043, 6);
 
-    return;
+    // return;
 #if 1
 
     // for (int i = 255; i >= 0; i++) {
@@ -552,7 +553,7 @@ int main(int argc, const char **argv) {
 
     // test_8bpp_bitmap_mode();
 
-    test_8bpp_tile_mode();
+    // test_8bpp_tile_mode();
     // return;
 
     bus_vwrite(0x40020, 1);
@@ -564,7 +565,7 @@ int main(int argc, const char **argv) {
     struct sprite_entry entry;
     memset(&entry, 0, sizeof(entry));
 
-    entry.x       = 20;
+    entry.x       = 50;
     entry.y       = 130;
     entry.z       = 2;
     entry.mode    = true;
@@ -572,21 +573,28 @@ int main(int argc, const char **argv) {
     entry.height  = 2;
     entry.address = 0x10000 + (11 * 16 * 16);
 
+    entry.hflip = 0;
     entry.vflip = 0;
 
     int idx = 0;
-    int y   = -5;
+    int y   = 20;
     do {
         for (int i = 0; i < 25 && idx < 256; i++, idx++) {
-            entry.x = i * 10;
+            // entry.x = i * 20;
             entry.y = y;
-            entry.z = 2; //(i % 3) + 1;
+            // entry.z = 2; //(i % 3) + 1;
 
             set_sprite(idx, &entry);
+            entry.z = 0;
+            return;
         }
+
+        entry.z = 0;
         // entry.vflip = !entry.vflip;
         y += 20;
     } while (idx < 256);
+
+    return;
 #endif
     for (int i = 0; i <= 512; i++) {
         bus_vwrite(0x040006, i & 0xff);

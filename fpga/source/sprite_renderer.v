@@ -79,15 +79,16 @@ module sprite_renderer(
 
     // Decode fields from sprite attributes
     wire  [9:0] sprite_x              = sprite_attr[9:0];
-    wire        sprite_vflip          = sprite_attr[10];
-    wire        sprite_hflip          = sprite_attr[11];
+    wire        sprite_hflip          = sprite_attr[10];
+    wire        sprite_vflip          = sprite_attr[11];
     wire  [3:0] sprite_palette_offset = sprite_attr[15:12];
     wire  [8:0] sprite_y              = sprite_attr[24:16];
     wire        sprite_mode           = sprite_attr[25];
     wire  [1:0] sprite_z              = sprite_attr[27:26];
-    wire  [1:0] sprite_height         = sprite_attr[29:28];
-    wire  [1:0] sprite_width          = sprite_attr[31:30];
-    wire [15:0] sprite_addr           = sprite_attr[47:32];
+    wire  [3:0] sprite_collision_mask = sprite_attr[31:28];
+    wire [11:0] sprite_addr           = sprite_attr[43:32];
+    wire  [1:0] sprite_width          = sprite_attr[45:44];
+    wire  [1:0] sprite_height         = sprite_attr[47:46];
 
     // Decode sprite height
     reg [5:0] sprite_height_pixels;
@@ -113,37 +114,40 @@ module sprite_renderer(
     wire       sprite_enabled = sprite_z != 2'd0;
     wire [5:0] sprite_line    = sprite_vflip ? (sprite_height_pixels - ydiff[5:0]) : ydiff[5:0];
 
+    reg  [5:0] xcnt_r, xcnt_next;
+    wire [5:0] hflipped_xcnt      = sprite_hflip ? ~xcnt_r    : xcnt_r;
+    wire [5:0] hflipped_xcnt_next = sprite_hflip ? ~xcnt_next : xcnt_next;
+
+    // Determine address of current sprite line
     reg [15:0] line_addr_tmp;
     always @* case (sprite_width)
-        2'd0: line_addr_tmp = sprite_mode ? {9'b0, sprite_line, 1'b0} : {10'b0, sprite_line      };   //  8 pixels
-        2'd1: line_addr_tmp = sprite_mode ? {8'b0, sprite_line, 2'b0} : { 9'b0, sprite_line, 1'b0};   // 16 pixels
-        2'd2: line_addr_tmp = sprite_mode ? {7'b0, sprite_line, 3'b0} : { 8'b0, sprite_line, 2'b0};   // 32 pixels
-        2'd3: line_addr_tmp = sprite_mode ? {6'b0, sprite_line, 4'b0} : { 7'b0, sprite_line, 3'b0};   // 64 pixels
+        2'd0: line_addr_tmp = sprite_mode ? {9'b0, sprite_line, hflipped_xcnt_next[  2]} : {10'b0, sprite_line                         }; //  8 pixels
+        2'd1: line_addr_tmp = sprite_mode ? {8'b0, sprite_line, hflipped_xcnt_next[3:2]} : { 9'b0, sprite_line, hflipped_xcnt_next[  3]}; // 16 pixels
+        2'd2: line_addr_tmp = sprite_mode ? {7'b0, sprite_line, hflipped_xcnt_next[4:2]} : { 8'b0, sprite_line, hflipped_xcnt_next[4:3]}; // 32 pixels
+        2'd3: line_addr_tmp = sprite_mode ? {6'b0, sprite_line, hflipped_xcnt_next[5:2]} : { 7'b0, sprite_line, hflipped_xcnt_next[5:3]}; // 64 pixels
     endcase
-    wire [15:0] line_addr = sprite_addr + line_addr_tmp;
+    wire [15:0] line_addr = {1'b0, sprite_addr, 3'b0}  + line_addr_tmp;
 
-
+    // State machine states
     parameter
         STATE_FIND_SPRITE   = 2'b00,
         STATE_WAIT_FETCH    = 2'b01,
         STATE_RENDER        = 2'b10,
         STATE_DONE          = 2'b11;
 
+    // Registers used by state machine
     reg  [1:0] state_r,         state_next;
     reg [15:0] bus_addr_r,      bus_addr_next;
     reg        bus_strobe_r,    bus_strobe_next;
     reg [31:0] render_data_r,   render_data_next;
     reg  [9:0] linebuf_idx_r,   linebuf_idx_next;
     reg        linebuf_wren_r,  linebuf_wren_next;
-    reg  [5:0] xcnt_r,          xcnt_next;
 
     assign bus_addr      = bus_addr_r;
     assign bus_strobe    = bus_strobe_r && !bus_ack;
     assign linebuf_rdidx = linebuf_idx_next;
     assign linebuf_wridx = linebuf_idx_r;
     assign linebuf_wren  = linebuf_wren_next;
-
-    wire [5:0] hflipped_xcnt = sprite_hflip ? ~xcnt_r : xcnt_r;
 
     // Select current pixel for 4bpp mode
     reg [3:0] cur_pixel_data_4bpp;
@@ -190,10 +194,13 @@ module sprite_renderer(
         tmp_pixel_color[3:0]
     };
 
-    assign linebuf_wrdata = {6'b0, sprite_z, cur_pixel_color};
+    // Compose data to be written to line buffer
+    assign linebuf_wrdata = {linebuf_rddata[15:12] | sprite_collision_mask, 2'b0, sprite_z, cur_pixel_color};
 
+    // Determine if current pixel should be rendered
     wire render_pixel = (sprite_z >= linebuf_rddata[9:8]) && (tmp_pixel_color != 0);
 
+    // Render state machine
     always @* begin
         render_time_next  = render_time_r;
         sprite_idx_next   = sprite_idx_r;
@@ -206,6 +213,7 @@ module sprite_renderer(
         xcnt_next         = xcnt_r;
 
         case (state_r)
+            // Find a sprite to be rendered
             STATE_FIND_SPRITE: begin
                 if (sprite_idx_r[8]) begin
                     state_next = STATE_DONE;
@@ -215,23 +223,22 @@ module sprite_renderer(
                         bus_addr_next    = line_addr;
                         bus_strobe_next  = 1;
                         state_next       = STATE_WAIT_FETCH;
-                        xcnt_next        = 0;
                     end else begin
                         sprite_idx_next = sprite_idx_incr;
                     end
                 end
             end
 
+            // Wait for bus data to arrive
             STATE_WAIT_FETCH: begin
                 if (bus_ack) begin
                     bus_strobe_next  = 0;
-                    bus_addr_next    = bus_addr_r + 1;
-
                     render_data_next = bus_rddata;
                     state_next       = STATE_RENDER;
                 end
             end
 
+            // Render the fetched data to the line buffer
             STATE_RENDER: begin
                 xcnt_next         = xcnt_r + 1;
                 linebuf_idx_next  = linebuf_idx_r + 1;
@@ -241,27 +248,30 @@ module sprite_renderer(
                     if (xcnt_r == sprite_width_pixels) begin
                         sprite_idx_next = sprite_idx_incr;
                         state_next      = STATE_FIND_SPRITE;
+                        xcnt_next       = 0;
                     end else begin
+                        bus_addr_next   = line_addr;
                         bus_strobe_next = 1;
                         state_next      = STATE_WAIT_FETCH;
                     end
                 end
             end
 
+            // Wait for the next line
             STATE_DONE: begin
                 bus_strobe_next = 0;
             end
-
         endcase
 
         if (line_render_start) begin
-            sprite_idx_next = 0;
-            state_next      = STATE_FIND_SPRITE;
-            bus_strobe_next = 0;
-
+            state_next       = STATE_FIND_SPRITE;
+            xcnt_next        = 0;
+            sprite_idx_next  = 0;
+            bus_strobe_next  = 0;
             render_time_next = 0;
         end else begin
             if (state_r != STATE_DONE) begin
+                // Limit render time so that VGA and composite mode get the same amount of render time
                 if (render_time_r == 'd798) begin
                     state_next = STATE_DONE;
                 end else begin

@@ -37,26 +37,26 @@ module sprite_ram(
         end
 
         mem[1][9:0]   = 10'd60; // x
-        mem[1][10]    = 0;      // vflip
-        mem[1][11]    = 0;      // hflip
+        mem[1][10]    = 0;      // hflip
+        mem[1][11]    = 0;      // vflip
         mem[1][15:12] = 0;      // palette_offset
         mem[1][24:16] = 9'd3;   // y
         mem[1][25]    = 1;      // mode
         mem[1][27:26] = 3'd1;   // z
-        mem[1][29:28] = 4'd1;   // height
-        mem[1][31:30] = 4'd2;   // width
-        mem[1][47:32] = 'h1000; // addr
+        mem[1][43:32] = 'h100;  // addr
+        mem[1][45:44] = 4'd2;   // width
+        mem[1][47:46] = 4'd1;   // height
 
         mem[10][9:0]   = 10'd200; // x
-        mem[10][10]    = 0;      // vflip
-        mem[10][11]    = 0;      // hflip
+        mem[10][10]    = 0;      // hflip
+        mem[10][11]    = 0;      // vflip
         mem[10][15:12] = 0;      // palette_offset
         mem[10][24:16] = 9'd5;   // y
         mem[10][25]    = 1;      // mode
         mem[10][27:26] = 3'd1;   // z
-        mem[10][29:28] = 4'd1;   // height
-        mem[10][31:30] = 4'd2;   // width
-        mem[10][47:32] = 'h1000; // addr
+        mem[10][43:32] = 'h100;  // addr
+        mem[10][45:44] = 4'd2;   // width
+        mem[10][47:46] = 4'd1;   // height
 
     end
 

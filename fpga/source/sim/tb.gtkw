@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Sat Aug 17 09:16:43 2019
+[*] Sat Aug 17 12:40:39 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Sat Aug 17 09:13:19 2019"
-[dumpfile_size] 61816081
+[dumpfile_mtime] "Sat Aug 17 12:39:26 2019"
+[dumpfile_size] 61873927
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
 [timestart] 0
 [size] 2560 1371
 [pos] -10 -32
-*-17.378208 205200 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-17.378208 12740 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
@@ -46,7 +46,7 @@ tb.top.layer2_renderer.line_render_done
 tb.top.sprite_renderer.line_render_done
 @200
 -Line buffers
-@29
+@28
 tb.top.composer.reg_mode_r[1:0]
 @24
 tb.top.composer.layer1_line_idx[8:0]
@@ -116,6 +116,8 @@ tb.top.sprite_renderer.reg_enable_r
 @2028
 ^1 /c/Work/vera-module/fpga/source/sim/sprite_renderer_state.txt
 tb.top.sprite_renderer.state_r[1:0]
+@23
+tb.top.sprite_renderer.line_addr[15:0]
 @200
 -
 @24
@@ -140,7 +142,6 @@ tb.top.sprite_renderer.sprite_z[1:0]
 tb.top.sprite_renderer.sprite_height[1:0]
 tb.top.sprite_renderer.sprite_width[1:0]
 @22
-tb.top.sprite_renderer.sprite_addr[15:0]
 tb.top.sprite_renderer.line_addr[15:0]
 @200
 -
