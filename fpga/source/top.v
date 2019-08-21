@@ -89,6 +89,9 @@ module top(
     wire  [7:0] sprite_idx;
     wire [47:0] sprite_attr;
 
+    wire        line_irq;
+    wire        sprcol_irq;
+
     wire next_frame;
     wire vblank_pulse;
     wire next_line;
@@ -135,7 +138,7 @@ module top(
         
         .irqs(irqs));
 
-    assign irqs = {7'b0, vblank_pulse};
+    assign irqs = {5'b0, sprcol_irq, line_irq, vblank_pulse};
 
     // Register bus memory map:
     // 00000-1FFFF  Main RAM
@@ -325,11 +328,14 @@ module top(
         .rst(reset),
         .clk(clk),
 
+        .sprcol_irq(sprcol_irq),
+
         // Composer interface
         .line_idx(sprites_line_idx),
         .line_render_start(sprites_line_render_start),
         .line_render_done(sprites_line_render_done),
         .sprites_enabled(sprites_enabled),
+        .frame_done(vblank_pulse),
 
         // Register interface (on register bus)
         .regs_addr(regbus_addr[3:0]),
@@ -369,6 +375,8 @@ module top(
     composer composer(
         .rst(reset),
         .clk(clk),
+
+        .line_irq(line_irq),
 
         // Register interface
         .regs_addr(regbus_addr[4:0]),
@@ -454,7 +462,7 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     // Sprite attribute RAM
     //////////////////////////////////////////////////////////////////////////
-    wire        sprite_attr_write   = sprite_attr_sel && regbus_strobe && regbus_write;
+    wire        sprite_attr_write = sprite_attr_sel && regbus_strobe && regbus_write;
 
     reg   [5:0] sprite_attr_bytesel;
     always @* case (regbus_addr[2:0])

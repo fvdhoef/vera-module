@@ -4,11 +4,14 @@ module sprite_renderer(
     input  wire        rst,
     input  wire        clk,
 
+    output reg         sprcol_irq,
+
     // Composer interface
     input  wire  [8:0] line_idx,
     input  wire        line_render_start,
     output wire        line_render_done,
     output wire        sprites_enabled,
+    input  wire        frame_done,
 
     // Register interface
     input  wire  [3:0] regs_addr,
@@ -34,12 +37,15 @@ module sprite_renderer(
     output wire [15:0] linebuf_wrdata,
     output wire        linebuf_wren);
 
+    reg [3:0] cur_collision_mask_r,   cur_collision_mask_next;
+    reg [3:0] frame_collision_mask_r, frame_collision_mask_next;
+
     //////////////////////////////////////////////////////////////////////////
     // Register interface
     //////////////////////////////////////////////////////////////////////////
 
-    // CTRL0
-    reg        reg_enable_r;
+    // SPR_CTRL
+    reg reg_enable_r;
 
     assign sprites_enabled = reg_enable_r;
 
@@ -47,6 +53,7 @@ module sprite_renderer(
     always @* begin
         case (regs_addr)
             4'h0: regs_rddata = {7'b0, reg_enable_r};
+            4'h1: regs_rddata = {4'b0, frame_collision_mask_r};
             default: regs_rddata = 8'h00;
         endcase
     end
@@ -54,7 +61,7 @@ module sprite_renderer(
     // Register interface write data
     always @(posedge clk or posedge rst) begin
         if (rst) begin
-            reg_enable_r        <= 0;
+            reg_enable_r <= 0;
 
         end else begin
             if (regs_write) begin
@@ -188,6 +195,9 @@ module sprite_renderer(
     // Select current pixel based on current color depth
     wire [7:0] tmp_pixel_color = sprite_mode ? cur_pixel_data_8bpp : {4'b0, cur_pixel_data_4bpp};
 
+    // Determine if pixel is transparent
+    wire pixel_is_transparent = (tmp_pixel_color == 8'b0);
+
     // Apply palette offset
     wire [7:0] cur_pixel_color = {
         ((tmp_pixel_color[7:4] == 0 && tmp_pixel_color[3:0] != 0) ? sprite_palette_offset : tmp_pixel_color[7:4]),
@@ -198,19 +208,27 @@ module sprite_renderer(
     assign linebuf_wrdata = {linebuf_rddata[15:12] | sprite_collision_mask, 2'b0, sprite_z, cur_pixel_color};
 
     // Determine if current pixel should be rendered
-    wire render_pixel = (sprite_z >= linebuf_rddata[9:8]) && (tmp_pixel_color != 0);
+    wire render_pixel =  !pixel_is_transparent && sprite_z >= linebuf_rddata[9:8] && tmp_pixel_color != 0;
+
+    // Determine collision for the current pixel
+    wire [3:0] collision =
+        linebuf_idx_r < 'd640 &&
+        (!pixel_is_transparent && sprite_collision_mask != 4'b0) ? (linebuf_rddata[15:12] & ~sprite_collision_mask) : 4'b0;
 
     // Render state machine
     always @* begin
-        render_time_next  = render_time_r;
-        sprite_idx_next   = sprite_idx_r;
-        state_next        = state_r;
-        bus_addr_next     = bus_addr_r;
-        bus_strobe_next   = bus_strobe_r;
-        render_data_next  = render_data_r;
-        linebuf_idx_next  = linebuf_idx_r;
-        linebuf_wren_next = 0;
-        xcnt_next         = xcnt_r;
+        render_time_next          = render_time_r;
+        sprite_idx_next           = sprite_idx_r;
+        state_next                = state_r;
+        bus_addr_next             = bus_addr_r;
+        bus_strobe_next           = bus_strobe_r;
+        render_data_next          = render_data_r;
+        linebuf_idx_next          = linebuf_idx_r;
+        linebuf_wren_next         = 0;
+        xcnt_next                 = xcnt_r;
+        sprcol_irq                = 0;
+        cur_collision_mask_next   = cur_collision_mask_r;
+        frame_collision_mask_next = frame_collision_mask_r;
 
         case (state_r)
             // Find a sprite to be rendered
@@ -243,6 +261,9 @@ module sprite_renderer(
                 xcnt_next         = xcnt_r + 1;
                 linebuf_idx_next  = linebuf_idx_r + 1;
                 linebuf_wren_next = render_pixel;
+
+                // Merge collision with current frame's collision mask
+                cur_collision_mask_next = cur_collision_mask_r | collision;
 
                 if ((sprite_mode && xcnt_r[1:0] == 3) || (!sprite_mode && xcnt_r[2:0] == 7)) begin
                     if (xcnt_r == sprite_width_pixels) begin
@@ -279,30 +300,40 @@ module sprite_renderer(
                 end
             end
         end
+
+        if (frame_done) begin
+            sprcol_irq                = (cur_collision_mask_r != 4'b0);
+            frame_collision_mask_next = cur_collision_mask_r;
+            cur_collision_mask_next   = 4'b0;
+        end
     end
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
-            render_time_r  <= 0;
-            sprite_idx_r   <= 0;
-            state_r        <= STATE_FIND_SPRITE;
-            bus_addr_r     <= 0;
-            bus_strobe_r   <= 0;
-            render_data_r  <= 0;
-            linebuf_idx_r  <= 0;
-            linebuf_wren_r <= 0;
-            xcnt_r         <= 0;
+            render_time_r          <= 0;
+            sprite_idx_r           <= 0;
+            state_r                <= STATE_FIND_SPRITE;
+            bus_addr_r             <= 0;
+            bus_strobe_r           <= 0;
+            render_data_r          <= 0;
+            linebuf_idx_r          <= 0;
+            linebuf_wren_r         <= 0;
+            xcnt_r                 <= 0;
+            cur_collision_mask_r   <= 0;
+            frame_collision_mask_r <= 0;
 
         end else begin
-            render_time_r  <= render_time_next;
-            sprite_idx_r   <= sprite_idx_next;
-            state_r        <= state_next;
-            bus_addr_r     <= bus_addr_next;
-            bus_strobe_r   <= bus_strobe_next;
-            render_data_r  <= render_data_next;
-            linebuf_idx_r  <= linebuf_idx_next;
-            linebuf_wren_r <= linebuf_wren_next;
-            xcnt_r         <= xcnt_next;
+            render_time_r          <= render_time_next;
+            sprite_idx_r           <= sprite_idx_next;
+            state_r                <= state_next;
+            bus_addr_r             <= bus_addr_next;
+            bus_strobe_r           <= bus_strobe_next;
+            render_data_r          <= render_data_next;
+            linebuf_idx_r          <= linebuf_idx_next;
+            linebuf_wren_r         <= linebuf_wren_next;
+            xcnt_r                 <= xcnt_next;
+            cur_collision_mask_r   <= cur_collision_mask_next;
+            frame_collision_mask_r <= frame_collision_mask_next;
         end
     end
 

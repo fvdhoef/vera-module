@@ -4,6 +4,8 @@ module composer(
     input  wire        rst,
     input  wire        clk,
 
+    output reg         line_irq,
+
     // Register interface
     input  wire  [4:0] regs_addr,
     input  wire  [7:0] regs_wrdata,
@@ -69,6 +71,7 @@ module composer(
     reg  [9:0] active_hstop_r;
     reg  [8:0] active_vstart_r;
     reg  [8:0] active_vstop_r;
+    reg  [8:0] irq_line_r;
 
     reg        current_field_r;
 
@@ -84,6 +87,8 @@ module composer(
             5'h6: regs_rddata = active_vstart_r[7:0];
             5'h7: regs_rddata = active_vstop_r[7:0];
             5'h8: regs_rddata = {2'b00, active_vstop_r[8], active_vstart_r[8], active_hstop_r[9:8], active_hstart_r[9:8]};
+            5'h9: regs_rddata = irq_line_r[7:0];
+            5'hA: regs_rddata = {7'b0, irq_line_r[8]};
 
             default: regs_rddata = 8'h00;
         endcase
@@ -101,6 +106,7 @@ module composer(
             active_hstop_r      <= 10'd640;
             active_vstart_r     <= 9'd0;
             active_vstop_r      <= 9'd480;
+            irq_line_r          <= 0;
 
         end else begin
             if (regs_write) begin
@@ -122,6 +128,8 @@ module composer(
                         active_vstart_r[8]     <= regs_wrdata[4];
                         active_vstop_r[8]      <= regs_wrdata[5];
                     end
+                    5'h9: irq_line_r[7:0]      <= regs_wrdata;
+                    5'hA: irq_line_r[8]        <= regs_wrdata[0];
                 endcase
             end
         end
@@ -188,6 +196,18 @@ module composer(
                 // Interlaced mode starts at either the even or odd line
                 y_counter_r <= (is_interlaced && !display_current_field) ? 'd1 : 'd0;
             end
+        end
+    end
+
+    // Generate line irq
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            line_irq <= 0;
+
+        end else begin
+            line_irq <= display_next_line && (
+                (!is_interlaced && y_counter_r == irq_line_r) ||
+                ( is_interlaced && y_counter_r[8:1] == irq_line_r[8:1]));
         end
     end
 
