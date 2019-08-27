@@ -1,4 +1,4 @@
-`timescale 1 ns / 1 ns
+`timescale 1 ns / 1 ps
 `default_nettype none
 
 module tb();
@@ -16,9 +16,9 @@ module tb();
     reg sysclk = 0;
     always #20 sysclk = !sysclk;
 
-    // Generate 2MHz PHY2 clock
+    // Generate 8MHz PHY2 clock
     reg phy2 = 0;
-    always #250 phy2 = !phy2;
+    always #62.5 phy2 = !phy2;
 
     // Generate async reset
     reg extbus_res_n = 0;
@@ -29,7 +29,7 @@ module tb();
     reg extbus_rw_n = 1;
     reg [15:0] extbus_a = 0;
 
-    wire extbus_cs_n = !((extbus_a & 'hFFF0) == 'h1000);
+    wire #40 extbus_cs_n = !((extbus_a & 'hFFF0) == 'h1000);
 
 
     reg [7:0] extbus_d_wr = 0;
@@ -63,7 +63,7 @@ module tb();
             extbus_rw_n = 1'b0; // write
 
             @(posedge phy2)
-            #140;
+            #25;
             extbus_d_wr = data;
 
 
@@ -71,6 +71,7 @@ module tb();
             #10;
             extbus_a = 16'b0;
             extbus_rw_n = 1'b1;
+            extbus_d_wr = 8'bX;
         end
     endtask
 

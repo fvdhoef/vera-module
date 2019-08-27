@@ -550,14 +550,36 @@ module top(
     end
 
     // Layer 1 line buffer
-    dpram #(.ADDR_WIDTH(11), .DATA_WIDTH(8)) layer1_linebuf(
-        .wr_clk(clk), .wr_addr({ active_line_buf_r, layer1_linebuf_wridx}), .wr_data(layer1_linebuf_wrdata), .wr_en(layer1_linebuf_wren),
-        .rd_clk(clk), .rd_addr({!active_line_buf_r, layer1_linebuf_rdidx}), .rd_data(layer1_linebuf_rddata));
+    layer_line_buffer layer1_line_buffer(
+        .rst(reset),
+        .clk(clk),
+
+        .active_render_buffer(active_line_buf_r),
+
+        // Renderer interface
+        .renderer_wr_idx(layer1_linebuf_wridx),
+        .renderer_wr_data(layer1_linebuf_wrdata),
+        .renderer_wr_en(layer1_linebuf_wren),
+
+        // Composer interface
+        .composer_rd_idx(layer1_linebuf_rdidx),
+        .composer_rd_data(layer1_linebuf_rddata));
 
     // Layer 2 line buffer
-    dpram #(.ADDR_WIDTH(11), .DATA_WIDTH(8)) layer2_linebuf(
-        .wr_clk(clk), .wr_addr({ active_line_buf_r, layer2_linebuf_wridx}), .wr_data(layer2_linebuf_wrdata), .wr_en(layer2_linebuf_wren),
-        .rd_clk(clk), .rd_addr({!active_line_buf_r, layer2_linebuf_rdidx}), .rd_data(layer2_linebuf_rddata));
+    layer_line_buffer layer2_line_buffer(
+        .rst(reset),
+        .clk(clk),
+
+        .active_render_buffer(active_line_buf_r),
+
+        // Renderer interface
+        .renderer_wr_idx(layer2_linebuf_wridx),
+        .renderer_wr_data(layer2_linebuf_wrdata),
+        .renderer_wr_en(layer2_linebuf_wren),
+
+        // Composer interface
+        .composer_rd_idx(layer2_linebuf_rdidx),
+        .composer_rd_data(layer2_linebuf_rddata));
 
     // Sprite line buffers
     sprite_line_buffer sprite_line_buffer(

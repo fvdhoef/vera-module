@@ -553,7 +553,7 @@ int main(int argc, const char **argv) {
 
     // test_8bpp_bitmap_mode();
 
-    // test_8bpp_tile_mode();
+    test_8bpp_tile_mode();
     // return;
 
     bus_vwrite(0x40020, 1);

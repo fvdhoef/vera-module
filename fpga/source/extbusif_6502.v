@@ -63,7 +63,7 @@ module extbusif_6502(
     assign extbus_irq_n = irq ? 1'b0 : 1'bZ;
 
     // RDY signal (open-drain output)
-    assign extbus_rdy = (!extbus_cs_n && bm_busy_r) ? 1'b0 : 1'bZ;
+    assign extbus_rdy = 1'bZ;   //(!extbus_cs_n && bm_busy_r) ? 1'b0 : 1'bZ;
 
     // Gate PHY2 by chipselect
     wire ext_access = extbus_phy2 && !extbus_cs_n;
