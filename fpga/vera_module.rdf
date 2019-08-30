@@ -57,6 +57,9 @@
         <Source name="source/sprite_line_buffer.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
+        <Source name="source/layer_line_buffer.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
         <Source name="source/vera_module.ldc" type="LSE Design Constraints File" type_short="LDC">
             <Options/>
         </Source>
