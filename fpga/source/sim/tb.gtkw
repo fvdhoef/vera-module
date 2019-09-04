@@ -1,22 +1,22 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Sun Aug 25 09:01:01 2019
+[*] Wed Sep  4 13:32:58 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Sun Aug 25 08:59:35 2019"
-[dumpfile_size] 63249219
+[dumpfile_mtime] "Wed Sep  4 13:29:28 2019"
+[dumpfile_size] 79321960
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
 [timestart] 0
-[size] 2560 1371
-[pos] -10 -32
-*-17.378208 125000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[size] 1278 1361
+[pos] 1271 -23
+*-26.378208 98620000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
 [sst_width] 261
 [signals_width] 332
 [sst_expanded] 1
-[sst_vpaned_height] 502
+[sst_vpaned_height] 498
 @200
 -External bus
 @28
@@ -25,9 +25,8 @@ tb.top.extbus_phi2
 tb.top.extbus_a[2:0]
 @22
 tb.top.extbus_d[7:0]
-@29
-tb.top.extbus_rw_n
 @28
+tb.top.extbus_rw_n
 tb.top.extbus_cs_n
 tb.top.extbus_irq_n
 tb.top.extbus_rdy
@@ -134,33 +133,11 @@ tb.top.sprite_renderer.state_r[1:0]
 tb.top.sprite_renderer.line_addr[15:0]
 @200
 -
-@24
-tb.top.sprite_renderer.sprite_idx_r[8:0]
-@200
 -
-@22
-tb.top.sprite_renderer.sprite_attr[47:0]
-@24
-tb.top.sprite_renderer.sprite_x[9:0]
-@28
-tb.top.sprite_renderer.sprite_vflip
-tb.top.sprite_renderer.sprite_hflip
-@22
-tb.top.sprite_renderer.sprite_palette_offset[3:0]
-@24
-tb.top.sprite_renderer.sprite_y[8:0]
-@28
-tb.top.sprite_renderer.sprite_mode
-@24
-tb.top.sprite_renderer.sprite_z[1:0]
-tb.top.sprite_renderer.sprite_height[1:0]
-tb.top.sprite_renderer.sprite_width[1:0]
 @22
 tb.top.sprite_renderer.line_addr[15:0]
 @200
 -
-@24
-tb.top.sprite_renderer.ydiff[8:0]
 @28
 tb.top.sprite_renderer.sprite_on_line
 tb.top.sprite_renderer.sprite_enabled
@@ -168,8 +145,54 @@ tb.top.sprite_renderer.sprite_enabled
 tb.top.sprite_renderer.sprite_line[5:0]
 @200
 -
+@c00024
+#{tb.top.sprite_renderer.sprite_idx[7:1]} (0)tb.top.sprite_renderer.sprite_idx[7:0] (1)tb.top.sprite_renderer.sprite_idx[7:0] (2)tb.top.sprite_renderer.sprite_idx[7:0] (3)tb.top.sprite_renderer.sprite_idx[7:0] (4)tb.top.sprite_renderer.sprite_idx[7:0] (5)tb.top.sprite_renderer.sprite_idx[7:0] (6)tb.top.sprite_renderer.sprite_idx[7:0]
 @28
-tb.top.sprite_renderer.sprite_vflip
+(0)tb.top.sprite_renderer.sprite_idx[7:0]
+(1)tb.top.sprite_renderer.sprite_idx[7:0]
+(2)tb.top.sprite_renderer.sprite_idx[7:0]
+(3)tb.top.sprite_renderer.sprite_idx[7:0]
+(4)tb.top.sprite_renderer.sprite_idx[7:0]
+(5)tb.top.sprite_renderer.sprite_idx[7:0]
+(6)tb.top.sprite_renderer.sprite_idx[7:0]
+@1401200
+-group_end
+@28
+(7)tb.top.sprite_renderer.sprite_idx[7:0]
+tb.top.sprite_renderer.render_busy
+@200
+-
+@24
+tb.top.sprite_renderer.sprite_idx_r[7:0]
+@28
+tb.top.sprite_renderer.sf_state_r[1:0]
+@29
+tb.top.sprite_renderer.start_render_r
+@200
+-
+@28
+tb.top.sprite_renderer.save_hi
+@22
+tb.top.sprite_renderer.sprite_addr_r[11:0]
+@28
+tb.top.sprite_renderer.sprite_mode_r
+@24
+tb.top.sprite_renderer.sprite_x_r[9:0]
+@28
+tb.top.sprite_renderer.save_lo
+@22
+tb.top.sprite_renderer.sprite_line_r[5:0]
+@28
+tb.top.sprite_renderer.sprite_hflip_r
+@24
+tb.top.sprite_renderer.sprite_z_r[1:0]
+tb.top.sprite_renderer.sprite_collision_mask_r[3:0]
+tb.top.sprite_renderer.sprite_palette_offset_r[3:0]
+tb.top.sprite_renderer.sprite_width_r[1:0]
+tb.top.sprite_renderer.sprite_height_r[1:0]
+@200
+-
+@28
 tb.top.sprite_line_buffer.composer_erase_start
 tb.top.active_line_buf_r
 tb.top.sprite_line_buffer.composer_erase_busy

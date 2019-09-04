@@ -87,7 +87,7 @@ module top(
     wire        sprite_lb_composer_erase_busy;
 
     wire  [7:0] sprite_idx;
-    wire [47:0] sprite_attr;
+    wire [31:0] sprite_attr;
 
     wire        line_irq;
     wire        sprcol_irq;
@@ -464,28 +464,20 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     wire        sprite_attr_write = sprite_attr_sel && regbus_strobe && regbus_write;
 
-    reg   [5:0] sprite_attr_bytesel;
-    always @* case (regbus_addr[2:0])
-        3'd0: sprite_attr_bytesel = 6'b000001;
-        3'd1: sprite_attr_bytesel = 6'b000010;
-        3'd2: sprite_attr_bytesel = 6'b000100;
-        3'd3: sprite_attr_bytesel = 6'b001000;
-        3'd4: sprite_attr_bytesel = 6'b010000;
-        3'd5: sprite_attr_bytesel = 6'b100000;
-        3'd6, 3'd7:
-            sprite_attr_bytesel = 6'b000000;
+    reg   [3:0] sprite_attr_bytesel;
+    always @* case (regbus_addr[1:0])
+        3'd0: sprite_attr_bytesel = 4'b0001;
+        3'd1: sprite_attr_bytesel = 4'b0010;
+        3'd2: sprite_attr_bytesel = 4'b0100;
+        3'd3: sprite_attr_bytesel = 4'b1000;
     endcase
 
-    wire [47:0] sprite_ram_rddata48;
-    always @* case (regbus_addr[2:0])
-        3'd0: sprite_attr_rddata = sprite_ram_rddata48[7:0];
-        3'd1: sprite_attr_rddata = sprite_ram_rddata48[15:8];
-        3'd2: sprite_attr_rddata = sprite_ram_rddata48[23:16];
-        3'd3: sprite_attr_rddata = sprite_ram_rddata48[31:24];
-        3'd4: sprite_attr_rddata = sprite_ram_rddata48[39:32];
-        3'd5: sprite_attr_rddata = sprite_ram_rddata48[47:40];
-        3'd6, 3'd7:
-            sprite_attr_rddata = 8'h00;
+    wire [31:0] sprite_ram_rddata32;
+    always @* case (regbus_addr[1:0])
+        3'd0: sprite_attr_rddata = sprite_ram_rddata32[7:0];
+        3'd1: sprite_attr_rddata = sprite_ram_rddata32[15:8];
+        3'd2: sprite_attr_rddata = sprite_ram_rddata32[23:16];
+        3'd3: sprite_attr_rddata = sprite_ram_rddata32[31:24];
     endcase
 
     sprite_ram sprite_attr_ram(
@@ -495,9 +487,9 @@ module top(
         .rd_en_i(1'b1),
         .rd_clk_en_i(1'b1),
         .wr_en_i(sprite_attr_write),
-        .wr_data_i({6{regbus_wrdata}}),
+        .wr_data_i({4{regbus_wrdata}}),
         .ben_i(sprite_attr_bytesel),
-        .wr_addr_i(regbus_addr[10:3]),
+        .wr_addr_i(regbus_addr[9:2]),
         .rd_addr_i(sprite_idx),
         .rd_data_o(sprite_attr));
 
@@ -508,11 +500,11 @@ module top(
         .rd_en_i(1'b1),
         .rd_clk_en_i(1'b1),
         .wr_en_i(sprite_attr_write),
-        .wr_data_i({6{regbus_wrdata}}),
+        .wr_data_i({4{regbus_wrdata}}),
         .ben_i(sprite_attr_bytesel),
-        .wr_addr_i(regbus_addr[10:3]),
-        .rd_addr_i(regbus_addr[10:3]),
-        .rd_data_o(sprite_ram_rddata48));
+        .wr_addr_i(regbus_addr[9:2]),
+        .rd_addr_i(regbus_addr[9:2]),
+        .rd_data_o(sprite_ram_rddata32));
 
     //////////////////////////////////////////////////////////////////////////
     // Main RAM

@@ -21,10 +21,10 @@ module tb();
     always #62.5 phi2 = !phi2;
 
     // Generate async reset
-    // reg extbus_res_n = 0;
-    // initial begin
-    //     #123 extbus_res_n = 1'b1;
-    // end
+    reg extbus_res_n = 0;
+    initial begin
+        #123 extbus_res_n = 1'b1;
+    end
 
     reg extbus_rw_n = 1;
     reg [15:0] extbus_a = 0;
@@ -40,7 +40,7 @@ module tb();
     top top(
         .clk25(sysclk),
 
-        // .extbus_res_n(extbus_res_n),
+        .extbus_res_n(extbus_res_n),
         .extbus_phi2(phi2),
         .extbus_cs_n(extbus_cs_n),
         .extbus_rw_n(extbus_rw_n),

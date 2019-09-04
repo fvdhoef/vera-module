@@ -507,12 +507,14 @@ struct sprite_entry {
 void set_sprite(unsigned idx, struct sprite_entry *entry) {
     unsigned offset = 0x40800 + 8 * idx;
 
-    bus_vwrite(offset + 0, entry->x & 0xFF);
-    bus_vwrite(offset + 1, ((entry->palette_offset & 0xF) << 4) | (entry->vflip ? 0x08 : 0) | (entry->hflip ? 0x04 : 0) | ((entry->x >> 8) & 3));
-    bus_vwrite(offset + 2, entry->y & 0xFF);
-    bus_vwrite(offset + 3, ((entry->collision_mask & 0xF) << 4) | ((entry->z & 3) << 2) | (entry->mode ? 2 : 0) | ((entry->y >> 8) & 1));
-    bus_vwrite(offset + 4, (entry->address >> 5) & 0xFF);
-    bus_vwrite(offset + 5, ((entry->height & 3) << 6) | ((entry->width & 3) << 4) | ((entry->address >> 13) & 0xF));
+    bus_vwrite(offset + 0, (entry->address >> 5) & 0xFF);
+    bus_vwrite(offset + 1, (entry->mode ? (1 << 7) : 0) | ((entry->address >> 13) & 0xF));
+    bus_vwrite(offset + 2, entry->x & 0xFF);
+    bus_vwrite(offset + 3, ((entry->x >> 8) & 3));
+    bus_vwrite(offset + 4, entry->y & 0xFF);
+    bus_vwrite(offset + 5, ((entry->y >> 8) & 3));
+    bus_vwrite(offset + 6, ((entry->collision_mask & 0xF) << 4) | ((entry->z & 3) << 2) | (entry->vflip ? 0x02 : 0) | (entry->hflip ? 0x01 : 0));
+    bus_vwrite(offset + 7, ((entry->height & 3) << 6) | ((entry->width & 3) << 4) | (entry->palette_offset & 0xF));
 }
 
 int main(int argc, const char **argv) {
@@ -576,23 +578,25 @@ int main(int argc, const char **argv) {
     entry.hflip = 0;
     entry.vflip = 0;
 
+    // entry.z = 0;
+
     int idx = 0;
     int y   = 20;
     do {
-        for (int i = 0; i < 25 && idx < 256; i++, idx++) {
-            // entry.x = i * 20;
+        for (int i = 0; i < 25 && idx < 128; i++, idx += 1) {
+            entry.x = i * 16;
             entry.y = y;
             // entry.z = 2; //(i % 3) + 1;
 
             set_sprite(idx, &entry);
-            entry.z = 0;
-            return;
+            // entry.z = 0;
+            // return;
         }
 
-        entry.z = 0;
+        // entry.z = 0;
         // entry.vflip = !entry.vflip;
         y += 20;
-    } while (idx < 256);
+    } while (idx < 128);
 
     return;
 #endif
