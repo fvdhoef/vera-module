@@ -2,7 +2,7 @@
 
 module extbusif_6502(
     // 6502 slave bus interface
-    input  wire        extbus_phy2,   /* Bus clock */
+    input  wire        extbus_phi2,   /* Bus clock */
     input  wire        extbus_cs_n,   /* Chip select */
     input  wire        extbus_rw_n,   /* Read(1) / write(0) */
     input  wire  [2:0] extbus_a,      /* Address */
@@ -65,8 +65,8 @@ module extbusif_6502(
     // RDY signal (open-drain output)
     assign extbus_rdy = 1'bZ;   //(!extbus_cs_n && bm_busy_r) ? 1'b0 : 1'bZ;
 
-    // Gate PHY2 by chipselect
-    wire ext_access = extbus_phy2 && !extbus_cs_n;
+    // Gate PHI2 by chipselect
+    wire ext_access = extbus_phi2 && !extbus_cs_n;
 
     //////////////////////////////////////////////////////////////////////////
     // Internal bus clock domain

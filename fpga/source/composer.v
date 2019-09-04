@@ -179,9 +179,10 @@ module composer(
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
-            y_counter_r  <= 0;
-            y_counter_rr <= 0;
-            next_line_r  <= 0;
+            y_counter_r     <= 0;
+            y_counter_rr    <= 0;
+            next_line_r     <= 0;
+            current_field_r <= 0;
         end else begin
             next_line_r <= display_next_line;
             if (display_next_line) begin

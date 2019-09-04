@@ -3559,7 +3559,7 @@
 <pinref part="U3" gate="_" pin="A4"/>
 </segment>
 </net>
-<net name="BUS_PHY2" class="0">
+<net name="BUS_PHI2" class="0">
 <segment>
 <pinref part="U1" gate="_" pin="IOT_45A_G1"/>
 <wire x1="111.76" y1="238.76" x2="86.36" y2="238.76" width="0.1524" layer="91"/>
@@ -4404,7 +4404,7 @@
 <pinref part="J5" gate="_" pin="13"/>
 </segment>
 </net>
-<net name="BUS_PHY2_5V" class="0">
+<net name="BUS_PHI2_5V" class="0">
 <segment>
 <wire x1="86.36" y1="55.88" x2="63.5" y2="55.88" width="0.1524" layer="91"/>
 <label x="66.04" y="55.88" size="1.778" layer="95"/>
@@ -4744,7 +4744,7 @@
 <label x="27.94" y="38.1" size="1.778" layer="95" font="vector"/>
 </segment>
 </net>
-<net name="BUS_PHY2_5V_IN" class="0">
+<net name="BUS_PHI2_5V_IN" class="0">
 <segment>
 <wire x1="256.54" y1="264.16" x2="233.68" y2="264.16" width="0.1524" layer="91"/>
 <label x="236.22" y="264.16" size="1.778" layer="95"/>

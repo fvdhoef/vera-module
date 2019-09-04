@@ -21,7 +21,7 @@
 -External bus
 @28
 tb.top.extbus_res_n
-tb.top.extbus_phy2
+tb.top.extbus_phi2
 tb.top.extbus_a[2:0]
 @22
 tb.top.extbus_d[7:0]

@@ -12,7 +12,7 @@ module top(
 
     // External 6502 bus interface
     input  wire       extbus_res_n,  /* Reset */
-    input  wire       extbus_phy2,   /* Bus clock */
+    input  wire       extbus_phi2,   /* Bus clock */
     input  wire       extbus_cs_n,   /* Chip select */
     input  wire       extbus_rw_n,   /* Read(1) / write(0) */
     input  wire [2:0] extbus_a,      /* Address */
@@ -119,7 +119,7 @@ module top(
     // External 6502 bus to register bus master
     extbusif_6502 extbus(
         // 6502 slave bus interface
-        .extbus_phy2(extbus_phy2),
+        .extbus_phi2(extbus_phi2),
         .extbus_cs_n(extbus_cs_n),
         .extbus_rw_n(extbus_rw_n),
         .extbus_a(extbus_a),

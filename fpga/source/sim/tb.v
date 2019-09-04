@@ -16,15 +16,15 @@ module tb();
     reg sysclk = 0;
     always #20 sysclk = !sysclk;
 
-    // Generate 8MHz PHY2 clock
-    reg phy2 = 0;
-    always #62.5 phy2 = !phy2;
+    // Generate 8MHz PHI2 clock
+    reg phi2 = 0;
+    always #62.5 phi2 = !phi2;
 
     // Generate async reset
-    reg extbus_res_n = 0;
-    initial begin
-        #123 extbus_res_n = 1'b1;
-    end
+    // reg extbus_res_n = 0;
+    // initial begin
+    //     #123 extbus_res_n = 1'b1;
+    // end
 
     reg extbus_rw_n = 1;
     reg [15:0] extbus_a = 0;
@@ -40,8 +40,8 @@ module tb();
     top top(
         .clk25(sysclk),
 
-        .extbus_res_n(extbus_res_n),
-        .extbus_phy2(phy2),
+        // .extbus_res_n(extbus_res_n),
+        .extbus_phi2(phi2),
         .extbus_cs_n(extbus_cs_n),
         .extbus_rw_n(extbus_rw_n),
         .extbus_a(extbus_a[2:0]),
@@ -53,7 +53,7 @@ module tb();
         input  [7:0] data;
 
         begin
-            @(negedge phy2)
+            @(negedge phi2)
             #10; // tAH = 10ns
             extbus_rw_n = 1'bX;
             extbus_a = 16'bX;
@@ -62,12 +62,12 @@ module tb();
             extbus_a = addr; // address
             extbus_rw_n = 1'b0; // write
 
-            @(posedge phy2)
+            @(posedge phi2)
             #25;
             extbus_d_wr = data;
 
 
-            @(negedge phy2)
+            @(negedge phi2)
             #10;
             extbus_a = 16'b0;
             extbus_rw_n = 1'b1;
@@ -79,7 +79,7 @@ module tb();
         input [15:0] addr;
 
         begin
-            @(negedge phy2)
+            @(negedge phi2)
             #10; // tAH = 10ns
             extbus_rw_n = 1'bX;
             extbus_a = 16'bX;
@@ -88,7 +88,7 @@ module tb();
             extbus_a = addr;    // address
             extbus_rw_n = 1'b1; // read
 
-            @(negedge phy2)
+            @(negedge phi2)
             #10;
             extbus_a = 16'b0;
             extbus_rw_n = 1'b1;
@@ -133,20 +133,20 @@ module tb();
         // extbus_read(16'h1003);
         // extbus_read(16'h1003);
 
-        // @(negedge phy2);
+        // @(negedge phi2);
         // extbus_write(16'h1003, 8'h02);
-        // @(negedge phy2);
+        // @(negedge phi2);
         // extbus_write(16'h1003, 8'h03);
-        // @(negedge phy2);
+        // @(negedge phi2);
         // extbus_write(16'h1003, 8'h04);
-        // @(negedge phy2);
+        // @(negedge phi2);
 
         // extbus_write(16'h1000, 8'h10);
-        // @(negedge phy2);
+        // @(negedge phi2);
         // extbus_write(16'h1001, 8'h00);
-        // @(negedge phy2);
+        // @(negedge phi2);
         // extbus_write(16'h1002, 8'h00);
-        // @(negedge phy2);
+        // @(negedge phi2);
 
 
 

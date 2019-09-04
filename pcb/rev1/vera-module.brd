@@ -6,7 +6,7 @@
 <setting alwaysvectorfont="yes"/>
 <setting verticaltext="up"/>
 </settings>
-<grid distance="0.05" unitdist="mm" unit="mm" style="lines" multiple="10" display="yes" altdistance="0.025" altunitdist="inch" altunit="inch"/>
+<grid distance="0.1" unitdist="mm" unit="mm" style="lines" multiple="10" display="yes" altdistance="0.025" altunitdist="inch" altunit="inch"/>
 <layers>
 <layer number="1" name="Top" color="4" fill="1" visible="yes" active="yes"/>
 <layer number="2" name="Route2" color="1" fill="3" visible="no" active="no"/>
@@ -52,7 +52,7 @@
 <layer number="52" name="bDocu" color="7" fill="1" visible="no" active="yes"/>
 <layer number="53" name="tGND_GNDA" color="7" fill="9" visible="no" active="no"/>
 <layer number="54" name="bGND_GNDA" color="1" fill="9" visible="no" active="no"/>
-<layer number="59" name="tCourtyard" color="7" fill="1" visible="no" active="yes"/>
+<layer number="59" name="tCourtyard" color="7" fill="1" visible="yes" active="yes"/>
 <layer number="60" name="bCourtyard" color="7" fill="1" visible="yes" active="yes"/>
 <layer number="90" name="Modules" color="5" fill="1" visible="no" active="no"/>
 <layer number="91" name="Nets" color="2" fill="1" visible="no" active="no"/>
@@ -182,7 +182,7 @@
 <text x="89.8525" y="9.8425" size="1" layer="22" font="vector" ratio="20" rot="SMR270">A2</text>
 <text x="89.8525" y="11.1125" size="1" layer="22" font="vector" ratio="20" rot="SMR270" align="bottom-right">A1</text>
 <text x="92.3925" y="9.8425" size="1" layer="22" font="vector" ratio="20" rot="SMR270">A0</text>
-<text x="92.3925" y="11.1125" size="1" layer="22" font="vector" ratio="20" rot="SMR270" align="bottom-right">PHY2</text>
+<text x="92.3925" y="11.1125" size="1" layer="22" font="vector" ratio="20" rot="SMR270" align="bottom-right">PHI2</text>
 <text x="94.9325" y="9.8425" size="1" layer="22" font="vector" ratio="20" rot="SMR270">RDY</text>
 <text x="94.9325" y="11.1125" size="1" layer="22" font="vector" ratio="20" rot="SMR270" align="bottom-right">GND</text>
 <text x="58.65" y="22.9" size="1" layer="21" ratio="20">1</text>
@@ -1816,7 +1816,7 @@
 <wire x1="92.4" y1="16.95" x2="91.975" y2="16.525" width="0.2" layer="1"/>
 <wire x1="91.975" y1="15.4" x2="91.975" y2="16.525" width="0.2" layer="1"/>
 </signal>
-<signal name="BUS_PHY2">
+<signal name="BUS_PHI2">
 <contactref element="U1" pad="37"/>
 <wire x1="92.45" y1="26.25" x2="93" y2="26.25" width="0.2" layer="1"/>
 <wire x1="93" y1="26.25" x2="93.8" y2="25.45" width="0.2" layer="1"/>
@@ -2945,7 +2945,7 @@
 <wire x1="85.5" y1="5.05" x2="85.5" y2="3.54" width="0.2" layer="1"/>
 <wire x1="85.5" y1="3.54" x2="86.81" y2="2.23" width="0.2" layer="1"/>
 </signal>
-<signal name="BUS_PHY2_5V">
+<signal name="BUS_PHI2_5V">
 <contactref element="R49" pad="2"/>
 <contactref element="R50" pad="2"/>
 <wire x1="100" y1="6.7" x2="98.4" y2="6.7" width="0.2" layer="1"/>
@@ -3615,7 +3615,7 @@
 <wire x1="93.7" y1="7.5" x2="92.625" y2="8.575" width="0.2" layer="1"/>
 <wire x1="92.625" y1="9.6" x2="92.625" y2="8.575" width="0.2" layer="1"/>
 </signal>
-<signal name="BUS_PHY2_5V_IN">
+<signal name="BUS_PHI2_5V_IN">
 <contactref element="U3" pad="22"/>
 <contactref element="R50" pad="1"/>
 <wire x1="98.4" y1="8.3" x2="93.5" y2="8.3" width="0.2" layer="1"/>

@@ -309,6 +309,13 @@ module layer_renderer(
 
             bitmap_addr_r      <= 0;
 
+            tile_data_r           <= 0;
+            render_start          <= 0;
+            render_mapdata_r      <= 0;
+            render_data_r         <= 0;
+            next_render_mapdata_r <= 0;
+            map_data_r            <= 0;
+
         end else begin
             render_start <= 0;
 
