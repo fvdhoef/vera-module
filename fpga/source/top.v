@@ -11,7 +11,6 @@ module top(
     output reg        vga_vsync   /* synthesis syn_useioff = 1 */,
 
     // External 6502 bus interface
-    input  wire       extbus_res_n,  /* Reset */
     input  wire       extbus_phi2,   /* Bus clock */
     input  wire       extbus_cs_n,   /* Chip select */
     input  wire       extbus_rw_n,   /* Read(1) / write(0) */
@@ -99,12 +98,12 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     // Synchronize external asynchronous reset signal to clk25 domain
     //////////////////////////////////////////////////////////////////////////
-    reg [3:0] por_cnt_r = 0;
-    always @(posedge clk25) if (!por_cnt_r[3]) por_cnt_r <= por_cnt_r + 1;
+    reg [7:0] por_cnt_r = 0;
+    always @(posedge clk25) if (!por_cnt_r[7]) por_cnt_r <= por_cnt_r + 1;
 
     wire reset;
     reset_sync reset_sync_clk25(
-        .async_rst_in(!extbus_res_n || !por_cnt_r[3]),
+        .async_rst_in(!por_cnt_r[7]),
         .clk(clk25),
         .reset_out(reset));
 
