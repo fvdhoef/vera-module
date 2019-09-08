@@ -31,12 +31,12 @@ module extbusif_6502(
     reg  [7:0] reg_isr_r,        reg_isr_next;
     reg        do_warmboot_r,    do_warmboot_next;
 
-    reg  [7:0] bm_rddata_r;
+    wire [7:0] rddata;
 
     wire       irq = ((reg_isr_r & reg_ien_r) != 0);
 
     // Generate clock
-    reg [3:0] clkdiv_r;
+    reg [2:0] clkdiv_r;
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             clkdiv_r <= 0;
@@ -45,7 +45,7 @@ module extbusif_6502(
         end
     end
 
-    wire extbus_phi2 = clkdiv_r[3];
+    wire extbus_phi2 = clkdiv_r[2];
     assign extbus_phi2_n = !extbus_phi2;
 
     //////////////////////////////////////////////////////////////////////////
@@ -58,8 +58,8 @@ module extbusif_6502(
         3'd0:    eb_rddata = reg_addrsel_r ? {reg_addr1_incr_r, 1'b0, reg_addr1_r[18:16]} : {reg_addr0_incr_r, 1'b0, reg_addr0_r[18:16]};
         3'd1:    eb_rddata = reg_addrsel_r ? reg_addr1_r[15:8] : reg_addr0_r[15:8];
         3'd2:    eb_rddata = reg_addrsel_r ? reg_addr1_r[7:0]  : reg_addr0_r[7:0];
-        3'd3:    eb_rddata = bm_rddata_r;
-        3'd4:    eb_rddata = bm_rddata_r;
+        3'd3:    eb_rddata = rddata;
+        3'd4:    eb_rddata = rddata;
         3'd5:    eb_rddata = {do_warmboot_r, 6'b0, reg_addrsel_r};
         3'd6:    eb_rddata = reg_ien_r;
         3'd7:    eb_rddata = reg_isr_r;
@@ -80,21 +80,17 @@ module extbusif_6502(
     // Internal bus clock domain
     //////////////////////////////////////////////////////////////////////////
 
-    // Synchronize chipselect
-    reg [2:0] chipselect_r;
-    always @(posedge clk) chipselect_r <= {chipselect_r[1:0], !extbus_cs_n};
-
     // Synchronize access signal
-    reg [2:0] ext_access_r;
-    always @(posedge clk) ext_access_r <= {ext_access_r[1:0], ext_access};
+    reg ext_access_r;
+    always @(posedge clk) ext_access_r <= ext_access;
 
     // Simulate latching of address, write data and read/write lines.
-    reg [2:0] eb_addr_r, eb_addr_rr, eb_addr_rrr;
-    reg [7:0] eb_wrdata_r, eb_wrdata_rr, eb_wrdata_rrr;
-    reg       eb_rw_r, eb_rw_rr, eb_rw_rrr;
+    reg [2:0] eb_addr_r, eb_addr_rr;
+    reg [7:0] eb_wrdata_r, eb_wrdata_rr;
+    reg       eb_rw_r, eb_rw_rr;
 
     always @(posedge clk) begin
-        if (ext_access_r[1]) begin
+        if (ext_access) begin
             eb_addr_r    <= extbus_a;
             eb_wrdata_r  <= eb_wrdata;
             eb_rw_r      <= extbus_rw_n;
@@ -102,25 +98,20 @@ module extbusif_6502(
             eb_addr_rr   <= eb_addr_r;
             eb_wrdata_rr <= eb_wrdata_r;
             eb_rw_rr     <= eb_rw_r;
-
-            eb_addr_rrr   <= eb_addr_rr;
-            eb_wrdata_rrr <= eb_wrdata_rr;
-            eb_rw_rrr     <= eb_rw_rr;
         end
     end
 
-    wire ext_access_start = (ext_access_r[2:1] == 2'b01);
-    wire ext_access_end   = (ext_access_r[2:1] == 2'b10);
-
-    wire chip_selected    = (chipselect_r[2:1] == 2'b01);
-    wire chip_deselected  = (chipselect_r[2:1] == 2'b10);
+    wire ext_access_start = ({ext_access_r, ext_access} == 2'b01);
+    wire ext_access_end   = ({ext_access_r, ext_access} == 2'b10);
 
     reg  [18:0] bm_access_addr_next;
     reg   [7:0] bm_write_data_next;
-    reg   [7:0] bm_rddata_next;
+    reg   [7:0] bm_rddata_r, bm_rddata_next;
     reg         bm_strobe_next, bm_write_next;
     reg         bm_do_access;
     reg         bm_strobe_r;
+
+    assign rddata = (bm_strobe_r && !bm_write) ? bm_rddata : bm_rddata_r;
 
     reg         access_port;
 
@@ -158,52 +149,52 @@ module extbusif_6502(
         end
 
         // Write (use signals from a few cycles earlier)
-        if (ext_access_end && !eb_rw_rrr) begin
-            case (eb_addr_rrr)
+        if (ext_access_end && !eb_rw_rr) begin
+            case (eb_addr_rr)
                 3'd0: begin
                     if (reg_addrsel_r) begin
-                        reg_addr1_incr_next   = eb_wrdata_rrr[7:4];
-                        reg_addr1_next[18:16] = eb_wrdata_rrr[2:0];
+                        reg_addr1_incr_next   = eb_wrdata_rr[7:4];
+                        reg_addr1_next[18:16] = eb_wrdata_rr[2:0];
                     end else begin
-                        reg_addr0_incr_next   = eb_wrdata_rrr[7:4];
-                        reg_addr0_next[18:16] = eb_wrdata_rrr[2:0];
+                        reg_addr0_incr_next   = eb_wrdata_rr[7:4];
+                        reg_addr0_next[18:16] = eb_wrdata_rr[2:0];
                     end
                 end
 
                 3'd1: begin
                     if (reg_addrsel_r) begin
-                        reg_addr1_next[15:8]  = eb_wrdata_rrr;
+                        reg_addr1_next[15:8]  = eb_wrdata_rr;
                     end else begin
-                        reg_addr0_next[15:8]  = eb_wrdata_rrr;
+                        reg_addr0_next[15:8]  = eb_wrdata_rr;
                     end
                 end
 
                 3'd2: begin
                     if (reg_addrsel_r) begin
-                        reg_addr1_next[7:0]   = eb_wrdata_rrr;
+                        reg_addr1_next[7:0]   = eb_wrdata_rr;
                     end else begin
-                        reg_addr0_next[7:0]   = eb_wrdata_rrr;
+                        reg_addr0_next[7:0]   = eb_wrdata_rr;
                     end
                 end
 
                 3'd3, 3'd4: begin
                     bm_do_access        = 1;
-                    bm_write_data_next  = eb_wrdata_rrr;
+                    bm_write_data_next  = eb_wrdata_rr;
                     bm_write_next       = 1;
-                    access_port         = (eb_addr_rrr == 3'd4);
+                    access_port         = (eb_addr_rr == 3'd4);
                 end
 
                 3'd5: begin
-                    do_warmboot_next    = eb_wrdata_rrr[7];
-                    reg_addrsel_next    = eb_wrdata_rrr[0];
+                    do_warmboot_next    = eb_wrdata_rr[7];
+                    reg_addrsel_next    = eb_wrdata_rr[0];
                 end
 
                 3'd6: begin
-                    reg_ien_next        = eb_wrdata_rrr;
+                    reg_ien_next        = eb_wrdata_rr;
                 end
 
                 3'd7: begin
-                    reg_isr_next        = reg_isr_r & ~eb_wrdata_rrr;
+                    reg_isr_next        = reg_isr_r & ~eb_wrdata_rr;
                 end
             endcase
         end
