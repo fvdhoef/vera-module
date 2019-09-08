@@ -12,24 +12,17 @@ module tb();
         #3000000 $finish;
     end
 
+    wire phi2_n;
+    wire phi2 = !phi2_n;
+
     // Generate 25MHz sysclk
     reg sysclk = 0;
     always #20 sysclk = !sysclk;
 
-    // Generate 8MHz PHI2 clock
-    reg phi2 = 0;
-    always #62.5 phi2 = !phi2;
-
-    // Generate async reset
-    reg extbus_res_n = 0;
-    initial begin
-        #123 extbus_res_n = 1'b1;
-    end
-
     reg extbus_rw_n = 1;
     reg [15:0] extbus_a = 0;
 
-    wire #40 extbus_cs_n = !((extbus_a & 'hFFF0) == 'h1000);
+    wire extbus_cs_n = !((extbus_a & 'hFFF0) == 'h1000);
 
 
     reg [7:0] extbus_d_wr = 0;
@@ -40,8 +33,7 @@ module tb();
     top top(
         .clk25(sysclk),
 
-        .extbus_res_n(extbus_res_n),
-        .extbus_phi2(phi2),
+        .extbus_phi2_n(phi2_n),
         .extbus_cs_n(extbus_cs_n),
         .extbus_rw_n(extbus_rw_n),
         .extbus_a(extbus_a[2:0]),
@@ -98,7 +90,7 @@ module tb();
 
 
     initial begin
-        #1000
+        #6000
         extbus_write(16'h1000, 8'h12);
         extbus_write(16'h1001, 8'h00);
         extbus_write(16'h1002, 8'h00);

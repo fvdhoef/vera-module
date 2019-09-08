@@ -4,7 +4,7 @@ module top(
     input  wire       clk25,
 
     // External 6502 bus interface
-    input  wire       extbus_phi2,   /* Bus clock */
+    output wire       extbus_phi2_n, /* Bus clock */
     input  wire       extbus_cs_n,   /* Chip select */
     input  wire       extbus_rw_n,   /* Read(1) / write(0) */
     input  wire [2:0] extbus_a,      /* Address */
@@ -131,8 +131,11 @@ module top(
 
     // External 6502 bus to register bus master
     extbusif_6502 extbus(
+        .rst(reset),
+        .clk(clk),
+
         // 6502 slave bus interface
-        .extbus_phi2(extbus_phi2),
+        .extbus_phi2_n(extbus_phi2_n),
         .extbus_cs_n(extbus_cs_n),
         .extbus_rw_n(extbus_rw_n),
         .extbus_a(extbus_a),
@@ -140,8 +143,6 @@ module top(
         .extbus_irq_n(extbus_irq_n),
 
         // Bus master interface
-        .bm_reset(reset),
-        .bm_clk(clk),
         .bm_addr(regbus_addr),
         .bm_wrdata(regbus_wrdata),
         .bm_rddata(regbus_rddata),

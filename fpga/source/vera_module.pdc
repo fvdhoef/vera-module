@@ -2,7 +2,7 @@
 ldc_set_location -site {35} [get_ports clk25]
 
 # Bus
-ldc_set_location -site {37} [get_ports extbus_phi2]
+ldc_set_location -site {37} [get_ports extbus_phi2_n]
 ldc_set_location -site {28} [get_ports extbus_cs_n]
 ldc_set_location -site {31} [get_ports extbus_rw_n]
 ldc_set_location -site {41} [get_ports {extbus_a[0]}]

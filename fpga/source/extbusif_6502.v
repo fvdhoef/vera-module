@@ -1,8 +1,11 @@
 `default_nettype none
 
 module extbusif_6502(
+    input  wire        rst,
+    input  wire        clk,
+
     // 6502 slave bus interface
-    input  wire        extbus_phi2,   /* Bus clock */
+    output wire        extbus_phi2_n, /* Bus clock */
     input  wire        extbus_cs_n,   /* Chip select */
     input  wire        extbus_rw_n,   /* Read(1) / write(0) */
     input  wire  [2:0] extbus_a,      /* Address */
@@ -10,8 +13,6 @@ module extbusif_6502(
     output wire        extbus_irq_n,  /* IRQ */
 
     // Bus master interface
-    input  wire        bm_reset,
-    input  wire        bm_clk,
     output reg  [18:0] bm_addr,
     output reg   [7:0] bm_wrdata,
     input  wire  [7:0] bm_rddata,
@@ -28,13 +29,24 @@ module extbusif_6502(
     reg        reg_addrsel_r,    reg_addrsel_next;
     reg  [7:0] reg_ien_r,        reg_ien_next;
     reg  [7:0] reg_isr_r,        reg_isr_next;
+    reg        do_warmboot_r,    do_warmboot_next;
 
     reg  [7:0] bm_rddata_r;
 
     wire       irq = ((reg_isr_r & reg_ien_r) != 0);
-    reg        bm_busy_r;
 
-    reg        do_warmboot_r = 0, do_warmboot_next;
+    // Generate clock
+    reg [3:0] clkdiv_r;
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            clkdiv_r <= 0;
+        end else begin
+            clkdiv_r <= clkdiv_r + 1;
+        end
+    end
+
+    wire extbus_phi2 = clkdiv_r[3];
+    assign extbus_phi2_n = !extbus_phi2;
 
     //////////////////////////////////////////////////////////////////////////
     // External bus clock domain
@@ -70,18 +82,18 @@ module extbusif_6502(
 
     // Synchronize chipselect
     reg [2:0] chipselect_r;
-    always @(posedge bm_clk) chipselect_r <= {chipselect_r[1:0], !extbus_cs_n};
+    always @(posedge clk) chipselect_r <= {chipselect_r[1:0], !extbus_cs_n};
 
     // Synchronize access signal
     reg [2:0] ext_access_r;
-    always @(posedge bm_clk) ext_access_r <= {ext_access_r[1:0], ext_access};
+    always @(posedge clk) ext_access_r <= {ext_access_r[1:0], ext_access};
 
     // Simulate latching of address, write data and read/write lines.
     reg [2:0] eb_addr_r, eb_addr_rr, eb_addr_rrr;
     reg [7:0] eb_wrdata_r, eb_wrdata_rr, eb_wrdata_rrr;
     reg       eb_rw_r, eb_rw_rr, eb_rw_rrr;
 
-    always @(posedge bm_clk) begin
+    always @(posedge clk) begin
         if (ext_access_r[1]) begin
             eb_addr_r    <= extbus_a;
             eb_wrdata_r  <= eb_wrdata;
@@ -106,7 +118,6 @@ module extbusif_6502(
     reg  [18:0] bm_access_addr_next;
     reg   [7:0] bm_write_data_next;
     reg   [7:0] bm_rddata_next;
-    reg         bm_busy_next;
     reg         bm_strobe_next, bm_write_next;
     reg         bm_do_access;
     reg         bm_strobe_r;
@@ -125,7 +136,6 @@ module extbusif_6502(
         bm_access_addr_next = bm_addr;
         bm_write_data_next  = bm_wrdata;
         bm_rddata_next      = bm_rddata_r;
-        bm_busy_next        = bm_busy_r;
         bm_strobe_next      = 0;
         bm_write_next       = 0;
         bm_do_access        = 0;
@@ -135,12 +145,6 @@ module extbusif_6502(
 
         if (bm_strobe_r && !bm_write) begin
             bm_rddata_next = bm_rddata;
-            bm_busy_next = 0;
-        end
-
-        // Always re-assert busy signal at end of cycle
-        if (chip_deselected) begin
-            bm_busy_next      = 1;
         end
 
         // Start the read access as early as possible to be able to get the
@@ -150,8 +154,6 @@ module extbusif_6502(
             if (extbus_rw_n && (extbus_a == 3'd3 || extbus_a == 3'd4)) begin
                 bm_do_access = 1;
                 access_port = (extbus_a == 3'd4);
-            end else begin
-                bm_busy_next = 0;
             end
         end
 
@@ -223,8 +225,8 @@ module extbusif_6502(
         end
     end
 
-    always @(posedge bm_clk or posedge bm_reset) begin
-        if (bm_reset) begin
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
             reg_addr0_incr_r <= 0;
             reg_addr0_r      <= 0;
             reg_addr1_incr_r <= 0;
@@ -238,8 +240,6 @@ module extbusif_6502(
             bm_rddata_r      <= 0;
             bm_strobe        <= 0;
             bm_write         <= 0;
-
-            bm_busy_r        <= 0;
 
             bm_strobe_r      <= 0;
 
@@ -261,8 +261,6 @@ module extbusif_6502(
             bm_write         <= bm_write_next;
 
             bm_strobe_r      <= bm_strobe;
-
-            bm_busy_r        <= bm_busy_next;
 
             do_warmboot_r    <= do_warmboot_next;
         end
