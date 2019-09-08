@@ -7,7 +7,6 @@ module extbusif_6502(
     input  wire        extbus_rw_n,   /* Read(1) / write(0) */
     input  wire  [2:0] extbus_a,      /* Address */
     inout  wire  [7:0] extbus_d,      /* Data (bi-directional) */
-    output wire        extbus_rdy,    /* Ready out */
     output wire        extbus_irq_n,  /* IRQ */
 
     // Bus master interface
@@ -61,9 +60,6 @@ module extbusif_6502(
 
     // IRQ signal (open-drain output)
     assign extbus_irq_n = irq ? 1'b0 : 1'bZ;
-
-    // RDY signal (open-drain output)
-    assign extbus_rdy = 1'bZ;   //(!extbus_cs_n && bm_busy_r) ? 1'b0 : 1'bZ;
 
     // Gate PHI2 by chipselect
     wire ext_access = extbus_phi2 && !extbus_cs_n;

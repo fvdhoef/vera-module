@@ -3,6 +3,14 @@
 module top(
     input  wire       clk25,
 
+    // External 6502 bus interface
+    input  wire       extbus_phi2,   /* Bus clock */
+    input  wire       extbus_cs_n,   /* Chip select */
+    input  wire       extbus_rw_n,   /* Read(1) / write(0) */
+    input  wire [2:0] extbus_a,      /* Address */
+    inout  wire [7:0] extbus_d,      /* Data (bi-directional) */
+    output wire       extbus_irq_n,  /* IRQ */
+
     // VGA interface
     output reg  [3:0] vga_r       /* synthesis syn_useioff = 1 */,
     output reg  [3:0] vga_g       /* synthesis syn_useioff = 1 */,
@@ -10,14 +18,20 @@ module top(
     output reg        vga_hsync   /* synthesis syn_useioff = 1 */,
     output reg        vga_vsync   /* synthesis syn_useioff = 1 */,
 
-    // External 6502 bus interface
-    input  wire       extbus_phi2,   /* Bus clock */
-    input  wire       extbus_cs_n,   /* Chip select */
-    input  wire       extbus_rw_n,   /* Read(1) / write(0) */
-    input  wire [2:0] extbus_a,      /* Address */
-    inout  wire [7:0] extbus_d,      /* Data (bi-directional) */
-    output wire       extbus_rdy,    /* Ready out */
-    output wire       extbus_irq_n   /* IRQ */
+    // SPI interface
+    output wire       spi_sck,
+    output wire       spi_mosi,
+    input  wire       spi_miso,
+    output wire       spi_ssel_n_sd,
+
+    // DBG serial interface
+    input  wire       uart_rxd,
+    output wire       uart_txd,
+
+    // Audio output
+    output wire       audio_lrck,
+    output wire       audio_bck,
+    output wire       audio_data
 );
 
     // Register bus signals
@@ -123,7 +137,6 @@ module top(
         .extbus_rw_n(extbus_rw_n),
         .extbus_a(extbus_a),
         .extbus_d(extbus_d),
-        .extbus_rdy(extbus_rdy),
         .extbus_irq_n(extbus_irq_n),
 
         // Bus master interface
