@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Sun Sep  8 11:43:08 2019
+[*] Sun Sep  8 13:46:36 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Sun Sep  8 11:41:24 2019"
-[dumpfile_size] 80468800
+[dumpfile_mtime] "Sun Sep  8 13:46:16 2019"
+[dumpfile_size] 80955748
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
-[timestart] 5043000
+[timestart] 5445000
 [size] 2560 1377
-[pos] 0 23
-*-17.378208 6100000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] -8 -9
+*-18.378208 7220000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
@@ -30,23 +30,26 @@ tb.top.extbus_d[7:0]
 tb.top.extbus_rw_n
 tb.top.extbus_cs_n
 tb.top.extbus_irq_n
-tb.top.extbus.do_write
-tb.top.extbus.do_read
-@24
-tb.top.extbus.clkdiv_r[1:0]
-@201
--
-@22
-tb.top.extbus.bm_rddata_r[7:0]
-tb.top.extbus.rddata[7:0]
 @200
 -
 @22
+tb.top.extbus.bm_rddata_r[7:0]
+@28
+tb.top.extbus.ext_access_start
+tb.top.extbus.ext_access
+@29
+tb.top.extbus.phi2_r[2:0]
+@200
+-
+@22
+tb.top.extbus.bm_rddata_next[7:0]
+tb.top.extbus.bm_rddata_r[7:0]
 tb.top.extbus.bm_addr[18:0]
 tb.top.extbus.bm_wrdata[7:0]
 tb.top.extbus.bm_rddata[7:0]
 @28
 tb.top.extbus.bm_strobe
+tb.top.extbus.bm_strobe_r
 tb.top.extbus.bm_write
 @200
 -
