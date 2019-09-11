@@ -41,11 +41,11 @@ module extbusif_6502(
         if (rst) begin
             clkdiv_r <= 0;
         end else begin
-            clkdiv_r <= /*(clkdiv_r == 'd2) ? 0 :*/ (clkdiv_r + 1);
+            clkdiv_r <= (clkdiv_r == 'd2) ? 0 : (clkdiv_r + 1);
         end
     end
 
-    wire extbus_phi2 = /*clkdiv_r != 0;*/ clkdiv_r[1];
+    wire extbus_phi2 = clkdiv_r != 0;
     assign extbus_phi2_n = !extbus_phi2;
 
     reg [1:0] phi2_r;
@@ -91,14 +91,15 @@ module extbusif_6502(
     reg         ib_strobe_r, ib_strobe_next;
     reg         ib_write_r,  ib_write_next;
     reg         ib_do_access;
-    reg         ib_strobe_rr;
 
-    assign bm_addr   = ib_addr_r;
-    assign bm_wrdata = ib_wrdata_r;
-    assign bm_strobe = ib_strobe_r;
-    assign bm_write  = ib_write_r;
+    assign bm_addr   = ib_addr_next;
+    assign bm_wrdata = ib_wrdata_next;
+    assign bm_strobe = ib_strobe_next;
+    assign bm_write  = ib_write_next;
 
-    assign rddata = (ib_strobe_rr && !ib_write_r) ? bm_rddata : ib_rddata_r;
+    wire read_done = ib_strobe_r && !ib_write_r;
+
+    assign rddata = read_done ? bm_rddata : ib_rddata_r;
 
     reg access_port;
 
@@ -121,7 +122,7 @@ module extbusif_6502(
 
         do_warmboot_next    = do_warmboot_r;
 
-        if (ib_strobe_rr && !ib_write_r) begin
+        if (read_done) begin
             ib_rddata_next = bm_rddata;
         end
 
@@ -217,8 +218,6 @@ module extbusif_6502(
             ib_strobe_r      <= 0;
             ib_write_r       <= 0;
 
-            ib_strobe_rr     <= 0;
-
             do_warmboot_r    <= 0;
 
         end else begin
@@ -235,8 +234,6 @@ module extbusif_6502(
             ib_rddata_r      <= ib_rddata_next;
             ib_strobe_r      <= ib_strobe_next;
             ib_write_r       <= ib_write_next;
-
-            ib_strobe_rr     <= ib_strobe_r;
 
             do_warmboot_r    <= do_warmboot_next;
         end
