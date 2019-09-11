@@ -614,11 +614,11 @@ module top(
     wire       video_composite_display_next_pixel;
     wire       video_composite_vblank_pulse;
 
-    wire [3:0] video_composite_chroma;
-    wire [4:0] video_composite_luma;
-    wire       video_composite_sync_n;
+    wire [5:0] video_composite_luma, video_composite_chroma;
     wire [3:0] video_rgb_r, video_rgb_g, video_rgb_b;
     wire       video_rgb_sync_n;
+
+    wire [5:0] video_composite_chroma2 = display_chroma_disable ? 0 : video_composite_chroma;
 
     video_composite video_composite(
         .rst(reset),
@@ -635,7 +635,6 @@ module top(
 
         // Composite interface
         .luma(video_composite_luma),
-        .sync_n(video_composite_sync_n),
         .chroma(video_composite_chroma),
     
         // RGB interface
@@ -692,11 +691,11 @@ module top(
         end
 
         2'b10: begin
-            vga_r     <= display_chroma_disable ? 4'b0 : video_composite_chroma;
-            vga_g     <= video_composite_luma[4:1];
-            vga_b     <= 0;
-            vga_hsync <= video_composite_sync_n;
-            vga_vsync <= video_composite_luma[0];
+            vga_r     <= video_composite_luma[5:2];
+            vga_g     <= {video_composite_luma[1:0], video_composite_chroma2[5:4]};
+            vga_b     <= video_composite_chroma2[3:0];
+            vga_hsync <= 0;
+            vga_vsync <= 0;
         end
 
         2'b11: begin

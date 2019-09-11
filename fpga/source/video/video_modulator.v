@@ -10,13 +10,12 @@ module video_modulator(
     input  wire        active,
     input  wire        sync_n_in,
 
-    output reg   [4:0] luma,
-    output reg   [3:0] chroma,
-    output reg         sync_n);
+    output reg   [5:0] luma,
+    output reg   [5:0] chroma);
 
-    parameter Y_R =  38; //  0.299
-    parameter Y_G =  75; //  0.587
-    parameter Y_B =  14; //  0.114
+    parameter Y_R = 27; // 38; //  0.299
+    parameter Y_G = 53; // 75; //  0.587
+    parameter Y_B = 10; // 14; //  0.114
 
     parameter I_R =  76; //  0.5959
     parameter I_G = -35; // -0.2746
@@ -35,12 +34,12 @@ module video_modulator(
     reg sync_n_in_r;
 
     always @(posedge clk) begin
-        y_s <= 0;
+        y_s <= (sync_n_in == 0) ? 'd0 : 'd544;
         i_s <= 0;
         q_s <= 0;
 
         if (active) begin
-            y_s <= (Y_R * r_s) + (Y_G * g_s) + (Y_B * b_s) + 128;
+            y_s <= (Y_R * r_s) + (Y_G * g_s) + (Y_B * b_s) + (128 + 512);
         end
 
         if (active || color_burst) begin
@@ -91,9 +90,8 @@ module video_modulator(
     end
 
     always @(posedge clk) begin
-        luma   <= lum[7:3];
-        chroma <= chroma_s[13:10] + 8'd8;
-        sync_n <= sync_n_in_rr;
+        luma   <= lum[7:2];
+        chroma <= chroma_s[13:8] + 'd32;
     end
 
 endmodule

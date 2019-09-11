@@ -14,9 +14,8 @@ module video_composite(
     output wire        current_field,
 
     // Composite interface
-    output wire  [4:0] luma,
-    output wire        sync_n,
-    output wire  [3:0] chroma,
+    output wire  [5:0] luma,
+    output wire  [5:0] chroma,
     
     // RGB interface
     output wire  [3:0] rgb_r,
@@ -185,7 +184,6 @@ module video_composite(
         .sync_n_in(mod_sync_n),
 
         .luma(luma),
-        .sync_n(sync_n),
         .chroma(chroma));
 
     assign rgb_r = r;

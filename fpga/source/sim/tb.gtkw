@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Wed Sep 11 07:53:44 2019
+[*] Wed Sep 11 11:55:18 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Wed Sep 11 07:53:23 2019"
-[dumpfile_size] 80898959
+[dumpfile_mtime] "Wed Sep 11 11:54:09 2019"
+[dumpfile_size] 61768712
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
-[timestart] 5445000
+[timestart] 1244900000
 [size] 2560 1377
 [pos] -1 -1
-*-18.378208 7220000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-24.378208 1349548000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
@@ -35,21 +35,26 @@ tb.top.extbus_irq_n
 @28
 tb.top.extbus.do_read
 tb.top.extbus.do_write
-@201
+@200
 -
-@22
-tb.top.extbus.bm_rddata_r[7:0]
+@24
+tb.top.blaat_rrrr[3:0]
+@8025
+tb.top.video_composite.luma[5:0]
+@20000
+-
+-
+-
+@8024
+tb.top.video_composite.chroma[5:0]
 @200
 -
 @22
-tb.top.extbus.bm_rddata_next[7:0]
-tb.top.extbus.bm_rddata_r[7:0]
 tb.top.extbus.bm_addr[18:0]
 tb.top.extbus.bm_wrdata[7:0]
 tb.top.extbus.bm_rddata[7:0]
 @28
 tb.top.extbus.bm_strobe
-tb.top.extbus.bm_strobe_r
 tb.top.extbus.bm_write
 @200
 -
@@ -134,6 +139,11 @@ tb.top.sprite_renderer.linebuf_wridx[9:0]
 tb.top.sprite_renderer.linebuf_wrdata[15:0]
 @28
 tb.top.sprite_renderer.linebuf_wren
+@200
+-
+@8024
+tb.top.video_composite.luma[5:0]
+tb.top.video_composite.chroma[5:0]
 @200
 -
 @22
