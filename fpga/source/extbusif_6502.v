@@ -13,11 +13,11 @@ module extbusif_6502(
     output wire        extbus_irq_n,  /* IRQ */
 
     // Bus master interface
-    output reg  [18:0] bm_addr,
-    output reg   [7:0] bm_wrdata,
+    output wire [18:0] bm_addr,
+    output wire  [7:0] bm_wrdata,
     input  wire  [7:0] bm_rddata,
-    output reg         bm_strobe,
-    output reg         bm_write,
+    output wire        bm_strobe,
+    output wire        bm_write,
     
     input  wire  [7:0] irqs);
 
@@ -36,16 +36,16 @@ module extbusif_6502(
     wire       irq = ((reg_isr_r & reg_ien_r) != 0);
 
     // Generate clock
-    reg [2:0] clkdiv_r;
+    reg [1:0] clkdiv_r;
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             clkdiv_r <= 0;
         end else begin
-            clkdiv_r <= clkdiv_r + 1;
+            clkdiv_r <= /*(clkdiv_r == 'd2) ? 0 :*/ (clkdiv_r + 1);
         end
     end
 
-    wire extbus_phi2 = clkdiv_r[1];
+    wire extbus_phi2 = /*clkdiv_r != 0;*/ clkdiv_r[1];
     assign extbus_phi2_n = !extbus_phi2;
 
     reg [1:0] phi2_r;
@@ -85,16 +85,22 @@ module extbusif_6502(
     wire do_read  = (phi2_r == 'b10 && !extbus_cs_n &&  extbus_rw_n);
     wire do_write = (phi2_r == 'b01 && !extbus_cs_n && !extbus_rw_n);
 
-    reg  [18:0] bm_access_addr_next;
-    reg   [7:0] bm_write_data_next;
-    reg   [7:0] bm_rddata_r, bm_rddata_next;
-    reg         bm_strobe_next, bm_write_next;
-    reg         bm_do_access;
-    reg         bm_strobe_r;
+    reg  [18:0] ib_addr_r,   ib_addr_next;
+    reg   [7:0] ib_wrdata_r, ib_wrdata_next;
+    reg   [7:0] ib_rddata_r, ib_rddata_next;
+    reg         ib_strobe_r, ib_strobe_next;
+    reg         ib_write_r,  ib_write_next;
+    reg         ib_do_access;
+    reg         ib_strobe_rr;
 
-    assign rddata = (bm_strobe_r && !bm_write) ? bm_rddata : bm_rddata_r;
+    assign bm_addr   = ib_addr_r;
+    assign bm_wrdata = ib_wrdata_r;
+    assign bm_strobe = ib_strobe_r;
+    assign bm_write  = ib_write_r;
 
-    reg         access_port;
+    assign rddata = (ib_strobe_rr && !ib_write_r) ? bm_rddata : ib_rddata_r;
+
+    reg access_port;
 
     always @* begin
         reg_addr0_incr_next = reg_addr0_incr_r;
@@ -105,25 +111,25 @@ module extbusif_6502(
         reg_ien_next        = reg_ien_r;
         reg_isr_next        = reg_isr_r;
 
-        bm_access_addr_next = bm_addr;
-        bm_write_data_next  = bm_wrdata;
-        bm_rddata_next      = bm_rddata_r;
-        bm_strobe_next      = 0;
-        bm_write_next       = 0;
-        bm_do_access        = 0;
+        ib_addr_next        = ib_addr_r;
+        ib_wrdata_next      = ib_wrdata_r;
+        ib_rddata_next      = ib_rddata_r;
+        ib_strobe_next      = 0;
+        ib_write_next       = 0;
+        ib_do_access        = 0;
         access_port         = 0;
 
         do_warmboot_next    = do_warmboot_r;
 
-        if (bm_strobe_r && !bm_write) begin
-            bm_rddata_next = bm_rddata;
+        if (ib_strobe_rr && !ib_write_r) begin
+            ib_rddata_next = bm_rddata;
         end
 
         // Start the read access as early as possible to be able to get the
         // result in the same 6502 bus cycle (depending on the 6502 bus clock
         // speed).
         if (do_read && (extbus_a == 3'd3 || extbus_a == 3'd4)) begin
-            bm_do_access = 1;
+            ib_do_access = 1;
             access_port = (extbus_a == 3'd4);
         end
 
@@ -142,38 +148,38 @@ module extbusif_6502(
 
                 3'd1: begin
                     if (reg_addrsel_r) begin
-                        reg_addr1_next[15:8]  = eb_wrdata;
+                        reg_addr1_next[15:8] = eb_wrdata;
                     end else begin
-                        reg_addr0_next[15:8]  = eb_wrdata;
+                        reg_addr0_next[15:8] = eb_wrdata;
                     end
                 end
 
                 3'd2: begin
                     if (reg_addrsel_r) begin
-                        reg_addr1_next[7:0]   = eb_wrdata;
+                        reg_addr1_next[7:0] = eb_wrdata;
                     end else begin
-                        reg_addr0_next[7:0]   = eb_wrdata;
+                        reg_addr0_next[7:0] = eb_wrdata;
                     end
                 end
 
                 3'd3, 3'd4: begin
-                    bm_do_access        = 1;
-                    bm_write_data_next  = eb_wrdata;
-                    bm_write_next       = 1;
-                    access_port         = (extbus_a == 3'd4);
+                    ib_do_access   = 1;
+                    ib_wrdata_next = eb_wrdata;
+                    ib_write_next  = 1;
+                    access_port    = (extbus_a == 3'd4);
                 end
 
                 3'd5: begin
-                    do_warmboot_next    = eb_wrdata[7];
-                    reg_addrsel_next    = eb_wrdata[0];
+                    do_warmboot_next = eb_wrdata[7];
+                    reg_addrsel_next = eb_wrdata[0];
                 end
 
                 3'd6: begin
-                    reg_ien_next        = eb_wrdata;
+                    reg_ien_next = eb_wrdata;
                 end
 
                 3'd7: begin
-                    reg_isr_next        = reg_isr_r & ~eb_wrdata;
+                    reg_isr_next = reg_isr_r & ~eb_wrdata;
                 end
             endcase
         end
@@ -181,17 +187,17 @@ module extbusif_6502(
         // Handle interrupts
         reg_isr_next = reg_isr_next | irqs;
 
-        if (bm_do_access) begin
+        if (ib_do_access) begin
             if (!access_port) begin
-                bm_access_addr_next = reg_addr0_r;
-                reg_addr0_next      = reg_addr0_r + reg_addr0_incr_r;
+                ib_addr_next   = reg_addr0_r;
+                reg_addr0_next = reg_addr0_r + reg_addr0_incr_r;
 
             end else begin
-                bm_access_addr_next = reg_addr1_r;
-                reg_addr1_next      = reg_addr1_r + reg_addr1_incr_r;
+                ib_addr_next   = reg_addr1_r;
+                reg_addr1_next = reg_addr1_r + reg_addr1_incr_r;
 
             end
-            bm_strobe_next = 1;
+            ib_strobe_next = 1;
         end
     end
 
@@ -205,13 +211,13 @@ module extbusif_6502(
             reg_ien_r        <= 0;
             reg_isr_r        <= 0;
 
-            bm_addr          <= 0;
-            bm_wrdata        <= 0;
-            bm_rddata_r      <= 0;
-            bm_strobe        <= 0;
-            bm_write         <= 0;
+            ib_addr_r        <= 0;
+            ib_wrdata_r      <= 0;
+            ib_rddata_r      <= 0;
+            ib_strobe_r      <= 0;
+            ib_write_r       <= 0;
 
-            bm_strobe_r      <= 0;
+            ib_strobe_rr     <= 0;
 
             do_warmboot_r    <= 0;
 
@@ -224,13 +230,13 @@ module extbusif_6502(
             reg_ien_r        <= reg_ien_next;
             reg_isr_r        <= reg_isr_next;
 
-            bm_addr          <= bm_access_addr_next;
-            bm_wrdata        <= bm_write_data_next;
-            bm_rddata_r      <= bm_rddata_next;
-            bm_strobe        <= bm_strobe_next;
-            bm_write         <= bm_write_next;
+            ib_addr_r        <= ib_addr_next;
+            ib_wrdata_r      <= ib_wrdata_next;
+            ib_rddata_r      <= ib_rddata_next;
+            ib_strobe_r      <= ib_strobe_next;
+            ib_write_r       <= ib_write_next;
 
-            bm_strobe_r      <= bm_strobe;
+            ib_strobe_rr     <= ib_strobe_r;
 
             do_warmboot_r    <= do_warmboot_next;
         end
