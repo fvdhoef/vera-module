@@ -48,6 +48,7 @@ module top(
     wire  [7:0] composer_regs_rddata;
     wire  [7:0] palette_rddata;
     reg   [7:0] sprite_attr_rddata;
+    wire  [7:0] uart_rddata;
 
     // Memory bus signals
     reg  [17:0] membus_addr;
@@ -104,6 +105,7 @@ module top(
 
     wire        line_irq;
     wire        sprcol_irq;
+    wire        uart_irq;
 
     wire next_frame;
     wire vblank_pulse;
@@ -151,7 +153,7 @@ module top(
         
         .irqs(irqs));
 
-    assign irqs = {5'b0, sprcol_irq, line_irq, vblank_pulse};
+    assign irqs = {4'b0, uart_irq, sprcol_irq, line_irq, vblank_pulse};
 
     // Register bus memory map:
     // 00000-1FFFF  Main RAM
@@ -163,6 +165,7 @@ module top(
     // 40040-4005F  Composer registers
     // 40200-403FF  Palette
     // 40800-40FFF  Sprite attributes
+    // 41000-41003  UART
     wire membus_sel        = !regbus_addr[18];
     wire layer1_regs_sel   = regbus_addr[18] && regbus_addr[17:4]  == 'b00_00000000_0000;
     wire layer2_regs_sel   = regbus_addr[18] && regbus_addr[17:4]  == 'b00_00000000_0001;
@@ -170,6 +173,7 @@ module top(
     wire composer_regs_sel = regbus_addr[18] && regbus_addr[17:5]  == 'b00_00000000_010;
     wire palette_sel       = regbus_addr[18] && regbus_addr[17:9]  == 'b00_0000001;
     wire sprite_attr_sel   = regbus_addr[18] && regbus_addr[17:11] == 'b00_00001;
+    wire uart_sel          = regbus_addr[18] && regbus_addr[17:12] == 'b00_0001;
 
     // Memory bus read data selection
     reg [7:0] membus_rddata8;
@@ -190,6 +194,7 @@ module top(
         if (composer_regs_sel) regbus_rddata = composer_regs_rddata;
         if (palette_sel)       regbus_rddata = palette_rddata;
         if (sprite_attr_sel)   regbus_rddata = sprite_attr_rddata;
+        if (uart_sel)          regbus_rddata = uart_rddata;
     end
 
     //////////////////////////////////////////////////////////////////////////
@@ -714,5 +719,26 @@ module top(
             vga_vsync <= 0;
         end
     endcase
+
+    //////////////////////////////////////////////////////////////////////////
+    // UART
+    //////////////////////////////////////////////////////////////////////////
+    uart uart(
+        .rst(reset),
+        .clk(clk),
+
+        .irq(uart_irq),
+        
+        // Slave bus interface
+        .bus_addr(regbus_addr[1:0]),
+        .bus_wrdata(regbus_wrdata),
+        .bus_rddata(uart_rddata),
+        .bus_sel(uart_sel),
+        .bus_strobe(regbus_strobe),
+        .bus_write(regbus_write),
+
+        // UART interface
+        .uart_rxd(uart_rxd),
+        .uart_txd(uart_txd));
 
 endmodule
