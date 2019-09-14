@@ -49,6 +49,7 @@ module top(
     wire  [7:0] palette_rddata;
     reg   [7:0] sprite_attr_rddata;
     wire  [7:0] uart_rddata;
+    wire  [7:0] spi_rddata;
 
     // Memory bus signals
     reg  [17:0] membus_addr;
@@ -166,6 +167,7 @@ module top(
     // 40200-403FF  Palette
     // 40800-40FFF  Sprite attributes
     // 41000-41003  UART
+    // 42000-42001  SD-card SPI controller
     wire membus_sel        = !regbus_addr[18];
     wire layer1_regs_sel   = regbus_addr[18] && regbus_addr[17:4]  == 'b00_00000000_0000;
     wire layer2_regs_sel   = regbus_addr[18] && regbus_addr[17:4]  == 'b00_00000000_0001;
@@ -174,6 +176,7 @@ module top(
     wire palette_sel       = regbus_addr[18] && regbus_addr[17:9]  == 'b00_0000001;
     wire sprite_attr_sel   = regbus_addr[18] && regbus_addr[17:11] == 'b00_00001;
     wire uart_sel          = regbus_addr[18] && regbus_addr[17:12] == 'b00_0001;
+    wire spi_sel           = regbus_addr[18] && regbus_addr[17:12] == 'b00_0010;
 
     // Memory bus read data selection
     reg [7:0] membus_rddata8;
@@ -195,6 +198,7 @@ module top(
         if (palette_sel)       regbus_rddata = palette_rddata;
         if (sprite_attr_sel)   regbus_rddata = sprite_attr_rddata;
         if (uart_sel)          regbus_rddata = uart_rddata;
+        if (spi_sel)           regbus_rddata = spi_rddata;
     end
 
     //////////////////////////////////////////////////////////////////////////
@@ -740,5 +744,26 @@ module top(
         // UART interface
         .uart_rxd(uart_rxd),
         .uart_txd(uart_txd));
+
+    //////////////////////////////////////////////////////////////////////////
+    // SPI
+    //////////////////////////////////////////////////////////////////////////
+    spictrl spictrl(
+        .rst(reset),
+        .clk(clk),
+
+        // Slave bus interface
+        .bus_addr(regbus_addr[0]),
+        .bus_wrdata(regbus_wrdata),
+        .bus_rddata(spi_rddata),
+        .bus_sel(spi_sel),
+        .bus_strobe(regbus_strobe),
+        .bus_write(regbus_write),
+    
+        // SPI interface
+        .spi_sck(spi_sck),
+        .spi_mosi(spi_mosi),
+        .spi_miso(spi_miso),
+        .spi_ssel_n_sd(spi_ssel_n_sd));
 
 endmodule
