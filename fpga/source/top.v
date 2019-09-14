@@ -118,18 +118,18 @@ module top(
 
     // External 6502 bus to register bus master
     extbusif_6502 extbus(
+        .rst(reset),
+        .clk(clk),
+
         // 6502 slave bus interface
         .extbus_phi2(extbus_phi2),
         .extbus_cs_n(extbus_cs_n),
         .extbus_rw_n(extbus_rw_n),
         .extbus_a(extbus_a),
         .extbus_d(extbus_d),
-        .extbus_rdy(extbus_rdy),
         .extbus_irq_n(extbus_irq_n),
 
         // Bus master interface
-        .bm_reset(reset),
-        .bm_clk(clk),
         .bm_addr(regbus_addr),
         .bm_wrdata(regbus_wrdata),
         .bm_rddata(regbus_rddata),
@@ -139,6 +139,7 @@ module top(
         .irqs(irqs));
 
     assign irqs = {5'b0, sprcol_irq, line_irq, vblank_pulse};
+    assign extbus_rdy = 1'bZ;
 
     // Register bus memory map:
     // 00000-1FFFF  Main RAM
