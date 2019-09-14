@@ -9,9 +9,6 @@
         <Source name="source/reset_sync.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
-        <Source name="source/video_vga.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
         <Source name="source/char_rom.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
@@ -30,34 +27,37 @@
         <Source name="source/generated/palette_ram/palette_ram.ipx" type="IPX_Module" type_short="IPX">
             <Options/>
         </Source>
-        <Source name="source/layer_renderer.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
-        <Source name="source/video_composite.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
-        <Source name="source/video_modulator.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
-        <Source name="source/video_modulator_coslut.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
-        <Source name="source/video_modulator_sinlut.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
-        <Source name="source/composer.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
-        <Source name="source/sprite_renderer.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
-        <Source name="source/sprite_line_buffer.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
-        <Source name="source/layer_line_buffer.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
         <Source name="source/generated/sprite_ram/sprite_ram.ipx" type="IPX_Module" type_short="IPX">
+            <Options/>
+        </Source>
+        <Source name="source/video/video_composite.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/video/video_modulator.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/video/video_modulator_coslut.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/video/video_modulator_sinlut.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/video/video_vga.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/graphics/composer.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/graphics/layer_line_buffer.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/graphics/layer_renderer.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/graphics/sprite_line_buffer.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/graphics/sprite_renderer.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
         <Source name="source/vera_module.ldc" type="LSE Design Constraints File" type_short="LDC">
