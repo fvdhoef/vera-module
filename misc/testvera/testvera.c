@@ -81,9 +81,9 @@ void bus_write(uint16_t addr, uint8_t data) {
 void bus_vwrite(uint32_t addr, uint8_t data) {
     uint8_t buf[5];
     buf[0] = 4;
-    buf[1] = (addr >> 16) & 0xff;
+    buf[1] = (addr >> 0) & 0xff;
     buf[2] = (addr >> 8) & 0xff;
-    buf[3] = (addr >> 0) & 0xff;
+    buf[3] = (addr >> 16) & 0xff;
     buf[4] = data;
     write(serial_fd, buf, 5);
 }
@@ -91,9 +91,9 @@ void bus_vwrite(uint32_t addr, uint8_t data) {
 uint8_t bus_vread(uint32_t addr) {
     uint8_t buf[4];
     buf[0] = 3;
-    buf[1] = (addr >> 16) & 0xff;
+    buf[1] = (addr >> 0) & 0xff;
     buf[2] = (addr >> 8) & 0xff;
-    buf[3] = (addr >> 0) & 0xff;
+    buf[3] = (addr >> 16) & 0xff;
     write(serial_fd, buf, 4);
 
     int result;
@@ -119,9 +119,9 @@ void bus_vwrite2(uint32_t addr, const uint8_t *data, size_t length) {
 
         uint8_t buf[512];
         buf[0] = 5;
-        buf[1] = 0x10 | ((addr >> 16) & 0x0f);
+        buf[1] = (addr >> 0) & 0xff;
         buf[2] = (addr >> 8) & 0xff;
-        buf[3] = (addr >> 0) & 0xff;
+        buf[3] = 0x10 | ((addr >> 16) & 0x0f);
         buf[4] = len & 0xFF;
         for (int i = 0; i < (int)len; i++) {
             buf[5 + i] = *(data++);
@@ -157,9 +157,25 @@ void sigint_handler(int s) {
     exit(1);
 }
 
-void set_tile_base(uint32_t p) {
-    bus_vwrite(0x40004, (p >> 2) & 0xFF);
-    bus_vwrite(0x40005, (p >> 10) & 0xFF);
+#if 1
+#    define COMPOSER_BASE 0xF0000
+#    define PALETTE_BASE 0xF1000
+#    define LAYER1_BASE 0xF2000
+#    define LAYER2_BASE 0xF3000
+#    define SPRITE_REG_BASE 0xF4000
+#    define SPRITE_ATTR_BASE 0xF5000
+#else
+#    define COMPOSER_BASE 0x40040
+#    define PALETTE_BASE 0x40200
+#    define LAYER1_BASE 0x40000
+#    define LAYER2_BASE 0x40010
+#    define SPRITE_REG_BASE 0x40020
+#    define SPRITE_ATTR_BASE 0x40800
+#endif
+
+void layer1_set_tile_base(uint32_t p) {
+    bus_vwrite(LAYER1_BASE + 4, (p >> 2) & 0xFF);
+    bus_vwrite(LAYER1_BASE + 5, (p >> 10) & 0xFF);
 }
 
 enum layer_mode {
@@ -173,35 +189,31 @@ enum layer_mode {
     MODE_BITMAP_8BPP,
 };
 
-void set_video_mode(enum layer_mode mode) {
-    bus_vwrite(0x40000, (bus_vread(0x40000) & 0x1F) | (mode << 5));
-}
-void set_video_scale(uint8_t vscale, uint8_t hscale) {
-    bus_vwrite(0x40000, (bus_vread(0x40000) & 0xE1) | (((vscale - 1) & 3) << 3) | (((hscale - 1) & 3) << 1));
+void layer1_set_mode(enum layer_mode mode) {
+    bus_vwrite(LAYER1_BASE + 0, (bus_vread(LAYER1_BASE + 0) & 0x1F) | (mode << 5));
 }
 
-void set_tile_size(uint8_t width, uint8_t height) {
-    bus_vwrite(0x40001, (bus_vread(0x40001) & 0xCF) | (width ? 0x10 : 0) | (height ? 0x20 : 0));
+void layer1_set_tile_size(uint8_t width, uint8_t height) {
+    bus_vwrite(LAYER1_BASE + 1, (bus_vread(LAYER1_BASE + 1) & 0xCF) | (width ? 0x10 : 0) | (height ? 0x20 : 0));
 }
 
 void layer1_enable(bool enable) {
-    bus_vwrite(0x40000, (bus_vread(0x40000) & 0xFE) | (enable ? 1 : 0));
+    bus_vwrite(LAYER1_BASE + 0, (bus_vread(LAYER1_BASE + 0) & 0xFE) | (enable ? 1 : 0));
 }
 
 void test_8bpp_tile_mode(void) {
-    set_video_mode(MODE_TILE_8BPP);
+    layer1_set_mode(MODE_TILE_8BPP);
     layer1_enable(true);
-    set_tile_base(0x10000);
-    set_tile_size(1, 1);
-    // set_video_scale(1, 1);
+    layer1_set_tile_base(0x10000);
+    layer1_set_tile_size(1, 1);
 
     // return;
 
 #if 1
-    bus_vwrite(0x040006, 0);
-    bus_vwrite(0x040007, 0);
-    bus_vwrite(0x040008, 0);
-    bus_vwrite(0x040009, 0);
+    bus_vwrite(LAYER1_BASE + 6, 0);
+    bus_vwrite(LAYER1_BASE + 7, 0);
+    bus_vwrite(LAYER1_BASE + 8, 0);
+    bus_vwrite(LAYER1_BASE + 9, 0);
 
     // uint8_t buf[64], buf2[64];
     // for (int i = 0; i < 32; i++) {
@@ -230,7 +242,7 @@ void test_8bpp_tile_mode(void) {
         uint8_t palette[512];
         fread(palette, 512, 1, f);
         fclose(f);
-        bus_vwrite2(0x40200, palette, 512);
+        bus_vwrite2(PALETTE_BASE, palette, 512);
     }
 
     // clang-format off
@@ -282,14 +294,14 @@ void test_8bpp_tile_mode(void) {
 
 #if 0
     for (int i = 0; i <= 512; i++) {
-        bus_vwrite(0x040006, i & 0xff);
-        bus_vwrite(0x040007, i >> 8);
+        bus_vwrite(LAYER1_BASE+6, i & 0xff);
+        bus_vwrite(LAYER1_BASE+7, i >> 8);
         usleep(16400);
     }
 
     for (int i = 0; i <= 512; i++) {
-        bus_vwrite(0x040008, i & 0xff);
-        bus_vwrite(0x040009, i >> 8);
+        bus_vwrite(LAYER1_BASE+8, i & 0xff);
+        bus_vwrite(LAYER1_BASE+9, i >> 8);
         usleep(16400);
     }
 #endif
@@ -313,8 +325,8 @@ void test_stuff(void) {
     //     bus_vwrite2(fontloc, fontbuf, 4096);
     // }
 
-    // bus_vwrite(0x40004, (fontloc >> 2) & 0xFF);
-    // bus_vwrite(0x40005, (fontloc >> 10) & 0xFF);
+    // bus_vwrite(LAYER1_BASE+4, (fontloc >> 2) & 0xFF);
+    // bus_vwrite(LAYER1_BASE+5, (fontloc >> 10) & 0xFF);
 
     // exit(0);
 
@@ -343,8 +355,8 @@ void test_stuff(void) {
 #if 0
     uint32_t fontloc = 0x10000;
 
-    bus_vwrite(0x040000, 0);
-    bus_vwrite(0x040001, (1 << 5));
+    bus_vwrite(LAYER1_BASE+0, 0);
+    bus_vwrite(LAYER1_BASE+1, (1 << 5));
 
     {
         uint8_t fontbuf[4096];
@@ -360,11 +372,11 @@ void test_stuff(void) {
         fclose(f);
         bus_vwrite2(fontloc, fontbuf, 4096);
     }
-    set_tile_base(0x10000);
+    layer1_set_tile_base(0x10000);
 
     for (int i = 0; i <= 256; i++) {
-        bus_vwrite(0x040006, i & 0xff);
-        bus_vwrite(0x040007, i >> 8);
+        bus_vwrite(LAYER1_BASE+6, i & 0xff);
+        bus_vwrite(LAYER1_BASE+7, i >> 8);
 
         // while ((bus_read(0x8007) & 1) == 0) {
         // }
@@ -373,8 +385,8 @@ void test_stuff(void) {
     }
 
     for (int i = 0; i <= 512; i++) {
-        bus_vwrite(0x040008, i & 0xff);
-        bus_vwrite(0x040009, i >> 8);
+        bus_vwrite(LAYER1_BASE+8, i & 0xff);
+        bus_vwrite(LAYER1_BASE+9, i >> 8);
 
         usleep(16400);
     }
@@ -382,7 +394,7 @@ void test_stuff(void) {
     exit(0);
 #endif
 #if 0
-    bus_vwrite(0x040000, 0x0A);
+    bus_vwrite(LAYER1_BASE+0, 0x0A);
 
     uint8_t buf[256];
     for (int i = 0; i < 128; i++) {
@@ -428,41 +440,40 @@ void test_stuff(void) {
     }
     bus_vwrite2(0x100700, buf, 256);
 
-    bus_vwrite(0x040008, 0);
+    bus_vwrite(LAYER1_BASE+8, 0);
 
     for (int i = 0; i <= 256; i++) {
-        bus_vwrite(0x040006, i & 0xff);
-        bus_vwrite(0x040007, i >> 8);
+        bus_vwrite(LAYER1_BASE+6, i & 0xff);
+        bus_vwrite(LAYER1_BASE+7, i >> 8);
         usleep(16400);
     }
 
     for (int i = 0; i <= 256; i++) {
-        bus_vwrite(0x040008, i & 0xff);
-        bus_vwrite(0x040009, i >> 8);
+        bus_vwrite(LAYER1_BASE+8, i & 0xff);
+        bus_vwrite(LAYER1_BASE+9, i >> 8);
         usleep(16400);
     }
 #endif
 }
 
 void test_8bpp_bitmap_mode(void) {
-    set_tile_base(0);
-    set_video_mode(MODE_BITMAP_8BPP);
-    set_video_scale(2, 2);
+    layer1_set_tile_base(0);
+    layer1_set_mode(MODE_BITMAP_8BPP);
     layer1_enable(true);
 
-    set_tile_size(0, 0);
+    layer1_set_tile_size(0, 0);
 
     // return;
 
-    bus_vwrite(0x40006, 80);
-    bus_vwrite(0x40007, 0);
+    bus_vwrite(LAYER1_BASE + 6, 80);
+    bus_vwrite(LAYER1_BASE + 7, 0);
 
     {
         FILE *  f = fopen("../imgconv/palette.bin", "rb");
         uint8_t palette[512];
         fread(palette, 512, 1, f);
         fclose(f);
-        bus_vwrite2(0x40200, palette, 512);
+        bus_vwrite2(PALETTE_BASE, palette, 512);
     }
     {
         FILE *f = fopen("../imgconv/image.bin", "rb");
@@ -483,11 +494,11 @@ void set_active_area(unsigned x, unsigned y, unsigned w, unsigned h) {
     unsigned x2 = x + w;
     unsigned y2 = y + h;
 
-    bus_vwrite(0x40044, x & 0xFF);
-    bus_vwrite(0x40045, x2 & 0xFF);
-    bus_vwrite(0x40046, y & 0xFF);
-    bus_vwrite(0x40047, y2 & 0xFF);
-    bus_vwrite(0x40048, (((y2 >> 8) & 1) << 5) | (((y >> 8) & 1) << 4) | (((x2 >> 8) & 3) << 2) | (((x >> 8) & 3) << 0));
+    bus_vwrite(COMPOSER_BASE + 4, x & 0xFF);
+    bus_vwrite(COMPOSER_BASE + 5, x2 & 0xFF);
+    bus_vwrite(COMPOSER_BASE + 6, y & 0xFF);
+    bus_vwrite(COMPOSER_BASE + 7, y2 & 0xFF);
+    bus_vwrite(COMPOSER_BASE + 8, (((y2 >> 8) & 1) << 5) | (((y >> 8) & 1) << 4) | (((x2 >> 8) & 3) << 2) | (((x >> 8) & 3) << 0));
 }
 
 struct sprite_entry {
@@ -505,7 +516,7 @@ struct sprite_entry {
 };
 
 void set_sprite(unsigned idx, struct sprite_entry *entry) {
-    unsigned offset = 0x40800 + 8 * idx;
+    unsigned offset = SPRITE_ATTR_BASE + 8 * idx;
 
     bus_vwrite(offset + 0, (entry->address >> 5) & 0xFF);
     bus_vwrite(offset + 1, (entry->mode ? (1 << 7) : 0) | ((entry->address >> 13) & 0xF));
@@ -526,26 +537,26 @@ int main(int argc, const char **argv) {
 
     bool vga = true;
 
-    bus_vwrite(0x40040, vga ? 1 : 2);
+    bus_vwrite(COMPOSER_BASE + 0, vga ? 1 : 2);
 
     if (vga) {
-        bus_vwrite(0x40041, 64);
-        bus_vwrite(0x40042, 64);
+        bus_vwrite(COMPOSER_BASE + 1, 64);
+        bus_vwrite(COMPOSER_BASE + 2, 64);
         set_active_area(0, 0, 640, 480);
     } else {
-        bus_vwrite(0x40041, 144 / 2);
-        bus_vwrite(0x40042, 144 / 2);
+        bus_vwrite(COMPOSER_BASE + 1, 144 / 2);
+        bus_vwrite(COMPOSER_BASE + 2, 144 / 2);
         set_active_area(23, 24, 569, 429);
     }
 
-    bus_vwrite(0x40043, 6);
+    bus_vwrite(COMPOSER_BASE + 3, 6);
 
     // return;
 #if 1
 
     // for (int i = 255; i >= 0; i++) {
-    //     bus_vwrite(0x40041, i);
-    //     bus_vwrite(0x40042, i);
+    //     bus_vwrite(COMPOSER_BASE+1, i);
+    //     bus_vwrite(COMPOSER_BASE+2, i);
     //     usleep(50000);
     // }
     // return;
@@ -558,7 +569,7 @@ int main(int argc, const char **argv) {
     test_8bpp_tile_mode();
     // return;
 
-    bus_vwrite(0x40020, 1);
+    bus_vwrite(SPRITE_REG_BASE + 0, 1);
 
     unsigned offset = (0x10000 + (11 * 16 * 16)) / 4;
 
@@ -601,8 +612,8 @@ int main(int argc, const char **argv) {
     return;
 #endif
     for (int i = 0; i <= 512; i++) {
-        bus_vwrite(0x040006, i & 0xff);
-        bus_vwrite(0x040007, i >> 8);
+        bus_vwrite(LAYER1_BASE + 6, i & 0xff);
+        bus_vwrite(LAYER1_BASE + 7, i >> 8);
         // usleep(16400);
     }
 
@@ -618,19 +629,18 @@ int main(int argc, const char **argv) {
     // }
 
     // for (int i=0; i<6; i++) {
-    //     printf("%u: %02x\n", i, bus_vread(0x40800 + i));
+    //     printf("%u: %02x\n", i, bus_vread(SPRITE_ATTR_BASE + i));
     // }
 
     // for (int i=350; i>=-64; i--) {
-    //     bus_vwrite(0x40800, i & 0xFF);
-    //     bus_vwrite(0x40801, ((unsigned)(i >> 8) & 3));
+    //     bus_vwrite(SPRITE_ATTR_BASE, i & 0xFF);
+    //     bus_vwrite(SPRITE_ATTR_BASE+1, ((unsigned)(i >> 8) & 3));
 
     //     usleep(10000);
     // }
 
-    // set_video_mode(MODE_TILE_1BPP_16COL_FG_BG);
-    // set_video_scale(1, 1);
-    // set_tile_size(1, 1);
+    // layer1_set_mode(MODE_TILE_1BPP_16COL_FG_BG);
+    // layer1_set_tile_size(1, 1);
     // layer1_enable(true);
 
     return 0;
