@@ -22,7 +22,7 @@ module top(
 );
 
     // Register bus signals
-    wire [18:0] regbus_addr;
+    wire [19:0] regbus_addr;
     wire  [7:0] regbus_wrdata;
     reg   [7:0] regbus_rddata;
     wire        regbus_strobe;
@@ -143,20 +143,20 @@ module top(
     // Register bus memory map:
     // 00000-1FFFF  Main RAM
     // 20000-20FFF  Character ROM
-    // 40000-4000F  Layer 1 registers
-    // 40010-4001F  Layer 2 registers
-    // 40020-4002F  Sprite registers
-    // 40030-4003F  ---
-    // 40040-4005F  Composer registers
-    // 40200-403FF  Palette
-    // 40800-40FFF  Sprite attributes
-    wire membus_sel        = !regbus_addr[18];
-    wire layer1_regs_sel   = regbus_addr[18] && regbus_addr[17:4]  == 'b00_00000000_0000;
-    wire layer2_regs_sel   = regbus_addr[18] && regbus_addr[17:4]  == 'b00_00000000_0001;
-    wire sprites_regs_sel  = regbus_addr[18] && regbus_addr[17:4]  == 'b00_00000000_0010;
-    wire composer_regs_sel = regbus_addr[18] && regbus_addr[17:5]  == 'b00_00000000_010;
-    wire palette_sel       = regbus_addr[18] && regbus_addr[17:9]  == 'b00_0000001;
-    wire sprite_attr_sel   = regbus_addr[18] && regbus_addr[17:11] == 'b00_00001;
+    // F0000-F001F  Composer registers
+    // F1000-F01FF  Palette
+    // F2000-F200F  Layer 1 registers
+    // F3000-F300F  Layer 2 registers
+    // F4000-F400F  Sprite registers
+    // F5000-F53FF  Sprite attributes
+    wire regbus_sel        = regbus_addr[19:16] == 4'hF;
+    wire membus_sel        = !regbus_sel;
+    wire composer_regs_sel = regbus_sel && regbus_addr[15:12] == 4'h0;
+    wire palette_sel       = regbus_sel && regbus_addr[15:12] == 4'h1;
+    wire layer1_regs_sel   = regbus_sel && regbus_addr[15:12] == 4'h2;
+    wire layer2_regs_sel   = regbus_sel && regbus_addr[15:12] == 4'h3;
+    wire sprites_regs_sel  = regbus_sel && regbus_addr[15:12] == 4'h4;
+    wire sprite_attr_sel   = regbus_sel && regbus_addr[15:12] == 4'h5;
 
     // Memory bus read data selection
     reg [7:0] membus_rddata8;

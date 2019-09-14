@@ -13,7 +13,7 @@ module extbusif_6502(
     // Bus master interface
     input  wire        bm_reset,
     input  wire        bm_clk,
-    output reg  [18:0] bm_addr,
+    output reg  [19:0] bm_addr,
     output reg   [7:0] bm_wrdata,
     input  wire  [7:0] bm_rddata,
     output reg         bm_strobe,
@@ -23,9 +23,9 @@ module extbusif_6502(
 
     // Directly exposed bus registers (bus master clock domain)
     reg  [3:0] reg_addr0_incr_r, reg_addr0_incr_next;
-    reg [18:0] reg_addr0_r,      reg_addr0_next;
+    reg [19:0] reg_addr0_r,      reg_addr0_next;
     reg  [3:0] reg_addr1_incr_r, reg_addr1_incr_next;
-    reg [18:0] reg_addr1_r,      reg_addr1_next;
+    reg [19:0] reg_addr1_r,      reg_addr1_next;
     reg        reg_addrsel_r,    reg_addrsel_next;
     reg  [7:0] reg_ien_r,        reg_ien_next;
     reg  [7:0] reg_isr_r,        reg_isr_next;
@@ -44,7 +44,7 @@ module extbusif_6502(
     // Asynchronous selection of read data
     reg [7:0] eb_rddata;
     always @* case (extbus_a)
-        3'd0:    eb_rddata = reg_addrsel_r ? {reg_addr1_incr_r, 1'b0, reg_addr1_r[18:16]} : {reg_addr0_incr_r, 1'b0, reg_addr0_r[18:16]};
+        3'd0:    eb_rddata = reg_addrsel_r ? {reg_addr1_incr_r, reg_addr1_r[19:16]} : {reg_addr0_incr_r, reg_addr0_r[19:16]};
         3'd1:    eb_rddata = reg_addrsel_r ? reg_addr1_r[15:8] : reg_addr0_r[15:8];
         3'd2:    eb_rddata = reg_addrsel_r ? reg_addr1_r[7:0]  : reg_addr0_r[7:0];
         3'd3:    eb_rddata = bm_rddata_r;
@@ -107,7 +107,7 @@ module extbusif_6502(
     wire chip_selected    = (chipselect_r[2:1] == 2'b01);
     wire chip_deselected  = (chipselect_r[2:1] == 2'b10);
 
-    reg  [18:0] bm_access_addr_next;
+    reg  [19:0] bm_access_addr_next;
     reg   [7:0] bm_write_data_next;
     reg   [7:0] bm_rddata_next;
     reg         bm_busy_next;
@@ -165,10 +165,10 @@ module extbusif_6502(
                 3'd0: begin
                     if (reg_addrsel_r) begin
                         reg_addr1_incr_next   = eb_wrdata_rrr[7:4];
-                        reg_addr1_next[18:16] = eb_wrdata_rrr[2:0];
+                        reg_addr1_next[19:16] = eb_wrdata_rrr[3:0];
                     end else begin
                         reg_addr0_incr_next   = eb_wrdata_rrr[7:4];
-                        reg_addr0_next[18:16] = eb_wrdata_rrr[2:0];
+                        reg_addr0_next[19:16] = eb_wrdata_rrr[3:0];
                     end
                 end
 
