@@ -35,13 +35,15 @@ module extbusif_6502(
 
     wire       irq = ((reg_isr_r & reg_ien_r) != 0);
 
+    wire stretch_phi2;
+
     // Generate clock
     reg [1:0] clkdiv_r;
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             clkdiv_r <= 0;
         end else begin
-            clkdiv_r <= (clkdiv_r == 'd2) ? 0 : (clkdiv_r + 1);
+            clkdiv_r <= (clkdiv_r == 'd2 && !stretch_phi2) ? 0 : (clkdiv_r + 1);
         end
     end
 
@@ -81,6 +83,8 @@ module extbusif_6502(
     //////////////////////////////////////////////////////////////////////////
     // Internal bus clock domain
     //////////////////////////////////////////////////////////////////////////
+
+    assign stretch_phi2 = !extbus_cs_n && extbus_rw_n;
 
     wire do_read  = (phi2_r == 'b10 && !extbus_cs_n &&  extbus_rw_n);
     wire do_write = (phi2_r == 'b01 && !extbus_cs_n && !extbus_rw_n);

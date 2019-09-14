@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Wed Sep 11 11:55:18 2019
+[*] Sat Sep 14 11:23:24 2019
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Wed Sep 11 11:54:09 2019"
-[dumpfile_size] 61768712
+[dumpfile_mtime] "Sat Sep 14 10:59:23 2019"
+[dumpfile_size] 82449708
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
-[timestart] 1244900000
+[timestart] 4220000
 [size] 2560 1377
 [pos] -1 -1
-*-24.378208 1349548000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-19.378208 7490000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [treeopen] tb.top.extbus.
@@ -26,8 +26,9 @@ tb.phi2
 tb.top.extbus_a[2:0]
 @22
 tb.top.extbus_d[7:0]
-@28
+@29
 tb.top.extbus_rw_n
+@28
 tb.top.extbus_cs_n
 tb.top.extbus_irq_n
 @200
@@ -37,9 +38,7 @@ tb.top.extbus.do_read
 tb.top.extbus.do_write
 @200
 -
-@24
-tb.top.blaat_rrrr[3:0]
-@8025
+@8024
 tb.top.video_composite.luma[5:0]
 @20000
 -
