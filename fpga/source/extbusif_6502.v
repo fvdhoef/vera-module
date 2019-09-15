@@ -13,7 +13,7 @@ module extbusif_6502(
     output wire        extbus_irq_n,  /* IRQ */
 
     // Bus master interface
-    output wire [18:0] bm_addr,
+    output wire [19:0] bm_addr,
     output wire  [7:0] bm_wrdata,
     input  wire  [7:0] bm_rddata,
     output wire        bm_strobe,
@@ -23,9 +23,9 @@ module extbusif_6502(
 
     // Directly exposed bus registers (bus master clock domain)
     reg  [3:0] reg_addr0_incr_r, reg_addr0_incr_next;
-    reg [18:0] reg_addr0_r,      reg_addr0_next;
+    reg [19:0] reg_addr0_r,      reg_addr0_next;
     reg  [3:0] reg_addr1_incr_r, reg_addr1_incr_next;
-    reg [18:0] reg_addr1_r,      reg_addr1_next;
+    reg [19:0] reg_addr1_r,      reg_addr1_next;
     reg        reg_addrsel_r,    reg_addrsel_next;
     reg  [7:0] reg_ien_r,        reg_ien_next;
     reg  [7:0] reg_isr_r,        reg_isr_next;
@@ -62,9 +62,9 @@ module extbusif_6502(
     // Asynchronous selection of read data
     reg [7:0] eb_rddata;
     always @* case (extbus_a)
-        3'd0:    eb_rddata = reg_addrsel_r ? {reg_addr1_incr_r, 1'b0, reg_addr1_r[18:16]} : {reg_addr0_incr_r, 1'b0, reg_addr0_r[18:16]};
+        3'd0:    eb_rddata = reg_addrsel_r ? reg_addr1_r[7:0]  : reg_addr0_r[7:0];
         3'd1:    eb_rddata = reg_addrsel_r ? reg_addr1_r[15:8] : reg_addr0_r[15:8];
-        3'd2:    eb_rddata = reg_addrsel_r ? reg_addr1_r[7:0]  : reg_addr0_r[7:0];
+        3'd2:    eb_rddata = reg_addrsel_r ? {reg_addr1_incr_r, reg_addr1_r[19:16]} : {reg_addr0_incr_r, reg_addr0_r[19:16]};
         3'd3:    eb_rddata = rddata;
         3'd4:    eb_rddata = rddata;
         3'd5:    eb_rddata = {do_warmboot_r, 6'b0, reg_addrsel_r};
@@ -89,7 +89,7 @@ module extbusif_6502(
     wire do_read  = (phi2_r == 'b10 && !extbus_cs_n &&  extbus_rw_n);
     wire do_write = (phi2_r == 'b01 && !extbus_cs_n && !extbus_rw_n);
 
-    reg  [18:0] ib_addr_r,   ib_addr_next;
+    reg  [19:0] ib_addr_r,   ib_addr_next;
     reg   [7:0] ib_wrdata_r, ib_wrdata_next;
     reg   [7:0] ib_rddata_r, ib_rddata_next;
     reg         ib_strobe_r, ib_strobe_next;
@@ -106,6 +106,28 @@ module extbusif_6502(
     assign rddata = read_done ? bm_rddata : ib_rddata_r;
 
     reg access_port;
+
+    // Decode increment value
+    wire [3:0] incr_regval = !access_port ? reg_addr0_incr_r : reg_addr1_incr_r;
+    reg [15:0] increment;
+    always @* case (incr_regval)
+        4'h0: increment = 'd0;
+        4'h1: increment = 'd1;
+        4'h2: increment = 'd2;
+        4'h3: increment = 'd4;
+        4'h4: increment = 'd8;
+        4'h5: increment = 'd16;
+        4'h6: increment = 'd32;
+        4'h7: increment = 'd64;
+        4'h8: increment = 'd128;
+        4'h9: increment = 'd256;
+        4'hA: increment = 'd512;
+        4'hB: increment = 'd1024;
+        4'hC: increment = 'd2048;
+        4'hD: increment = 'd4096;
+        4'hE: increment = 'd8192;
+        4'hF: increment = 'd16384;
+    endcase
 
     always @* begin
         reg_addr0_incr_next = reg_addr0_incr_r;
@@ -142,28 +164,28 @@ module extbusif_6502(
         if (do_write) begin
             case (extbus_a)
                 3'd0: begin
-                    if (reg_addrsel_r) begin
-                        reg_addr1_incr_next   = eb_wrdata[7:4];
-                        reg_addr1_next[18:16] = eb_wrdata[2:0];
+                    if (!reg_addrsel_r) begin
+                        reg_addr0_next[7:0] = eb_wrdata;
                     end else begin
-                        reg_addr0_incr_next   = eb_wrdata[7:4];
-                        reg_addr0_next[18:16] = eb_wrdata[2:0];
+                        reg_addr1_next[7:0] = eb_wrdata;
                     end
                 end
 
                 3'd1: begin
-                    if (reg_addrsel_r) begin
-                        reg_addr1_next[15:8] = eb_wrdata;
-                    end else begin
+                    if (!reg_addrsel_r) begin
                         reg_addr0_next[15:8] = eb_wrdata;
+                    end else begin
+                        reg_addr1_next[15:8] = eb_wrdata;
                     end
                 end
 
                 3'd2: begin
-                    if (reg_addrsel_r) begin
-                        reg_addr1_next[7:0] = eb_wrdata;
+                    if (!reg_addrsel_r) begin
+                        reg_addr0_incr_next   = eb_wrdata[7:4];
+                        reg_addr0_next[19:16] = eb_wrdata[3:0];
                     end else begin
-                        reg_addr0_next[7:0] = eb_wrdata;
+                        reg_addr1_incr_next   = eb_wrdata[7:4];
+                        reg_addr1_next[19:16] = eb_wrdata[3:0];
                     end
                 end
 
@@ -195,12 +217,11 @@ module extbusif_6502(
         if (ib_do_access) begin
             if (!access_port) begin
                 ib_addr_next   = reg_addr0_r;
-                reg_addr0_next = reg_addr0_r + reg_addr0_incr_r;
+                reg_addr0_next = reg_addr0_r + increment;
 
             end else begin
                 ib_addr_next   = reg_addr1_r;
-                reg_addr1_next = reg_addr1_r + reg_addr1_incr_r;
-
+                reg_addr1_next = reg_addr1_r + increment;
             end
             ib_strobe_next = 1;
         end
