@@ -54,14 +54,13 @@ module top(
     // Memory bus signals
     reg  [17:0] membus_addr;
     wire [31:0] membus_wrdata;
-    reg  [31:0] membus_rddata;
+    wire [31:0] membus_rddata;
     reg   [3:0] membus_bytesel;
     wire        membus_strobe;
     reg         membus_write;
 
     // Memory bus read outputs
     wire [31:0] mainram_rddata;
-    wire [31:0] charrom_rddata;
 
     wire [15:0] layer0_bm_addr;
     wire        layer0_bm_strobe;
@@ -158,7 +157,6 @@ module top(
 
     // Register bus memory map:
     // 00000-1FFFF  Main RAM
-    // 20000-20FFF  Character ROM
     // F0000-F001F  Composer registers
     // F1000-F01FF  Palette
     // F2000-F200F  Layer 0 registers
@@ -206,12 +204,6 @@ module top(
     // Memory bus
     //////////////////////////////////////////////////////////////////////////
 
-    // Memory bus memory map:
-    // 00000-1FFFF  Main RAM
-    // 20000-20FFF  Character ROM
-    wire mainram_sel = (membus_addr[17]    == 0);
-    wire charrom_sel = (membus_addr[17:12] == 6'b10_0000);
-
     assign membus_wrdata = {4{regbus_wrdata}};
     always @* case (membus_addr[1:0])
         2'b00: membus_bytesel = 4'b0001;
@@ -220,18 +212,7 @@ module top(
         2'b11: membus_bytesel = 4'b1000;
     endcase
 
-    // Read data mux (with pipeline delay on selection)
-    reg mainram_sel_r, charrom_sel_r;
-    always @(posedge clk) begin
-        mainram_sel_r <= mainram_sel;
-        charrom_sel_r <= charrom_sel;
-    end
-
-    always @* begin
-        membus_rddata = 32'h00000000;
-        if (mainram_sel_r) membus_rddata = mainram_rddata;
-        if (charrom_sel_r) membus_rddata = charrom_rddata;
-    end
+    assign membus_rddata = mainram_rddata;
 
     wire regbus_bm_strobe = membus_sel && regbus_strobe;
 
@@ -532,7 +513,7 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     // Main RAM
     //////////////////////////////////////////////////////////////////////////
-    wire mainram_write = mainram_sel && membus_strobe && membus_write;
+    wire mainram_write = membus_strobe && membus_write;
 
     main_ram main_ram(
         .clk(clk),
@@ -541,14 +522,6 @@ module top(
         .bus_wrbytesel(membus_bytesel),
         .bus_rddata(mainram_rddata),
         .bus_write(mainram_write));
-
-    //////////////////////////////////////////////////////////////////////////
-    // Charactor ROM
-    //////////////////////////////////////////////////////////////////////////
-    char_rom char_rom(
-        .clk(clk),
-        .rd_addr(membus_addr[11:2]),
-        .rd_data(charrom_rddata));
 
     //////////////////////////////////////////////////////////////////////////
     // Line buffers

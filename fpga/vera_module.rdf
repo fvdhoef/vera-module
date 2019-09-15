@@ -9,9 +9,6 @@
         <Source name="source/reset_sync.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
-        <Source name="source/char_rom.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
         <Source name="source/extbusif_6502.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
