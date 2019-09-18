@@ -70,6 +70,6 @@ module spictrl(
         end
     end
 
-    assign bus_rddata = bus_addr ? {6'b0, busy, ssel_r} : rx_shift_r;
+    assign bus_rddata = bus_addr ? {busy, 6'b0, ssel_r} : rx_shift_r;
 
 endmodule
