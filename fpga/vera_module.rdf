@@ -72,6 +72,21 @@
         <Source name="source/spi/spictrl.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
+        <Source name="source/audio/audio.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/audio/dacif.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/audio/exp_table.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/audio/logsin_table.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/audio/operator.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
         <Source name="source/vera_module.ldc" type="LSE Design Constraints File" type_short="LDC">
             <Options/>
         </Source>

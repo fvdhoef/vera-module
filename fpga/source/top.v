@@ -250,7 +250,6 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     // Layer 0 renderer
     //////////////////////////////////////////////////////////////////////////
-    wire        layer0_regs_write = layer0_regs_sel && regbus_strobe && regbus_write;
     wire  [8:0] layer0_line_idx;
     wire        layer0_line_render_start;
     wire        layer0_line_render_done;
@@ -270,7 +269,9 @@ module top(
         .regs_addr(regbus_addr[3:0]),
         .regs_wrdata(regbus_wrdata),
         .regs_rddata(layer0_regs_rddata),
-        .regs_write(layer0_regs_write),
+        .regs_sel(layer0_regs_sel),
+        .regs_strobe(regbus_strobe),
+        .regs_write(regbus_write),
 
         // Bus master interface
         .bus_addr(layer0_bm_addr),
@@ -286,7 +287,6 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     // Layer 1 renderer
     //////////////////////////////////////////////////////////////////////////
-    wire        layer1_regs_write = layer1_regs_sel && regbus_strobe && regbus_write;
     wire  [8:0] layer1_line_idx;
     wire        layer1_line_render_start;
     wire        layer1_line_render_done;
@@ -306,7 +306,9 @@ module top(
         .regs_addr(regbus_addr[3:0]),
         .regs_wrdata(regbus_wrdata),
         .regs_rddata(layer1_regs_rddata),
-        .regs_write(layer1_regs_write),
+        .regs_sel(layer1_regs_sel),
+        .regs_strobe(regbus_strobe),
+        .regs_write(regbus_write),
 
         // Bus master interface
         .bus_addr(layer1_bm_addr),
@@ -322,7 +324,6 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     // Sprite renderer
     //////////////////////////////////////////////////////////////////////////
-    wire        sprites_regs_write = sprites_regs_sel && regbus_strobe && regbus_write;
     wire  [8:0] sprites_line_idx;
     wire        sprites_line_render_start;
     wire        sprites_line_render_done;
@@ -345,7 +346,9 @@ module top(
         .regs_addr(regbus_addr[3:0]),
         .regs_wrdata(regbus_wrdata),
         .regs_rddata(sprites_regs_rddata),
-        .regs_write(sprites_regs_write),
+        .regs_sel(sprites_regs_sel),
+        .regs_strobe(regbus_strobe),
+        .regs_write(regbus_write),
 
         // Bus master interface
         .bus_addr(sprite_bm_addr),
@@ -368,12 +371,10 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     // Composer
     //////////////////////////////////////////////////////////////////////////
-    wire composer_regs_write = composer_regs_sel && regbus_strobe && regbus_write;
     wire [7:0] composer_display_data;
     wire       next_pixel;
     wire [1:0] display_mode;
     wire       display_chroma_disable;
-
     wire       composer_display_current_field;
 
     composer composer(
@@ -386,7 +387,9 @@ module top(
         .regs_addr(regbus_addr[4:0]),
         .regs_wrdata(regbus_wrdata),
         .regs_rddata(composer_regs_rddata),
-        .regs_write(composer_regs_write),
+        .regs_sel(composer_regs_sel),
+        .regs_strobe(regbus_strobe),
+        .regs_write(regbus_write),
 
         // Layer 0 interface
         .layer0_line_idx(layer0_line_idx),
@@ -466,9 +469,9 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     // Sprite attribute RAM
     //////////////////////////////////////////////////////////////////////////
-    wire        sprite_attr_write = sprite_attr_sel && regbus_strobe && regbus_write;
+    wire sprite_attr_write = sprite_attr_sel && regbus_strobe && regbus_write;
 
-    reg   [3:0] sprite_attr_bytesel;
+    reg [3:0] sprite_attr_bytesel;
     always @* case (regbus_addr[1:0])
         3'd0: sprite_attr_bytesel = 4'b0001;
         3'd1: sprite_attr_bytesel = 4'b0010;
@@ -739,5 +742,29 @@ module top(
         .spi_mosi(spi_mosi),
         .spi_miso(spi_miso),
         .spi_ssel_n_sd(spi_ssel_n_sd));
+
+    //////////////////////////////////////////////////////////////////////////
+    // SPI
+    //////////////////////////////////////////////////////////////////////////
+    audio audio(
+        .rst(reset),
+        .clk(clk),
+
+        // Register interface
+        .regs_addr(4'b0),
+        .regs_wrdata(8'b0),
+        .regs_rddata(),
+        .regs_write(1'b0),
+
+        // Bus master interface
+        .bus_addr(),
+        .bus_rddata(32'b0),
+        .bus_strobe(),
+        .bus_ack(1'b0),
+
+        // I2S audio output
+        .audio_lrck(audio_lrck),
+        .audio_bck(audio_bck),
+        .audio_data(audio_data));
 
 endmodule

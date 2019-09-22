@@ -14,6 +14,8 @@ module layer_renderer(
     input  wire  [3:0] regs_addr,
     input  wire  [7:0] regs_wrdata,
     output reg   [7:0] regs_rddata,
+    input  wire        regs_sel,
+    input  wire        regs_strobe,
     input  wire        regs_write,
 
     // Bus master interface
@@ -30,6 +32,8 @@ module layer_renderer(
     //////////////////////////////////////////////////////////////////////////
     // Register interface
     //////////////////////////////////////////////////////////////////////////
+
+    wire regs_access = regs_sel && regs_strobe;
 
     // CTRL0
     reg  [2:0] reg_mode_r;
@@ -83,7 +87,7 @@ module layer_renderer(
             reg_vscroll_r       <= 12'd0;
 
         end else begin
-            if (regs_write) begin
+            if (regs_access && regs_write) begin
                 case (regs_addr[3:0])
                     4'h0: begin
                         reg_mode_r   <= regs_wrdata[7:5];

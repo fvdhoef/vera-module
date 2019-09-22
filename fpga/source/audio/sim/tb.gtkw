@@ -1,0 +1,39 @@
+[*]
+[*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
+[*] Sat Sep 21 12:46:20 2019
+[*]
+[dumpfile] "/c/Work/vera-module/fpga/source/audio/sim/tb.vcd"
+[dumpfile_mtime] "Sat Sep 21 12:46:11 2019"
+[dumpfile_size] 38608618
+[savefile] "/c/Work/vera-module/fpga/source/audio/sim/tb.gtkw"
+[timestart] 0
+[size] 2560 1377
+[pos] 233 -9
+*-31.000000 20580000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb.
+[treeopen] tb.audio.
+[sst_width] 213
+[signals_width] 225
+[sst_expanded] 1
+[sst_vpaned_height] 422
+@28
+tb.audio.clk
+tb.audio.rst
+@200
+-
+@28
+tb.audio.audio_bck
+tb.audio.audio_lrck
+tb.audio.audio_data
+@200
+-
+@28
+tb.audio.dacif.next_sample
+@200
+-
+@8421
+tb.audio.dacif.left_data[23:0]
+@22
+tb.audio.dacif.right_data[23:0]
+[pattern_trace] 1
+[pattern_trace] 0
