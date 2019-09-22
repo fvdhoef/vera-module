@@ -62,6 +62,11 @@ module top(
     // Memory bus read outputs
     wire [31:0] mainram_rddata;
 
+    wire        regbus_ack;
+    wire        regbus_bm_strobe;
+    reg         regbus_bm_ack;
+    reg         regbus_bm_ack_next;
+
     wire [15:0] layer0_bm_addr;
     wire        layer0_bm_strobe;
     reg         layer0_bm_ack;
@@ -150,6 +155,7 @@ module top(
         .bm_rddata(regbus_rddata),
         .bm_strobe(regbus_strobe),
         .bm_write(regbus_write),
+        .bm_ack(regbus_ack),
         
         .irqs(irqs));
 
@@ -200,6 +206,11 @@ module top(
         if (uart_sel)          regbus_rddata = uart_rddata;
     end
 
+    reg regbus_strobe_r;
+    always @(posedge clk) regbus_strobe_r <= regbus_strobe;
+
+    assign regbus_ack = membus_sel ? regbus_bm_ack : regbus_strobe_r;
+
     //////////////////////////////////////////////////////////////////////////
     // Memory bus
     //////////////////////////////////////////////////////////////////////////
@@ -214,22 +225,19 @@ module top(
 
     assign membus_rddata = mainram_rddata;
 
-    wire regbus_bm_strobe = membus_sel && regbus_strobe;
+    assign regbus_bm_strobe = membus_sel && regbus_strobe;
 
     assign membus_strobe = regbus_bm_strobe || layer0_bm_strobe || layer1_bm_strobe || sprite_bm_strobe;
 
     always @* begin
         membus_addr        = 18'b0;
         membus_write       = 1'b0;
+        regbus_bm_ack_next = 1'b0;
         layer0_bm_ack_next = 1'b0;
         layer1_bm_ack_next = 1'b0;
         sprite_bm_ack_next = 1'b0;
 
-        if (regbus_bm_strobe) begin
-            membus_addr        = regbus_addr[17:0];
-            membus_write       = regbus_write;
-
-        end else if (layer0_bm_strobe) begin
+        if (layer0_bm_strobe) begin
             membus_addr        = {layer0_bm_addr, 2'b0};
             layer0_bm_ack_next = 1'b1;
 
@@ -240,9 +248,16 @@ module top(
         end else if (sprite_bm_strobe) begin
             membus_addr        = {sprite_bm_addr, 2'b0};
             sprite_bm_ack_next = 1'b1;
+
+        end else if (regbus_bm_strobe) begin
+            membus_addr        = regbus_addr[17:0];
+            membus_write       = regbus_write;
+            regbus_bm_ack_next = 1'b1;
         end
+
     end
 
+    always @(posedge clk) regbus_bm_ack <= regbus_bm_ack_next;
     always @(posedge clk) layer0_bm_ack <= layer0_bm_ack_next;
     always @(posedge clk) layer1_bm_ack <= layer1_bm_ack_next;
     always @(posedge clk) sprite_bm_ack <= sprite_bm_ack_next;

@@ -91,9 +91,10 @@ module tb();
 
     initial begin
         #6000
-        extbus_write(16'h1000, 8'h12);
-        extbus_write(16'h1001, 8'h00);
-        extbus_write(16'h1002, 8'h00);
+        extbus_write(16'h1000, 8'h00);
+        extbus_write(16'h1001, 8'h40);
+        extbus_write(16'h1002, 8'h10);
+
         extbus_read(16'h1003);
         extbus_read(16'h1003);
         extbus_read(16'h1003);

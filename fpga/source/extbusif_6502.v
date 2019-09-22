@@ -18,6 +18,7 @@ module extbusif_6502(
     input  wire  [7:0] bm_rddata,
     output wire        bm_strobe,
     output wire        bm_write,
+    input  wire        bm_ack,
     
     input  wire  [7:0] irqs);
 
@@ -27,23 +28,43 @@ module extbusif_6502(
     reg  [3:0] reg_addr1_incr_r, reg_addr1_incr_next;
     reg [19:0] reg_addr1_r,      reg_addr1_next;
     reg        reg_addrsel_r,    reg_addrsel_next;
+    reg  [2:0] reg_clkdiv_r,     reg_clkdiv_next;
     reg  [7:0] reg_ien_r,        reg_ien_next;
     reg  [7:0] reg_isr_r,        reg_isr_next;
     reg        do_warmboot_r,    do_warmboot_next;
 
     wire [7:0] rddata;
 
-    wire       irq = ((reg_isr_r & reg_ien_r) != 0);
+    wire irq = ((reg_isr_r & reg_ien_r) != 0);
 
-    wire stretch_phi2;
+    reg busy_r, busy_next;
+
+    reg [4:0] clkdiv_max;
+    always @* case (reg_clkdiv_r)
+        3'd0: clkdiv_max = 'd2;     // 8.33MHz
+        3'd1: clkdiv_max = 'd3;     // 6.25MHz
+        3'd2: clkdiv_max = 'd4;     // 5.00MHz
+        3'd3: clkdiv_max = 'd6;     // 3.57MHz
+        3'd4: clkdiv_max = 'd9;     // 2.50MHz
+        3'd5: clkdiv_max = 'd12;    // 1.92MHz
+        3'd6: clkdiv_max = 'd24;    // 1.00MHz
+        3'd7: clkdiv_max = 'd31;    // 0.81MHz
+    endcase
 
     // Generate clock
-    reg [1:0] clkdiv_r;
+    reg [4:0] clkdiv_r;
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             clkdiv_r <= 0;
         end else begin
-            clkdiv_r <= (clkdiv_r == 'd2 && !stretch_phi2) ? 0 : (clkdiv_r + 1);
+            if (clkdiv_r == clkdiv_max) begin
+                if (!busy_r) begin
+                    clkdiv_r <= 0;
+                end
+
+            end else begin
+                clkdiv_r <= clkdiv_r + 'd1;
+            end
         end
     end
 
@@ -67,7 +88,7 @@ module extbusif_6502(
         3'd2:    eb_rddata = reg_addrsel_r ? {reg_addr1_incr_r, reg_addr1_r[19:16]} : {reg_addr0_incr_r, reg_addr0_r[19:16]};
         3'd3:    eb_rddata = rddata;
         3'd4:    eb_rddata = rddata;
-        3'd5:    eb_rddata = {do_warmboot_r, 6'b0, reg_addrsel_r};
+        3'd5:    eb_rddata = {do_warmboot_r, 3'b0, reg_clkdiv_r, reg_addrsel_r};
         3'd6:    eb_rddata = reg_ien_r;
         3'd7:    eb_rddata = reg_isr_r;
         default: eb_rddata = 8'h00;
@@ -84,8 +105,6 @@ module extbusif_6502(
     // Internal bus clock domain
     //////////////////////////////////////////////////////////////////////////
 
-    assign stretch_phi2 = !extbus_cs_n && extbus_rw_n;
-
     wire do_read  = (phi2_r == 'b10 && !extbus_cs_n &&  extbus_rw_n);
     wire do_write = (phi2_r == 'b01 && !extbus_cs_n && !extbus_rw_n);
 
@@ -101,9 +120,7 @@ module extbusif_6502(
     assign bm_strobe = ib_strobe_next;
     assign bm_write  = ib_write_next;
 
-    wire read_done = ib_strobe_r && !ib_write_r;
-
-    assign rddata = read_done ? bm_rddata : ib_rddata_r;
+    assign rddata = bm_ack ? bm_rddata : ib_rddata_r;
 
     reg access_port;
 
@@ -135,29 +152,35 @@ module extbusif_6502(
         reg_addr1_incr_next = reg_addr1_incr_r;
         reg_addr1_next      = reg_addr1_r;
         reg_addrsel_next    = reg_addrsel_r;
+        reg_clkdiv_next     = reg_clkdiv_r;
         reg_ien_next        = reg_ien_r;
         reg_isr_next        = reg_isr_r;
 
         ib_addr_next        = ib_addr_r;
         ib_wrdata_next      = ib_wrdata_r;
         ib_rddata_next      = ib_rddata_r;
-        ib_strobe_next      = 0;
-        ib_write_next       = 0;
+        ib_strobe_next      = ib_strobe_r;
+        ib_write_next       = ib_write_r;
         ib_do_access        = 0;
         access_port         = 0;
 
+        busy_next           = busy_r;
+
         do_warmboot_next    = do_warmboot_r;
 
-        if (read_done) begin
+        if (bm_ack) begin
             ib_rddata_next = bm_rddata;
+            busy_next = 0;
+            ib_strobe_next = 0;
         end
 
         // Start the read access as early as possible to be able to get the
         // result in the same 6502 bus cycle (depending on the 6502 bus clock
         // speed).
         if (do_read && (extbus_a == 3'd3 || extbus_a == 3'd4)) begin
-            ib_do_access = 1;
-            access_port = (extbus_a == 3'd4);
+            ib_do_access  = 1;
+            ib_write_next = 0;
+            access_port   = (extbus_a == 3'd4);
         end
 
         // Write
@@ -198,6 +221,7 @@ module extbusif_6502(
 
                 3'd5: begin
                     do_warmboot_next = eb_wrdata[7];
+                    reg_clkdiv_next  = eb_wrdata[3:1];
                     reg_addrsel_next = eb_wrdata[0];
                 end
 
@@ -215,6 +239,7 @@ module extbusif_6502(
         reg_isr_next = reg_isr_next | irqs;
 
         if (ib_do_access) begin
+            busy_next = 1;
             if (!access_port) begin
                 ib_addr_next   = reg_addr0_r;
                 reg_addr0_next = reg_addr0_r + increment;
@@ -234,6 +259,7 @@ module extbusif_6502(
             reg_addr1_incr_r <= 0;
             reg_addr1_r      <= 0;
             reg_addrsel_r    <= 0;
+            reg_clkdiv_r     <= 0;
             reg_ien_r        <= 0;
             reg_isr_r        <= 0;
 
@@ -245,12 +271,15 @@ module extbusif_6502(
 
             do_warmboot_r    <= 0;
 
+            busy_r           <= 0;
+
         end else begin
             reg_addr0_incr_r <= reg_addr0_incr_next;
             reg_addr0_r      <= reg_addr0_next;
             reg_addr1_incr_r <= reg_addr1_incr_next;
             reg_addr1_r      <= reg_addr1_next;
             reg_addrsel_r    <= reg_addrsel_next;
+            reg_clkdiv_r     <= reg_clkdiv_next;
             reg_ien_r        <= reg_ien_next;
             reg_isr_r        <= reg_isr_next;
 
@@ -261,6 +290,8 @@ module extbusif_6502(
             ib_write_r       <= ib_write_next;
 
             do_warmboot_r    <= do_warmboot_next;
+
+            busy_r           <= busy_next;
         end
     end
 
