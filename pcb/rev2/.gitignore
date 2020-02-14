@@ -1,0 +1,9 @@
+*.rpt
+*.bak
+*.bck
+*.xml
+*.kicad_pcb-bak
+*.sch-bak
+_saved_*
+fp-info-cache
+_autosave-*
