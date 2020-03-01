@@ -4,25 +4,17 @@ module sprite_renderer(
     input  wire        rst,
     input  wire        clk,
 
+    // Register interface
+    output wire  [3:0] collisions,
     output reg         sprcol_irq,
 
     // Composer interface
     input  wire  [8:0] line_idx,
     input  wire        line_render_start,
-    output wire        line_render_done,
-    output wire        sprites_enabled,
     input  wire        frame_done,
 
-    // Register interface
-    input  wire  [3:0] regs_addr,
-    input  wire  [7:0] regs_wrdata,
-    output reg   [7:0] regs_rddata,
-    input  wire        regs_sel,
-    input  wire        regs_strobe,
-    input  wire        regs_write,
-
     // Bus master interface
-    output wire [15:0] bus_addr,
+    output wire [14:0] bus_addr,
     input  wire [31:0] bus_rddata,
     output wire        bus_strobe,
     input  wire        bus_ack,
@@ -42,41 +34,7 @@ module sprite_renderer(
     reg [3:0] cur_collision_mask_r,   cur_collision_mask_next;
     reg [3:0] frame_collision_mask_r, frame_collision_mask_next;
 
-    //////////////////////////////////////////////////////////////////////////
-    // Register interface
-    //////////////////////////////////////////////////////////////////////////
-
-    wire regs_access = regs_sel && regs_strobe;
-
-    // SPR_CTRL
-    reg reg_enable_r;
-
-    assign sprites_enabled = reg_enable_r;
-
-    // Register interface read data
-    always @* begin
-        case (regs_addr)
-            4'h0: regs_rddata = {7'b0, reg_enable_r};
-            4'h1: regs_rddata = {4'b0, frame_collision_mask_r};
-            default: regs_rddata = 8'h00;
-        endcase
-    end
-
-    // Register interface write data
-    always @(posedge clk or posedge rst) begin
-        if (rst) begin
-            reg_enable_r <= 0;
-
-        end else begin
-            if (regs_access && regs_write) begin
-                case (regs_addr[3:0])
-                    4'h0: begin
-                        reg_enable_r <= regs_wrdata[0];
-                    end
-                endcase
-            end
-        end
-    end
+    assign collisions = frame_collision_mask_r;
 
     //////////////////////////////////////////////////////////////////////////
     // Render time limitation
@@ -137,7 +95,7 @@ module sprite_renderer(
     reg   [3:0] sprite_collision_mask_r;
     reg   [3:0] sprite_palette_offset_r;
     reg   [1:0] sprite_width_r;
-    reg   [1:0] sprite_height_r;
+    // reg   [1:0] sprite_height_r;
 
     // Decode sprite height
     reg [5:0] sprite_height_pixels;
@@ -236,7 +194,7 @@ module sprite_renderer(
             sprite_collision_mask_r <= 0;
             sprite_palette_offset_r <= 0;
             sprite_width_r          <= 0;
-            sprite_height_r         <= 0;
+            // sprite_height_r         <= 0;
 
         end else begin
             sprite_idx_r   <= sprite_idx_next;
@@ -255,7 +213,7 @@ module sprite_renderer(
                 sprite_collision_mask_r <= sprite_attr_collision_mask;
                 sprite_palette_offset_r <= sprite_attr_palette_offset;
                 sprite_width_r          <= sprite_attr_width;
-                sprite_height_r         <= sprite_attr_height;
+                // sprite_height_r         <= sprite_attr_height;
             end
         end
     end
@@ -279,14 +237,14 @@ module sprite_renderer(
     wire [5:0] hflipped_xcnt_next = sprite_hflip_r ? ~xcnt_next : xcnt_next;
 
     // Determine address of current sprite line
-    reg [15:0] line_addr_tmp;
+    reg [14:0] line_addr_tmp;
     always @* case (sprite_width_r)
-        2'd0: line_addr_tmp = sprite_mode_r ? {9'b0, sprite_line_r, hflipped_xcnt_next[  2]} : {10'b0, sprite_line_r                         }; //  8 pixels
-        2'd1: line_addr_tmp = sprite_mode_r ? {8'b0, sprite_line_r, hflipped_xcnt_next[3:2]} : { 9'b0, sprite_line_r, hflipped_xcnt_next[  3]}; // 16 pixels
-        2'd2: line_addr_tmp = sprite_mode_r ? {7'b0, sprite_line_r, hflipped_xcnt_next[4:2]} : { 8'b0, sprite_line_r, hflipped_xcnt_next[4:3]}; // 32 pixels
-        2'd3: line_addr_tmp = sprite_mode_r ? {6'b0, sprite_line_r, hflipped_xcnt_next[5:2]} : { 7'b0, sprite_line_r, hflipped_xcnt_next[5:3]}; // 64 pixels
+        2'd0: line_addr_tmp = sprite_mode_r ? {8'b0, sprite_line_r, hflipped_xcnt_next[  2]} : {9'b0, sprite_line_r                         }; //  8 pixels
+        2'd1: line_addr_tmp = sprite_mode_r ? {7'b0, sprite_line_r, hflipped_xcnt_next[3:2]} : {8'b0, sprite_line_r, hflipped_xcnt_next[  3]}; // 16 pixels
+        2'd2: line_addr_tmp = sprite_mode_r ? {6'b0, sprite_line_r, hflipped_xcnt_next[4:2]} : {7'b0, sprite_line_r, hflipped_xcnt_next[4:3]}; // 32 pixels
+        2'd3: line_addr_tmp = sprite_mode_r ? {5'b0, sprite_line_r, hflipped_xcnt_next[5:2]} : {6'b0, sprite_line_r, hflipped_xcnt_next[5:3]}; // 64 pixels
     endcase
-    wire [15:0] line_addr = {1'b0, sprite_addr_r, 3'b0} + line_addr_tmp;
+    wire [14:0] line_addr = {sprite_addr_r, 3'b0} + line_addr_tmp;
 
     // State machine states
     parameter
@@ -297,11 +255,11 @@ module sprite_renderer(
 
     // Registers used by state machine
     reg  [1:0] state_r,        state_next;
-    reg [15:0] bus_addr_r,     bus_addr_next;
+    reg [14:0] bus_addr_r,     bus_addr_next;
     reg        bus_strobe_r,   bus_strobe_next;
     reg [31:0] render_data_r,  render_data_next;
     reg  [9:0] linebuf_idx_r,  linebuf_idx_next;
-    reg        linebuf_wren_r, linebuf_wren_next;
+    reg        /*linebuf_wren_r,*/ linebuf_wren_next;
 
     assign bus_addr      = bus_addr_r;
     assign bus_strobe    = bus_strobe_r && !bus_ack;
@@ -452,7 +410,7 @@ module sprite_renderer(
             bus_strobe_r           <= 0;
             render_data_r          <= 0;
             linebuf_idx_r          <= 0;
-            linebuf_wren_r         <= 0;
+            // linebuf_wren_r         <= 0;
             xcnt_r                 <= 0;
             cur_collision_mask_r   <= 0;
             frame_collision_mask_r <= 0;
@@ -463,7 +421,7 @@ module sprite_renderer(
             bus_strobe_r           <= bus_strobe_next;
             render_data_r          <= render_data_next;
             linebuf_idx_r          <= linebuf_idx_next;
-            linebuf_wren_r         <= linebuf_wren_next;
+            // linebuf_wren_r         <= linebuf_wren_next;
             xcnt_r                 <= xcnt_next;
             cur_collision_mask_r   <= cur_collision_mask_next;
             frame_collision_mask_r <= frame_collision_mask_next;

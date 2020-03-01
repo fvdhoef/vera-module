@@ -1,0 +1,81 @@
+Audio 8/16-bit mono/stereo
+Sample rate
+
+00000-1F9FF Video RAM
+1FA00-1FBFF Palette
+1FC00-1FFFF Sprite attributes
+
+       7     6     5     4     3     2     1     0
+   +-----------------------------------------------+
+00 |           Video RAM address low 7:0           | VRAM_ADDR_LO  (multiplexed by ADDRSEL)
+   +-----------------------------------------------+
+01 |           Video RAM address mid 15:8          | VRAM_ADDR_MID (multiplexed by ADDRSEL)
+   +-----------------------+-----------------+-----+
+02 |   Address increment   |                 |Adr16| VRAM_ADDR_HI  (multiplexed by ADDRSEL)
+   +-----------------------+-----------------+-----+
+03 |       Video RAM data port 0 (read/write)      | VRAM_DATA0    (read/write)
+   +-----------------------------------------------+
+04 |       Video RAM data port 1 (write only)      | VRAM_DATA1    (write-only)
+   +-----+-----------------------------------+-----+
+05 |Reset|                                   |Adsel| VRAM_CTRL
+   +-----+-----------------------+-----+-----+-----+
+06 |irql8|                       |Spcol|Line |Vsync| IRQ_ENABLE
+   +-----+-----------------+-----+-----+-----+-----+
+07 |      Collisions       |Field|Spcol|Line |Vsync| STATUS
+   +-----------------------+-----+-----+-----+-----+
+08 |                 IRQ line 7:0                  | IRQ_LINE_L
+   +-----+-----+-----+-----+-----+-----+-----------+
+09 |     |SprEn|L1_En|L0_En|Lsel |Chdis| OUT_MODE  | DC_VIDEO
+   +-----+-----+-----+-----+-----+-----+-----------+
+0A |                Display H-Scale                | DC_HSCALE
+   +-----------------------------------------------+
+0B |                Display V-Scale                | DC_VSCALE
+   +-----------------------------------------------+
+0C |                 Border color                  | DC_BORDER_COLOR
+   +-----------------------------------------------+
+0D |           Active display H-Start 7:0          | DC_HSTART_L
+   +-----------------------------------------------+
+0E |           Active display H-Stop 7:0           | DC_HSTOP_L
+   +-----------------------------------------------+
+0F |           Active display V-Start 7:0          | DC_VSTART_L
+   +-----------------------------------------------+
+10 |           Active display V-Stop 7:0           | DC_VSTOP_L
+   +-----------+-----+-----+-----------+-----------+
+11 |           |VStp8|VSta8|H-Stop 9:8 |H-Start 9:8| DC_STARTSTOP_H
+   +-----------+-----------+-----+-----+-----------+
+12 |                       |tx256|Bitmp| Bitdepth  | Lx_CTRL0         (multiplexed by Lsel)
+   +-----------+-----+-----+-----+-----+-----------+
+13 |           |TileH|TileW|Map height | Map width | Lx_CTRL1         (multiplexed by Lsel)
+   +-----------+-----+-----+-----------+-----------+
+14 |                 Map base 16:9                 | Lx_MAP_BASE      (multiplexed by Lsel)
+   +-----------------------------------------------+
+15 |                 Tile base 16:9                | Lx_TILE_BASE     (multiplexed by Lsel)
+   +-----------------------------------------------+
+16 |                 H-Scroll 7:0                  | L0_HSCROLL_L
+   +-----------------------+-----------------------+
+17 |                       |     H-Scroll 11:8     | L0_HSCROLL_H
+   +-----------------------+-----------------------+
+18 |                 V-Scroll 7:0                  | L0_VSCROLL_L
+   +-----------------------+-----------------------+
+19 |                       |     V-Scroll 11:8     | L0_VSCROLL_H
+   +-----------------------+-----------------------+
+1A |                 H-Scroll 7:0                  | L1_HSCROLL_L
+   +-----------------------+-----------------------+
+1B |                       |     H-Scroll 11:8     | L1_HSCROLL_H
+   +-----------------------+-----------------------+
+1C |                 V-Scroll 7:0                  | L1_VSCROLL_L
+   +-----------------------+-----------------------+
+1D |                       |     V-Scroll 11:8     | L1_VSCROLL_H
+   +-----------------------+-----------------------+
+1E |                      Data                     | SPI_DATA
+   +-----+-----------------------------------+-----+
+1F |Busy |                                   | Sel | SPI_CTRL
+   +-----+-----------------------------------+-----+
+
+Bit depth:
+1/2/4/8
+
+Tile mode (0) / bitmap mode (1)
+
+256 color bitmap mode
+

@@ -31,8 +31,6 @@ module video_modulator(
 
     reg signed [15:0] y_s, i_s, q_s;
 
-    reg sync_n_in_r;
-
     always @(posedge clk) begin
         y_s <= (sync_n_in == 0) ? 'd0 : 'd544;
         i_s <= 0;
@@ -46,8 +44,6 @@ module video_modulator(
             i_s <= (I_R * r_s) + (I_G * g_s) + (I_B * b_s);
             q_s <= (Q_R * r_s) + (Q_G * g_s) + (Q_B * b_s);
         end
-
-        sync_n_in_r <= sync_n_in;
     end
 
     // Color burst frequency: 315/88 MHz = 3579545 Hz
@@ -74,7 +70,6 @@ module video_modulator(
 
     reg         [7:0] lum;
     reg signed [14:0] chroma_s;
-    reg               sync_n_in_rr;
 
     always @(posedge clk) begin
         if (y_s < 0)
@@ -85,8 +80,6 @@ module video_modulator(
             lum <= y_s[10:3];
 
         chroma_s <= (cosval_s * i8_s) + (sinval_s * q8_s);
-
-        sync_n_in_rr <= sync_n_in_r;
     end
 
     always @(posedge clk) begin

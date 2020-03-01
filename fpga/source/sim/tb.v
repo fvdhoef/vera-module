@@ -12,8 +12,9 @@ module tb();
         #3000000 $finish;
     end
 
-    wire phi2_n;
-    wire phi2 = !phi2_n;
+    // Generate 8MHz phi2
+    reg phi2 = 0;
+    always #62.5 phi2 = !phi2;
 
     // Generate 25MHz sysclk
     reg sysclk = 0;
@@ -30,14 +31,19 @@ module tb();
 
     wire [7:0] extbus_d = extbus_rw_n ? 8'hZ : extbus_d_wr;
 
+    wire extbus_wr_n = extbus_rw_n || !phi2;
+    wire extbus_rd_n = !extbus_rw_n || !phi2;
+
     top top(
         .clk25(sysclk),
 
-        .extbus_phi2_n(phi2_n),
         .extbus_cs_n(extbus_cs_n),
-        .extbus_rw_n(extbus_rw_n),
-        .extbus_a(extbus_a[2:0]),
-        .extbus_d(extbus_d));
+        .extbus_rd_n(extbus_rd_n),
+        .extbus_wr_n(extbus_wr_n),
+        .extbus_a(extbus_a[4:0]),
+        .extbus_d(extbus_d),
+        
+        .spi_miso(1'b1));
 
 
     task extbus_write;
@@ -94,6 +100,14 @@ module tb();
         extbus_write(16'h1000, 8'h00);
         extbus_write(16'h1001, 8'h40);
         extbus_write(16'h1002, 8'h10);
+
+        extbus_write(16'h1003, 8'hA0);
+        extbus_write(16'h1003, 8'hA1);
+        extbus_write(16'h1003, 8'hA2);
+        extbus_write(16'h1003, 8'hA3);
+
+        extbus_write(16'h1000, 8'h00);
+        extbus_write(16'h1001, 8'h40);
 
         extbus_read(16'h1003);
         extbus_read(16'h1003);

@@ -16,8 +16,7 @@ module sprite_line_buffer(
     // Composer interface
     input  wire  [9:0] composer_rd_idx,
     output wire [15:0] composer_rd_data,
-    input  wire        composer_erase_start,
-    output wire        composer_erase_busy);
+    input  wire        composer_erase_start);
 
     //////////////////////////////////////////////////////////////////////////
     // Line buffer 1
@@ -92,7 +91,7 @@ module sprite_line_buffer(
     //////////////////////////////////////////////////////////////////////////
     reg [7:0] composer_wr_idx;
     reg       composer_wr_en;
-    assign composer_erase_busy = (composer_wr_idx != 'd159);
+    wire      composer_erase_busy = (composer_wr_idx != 'd159);
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin

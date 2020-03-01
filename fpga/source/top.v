@@ -3,11 +3,11 @@
 module top(
     input  wire       clk25,
 
-    // External 6502 bus interface
-    output wire       extbus_phi2_n, /* Bus clock */
+    // External bus interface
     input  wire       extbus_cs_n,   /* Chip select */
-    input  wire       extbus_rw_n,   /* Read(1) / write(0) */
-    input  wire [2:0] extbus_a,      /* Address */
+    input  wire       extbus_rd_n,   /* Read strobe */
+    input  wire       extbus_wr_n,   /* Write strobe */
+    input  wire [4:0] extbus_a,      /* Address */
     inout  wire [7:0] extbus_d,      /* Data (bi-directional) */
     output wire       extbus_irq_n,  /* IRQ */
 
@@ -24,97 +24,10 @@ module top(
     input  wire       spi_miso,
     output wire       spi_ssel_n_sd,
 
-    // DBG serial interface
-    input  wire       uart_rxd,
-    output wire       uart_txd,
-
     // Audio output
     output wire       audio_lrck,
     output wire       audio_bck,
-    output wire       audio_data
-);
-
-    // Register bus signals
-    wire [19:0] regbus_addr;
-    wire  [7:0] regbus_wrdata;
-    reg   [7:0] regbus_rddata;
-    wire        regbus_strobe;
-    wire        regbus_write;
-
-    // Register bus read outputs
-    wire  [7:0] layer0_regs_rddata;
-    wire  [7:0] layer1_regs_rddata;
-    wire  [7:0] sprites_regs_rddata;
-    wire  [7:0] composer_regs_rddata;
-    wire  [7:0] palette_rddata;
-    reg   [7:0] sprite_attr_rddata;
-    wire  [7:0] uart_rddata;
-    wire  [7:0] spi_rddata;
-
-    // Memory bus signals
-    reg  [17:0] membus_addr;
-    wire [31:0] membus_wrdata;
-    wire [31:0] membus_rddata;
-    reg   [3:0] membus_bytesel;
-    wire        membus_strobe;
-    reg         membus_write;
-
-    // Memory bus read outputs
-    wire [31:0] mainram_rddata;
-
-    wire        regbus_ack;
-    wire        regbus_bm_strobe;
-    reg         regbus_bm_ack;
-    reg         regbus_bm_ack_next;
-
-    wire [15:0] layer0_bm_addr;
-    wire        layer0_bm_strobe;
-    reg         layer0_bm_ack;
-    reg         layer0_bm_ack_next;
-
-    wire [15:0] layer1_bm_addr;
-    wire        layer1_bm_strobe;
-    reg         layer1_bm_ack;
-    reg         layer1_bm_ack_next;
-
-    wire [15:0] sprite_bm_addr;
-    wire        sprite_bm_strobe;
-    reg         sprite_bm_ack;
-    reg         sprite_bm_ack_next;
-
-    // Line buffer signals
-    wire  [9:0] layer0_linebuf_wridx;
-    wire  [7:0] layer0_linebuf_wrdata;
-    wire        layer0_linebuf_wren;
-    wire  [9:0] layer0_linebuf_rdidx;
-    wire  [7:0] layer0_linebuf_rddata;
-
-    wire  [9:0] layer1_linebuf_wridx;
-    wire  [7:0] layer1_linebuf_wrdata;
-    wire        layer1_linebuf_wren;
-    wire  [9:0] layer1_linebuf_rdidx;
-    wire  [7:0] layer1_linebuf_rddata;
-
-    wire  [9:0] sprite_lb_renderer_rd_idx;
-    wire [15:0] sprite_lb_renderer_rd_data;
-    wire  [9:0] sprite_lb_renderer_wr_idx;
-    wire [15:0] sprite_lb_renderer_wr_data;
-    wire        sprite_lb_renderer_wr_en;
-    wire  [9:0] sprite_lb_composer_rd_idx;
-    wire [15:0] sprite_lb_composer_rd_data;
-    wire        sprite_lb_composer_erase_start;
-    wire        sprite_lb_composer_erase_busy;
-
-    wire  [7:0] sprite_idx;
-    wire [31:0] sprite_attr;
-
-    wire        line_irq;
-    wire        sprcol_irq;
-    wire        uart_irq;
-
-    wire next_frame;
-    wire vblank_pulse;
-    wire next_line;
+    output wire       audio_data);
 
     //////////////////////////////////////////////////////////////////////////
     // Synchronize external asynchronous reset signal to clk25 domain
@@ -131,245 +44,731 @@ module top(
     wire clk = clk25;
 
     //////////////////////////////////////////////////////////////////////////
-    // Register bus
+    // Bus accessible registers
     //////////////////////////////////////////////////////////////////////////
+    reg [16:0] vram_addr_0_r,                 vram_addr_0_next;
+    reg [16:0] vram_addr_1_r,                 vram_addr_1_next;
+    reg  [3:0] vram_addr_incr_0_r,            vram_addr_incr_0_next;
+    reg  [3:0] vram_addr_incr_1_r,            vram_addr_incr_1_next;
+    reg        vram_addr_select_r,            vram_addr_select_next;
+    reg        fpga_reconfigure_r,            fpga_reconfigure_next;
+    reg        irq_status_vsync_r,            irq_status_vsync_next;
+    reg        irq_status_line_r,             irq_status_line_next;
+    reg        irq_status_sprite_collision_r, irq_status_sprite_collision_next;
+    reg        irq_enable_vsync_r,            irq_enable_vsync_next;
+    reg        irq_enable_line_r,             irq_enable_line_next;
+    reg        irq_enable_sprite_collision_r, irq_enable_sprite_collision_next;
+    reg  [8:0] irq_line_r,                    irq_line_next;
+    reg        sprites_enabled_r,             sprites_enabled_next;
+    reg        l0_enabled_r,                  l0_enabled_next;
+    reg        l1_enabled_r,                  l1_enabled_next;
+    reg        layer_select_r,                layer_select_next;
 
-    wire [7:0] irqs;
+    reg        chroma_disable_r,              chroma_disable_next;
+    reg  [7:0] dc_frac_x_incr_r,              dc_frac_x_incr_next;
+    reg  [7:0] dc_frac_y_incr_r,              dc_frac_y_incr_next;
+    reg  [7:0] dc_border_color_r,             dc_border_color_next;
+    reg  [9:0] dc_active_hstart_r,            dc_active_hstart_next;
+    reg  [9:0] dc_active_hstop_r,             dc_active_hstop_next;
+    reg  [8:0] dc_active_vstart_r,            dc_active_vstart_next;
+    reg  [8:0] dc_active_vstop_r,             dc_active_vstop_next;
 
-    // External 6502 bus to register bus master
-    extbusif_6502 extbus(
-        .rst(reset),
-        .clk(clk),
+    reg  [1:0] l0_color_depth_r,              l0_color_depth_next;
+    reg        l0_bitmap_mode_r,              l0_bitmap_mode_next;
+    reg        l0_attr_mode_r,                l0_attr_mode_next;
+    reg        l0_tile_height_r,              l0_tile_height_next;
+    reg        l0_tile_width_r,               l0_tile_width_next;
+    reg  [1:0] l0_map_height_r,               l0_map_height_next;
+    reg  [1:0] l0_map_width_r,                l0_map_width_next;
+    reg  [7:0] l0_map_baseaddr_r,             l0_map_baseaddr_next;
+    reg  [7:0] l0_tile_baseaddr_r,            l0_tile_baseaddr_next;
+    reg [11:0] l0_hscroll_r,                  l0_hscroll_next;
+    reg [11:0] l0_vscroll_r,                  l0_vscroll_next;
 
-        // 6502 slave bus interface
-        .extbus_phi2_n(extbus_phi2_n),
-        .extbus_cs_n(extbus_cs_n),
-        .extbus_rw_n(extbus_rw_n),
-        .extbus_a(extbus_a),
-        .extbus_d(extbus_d),
-        .extbus_irq_n(extbus_irq_n),
+    reg  [1:0] l1_color_depth_r,              l1_color_depth_next;
+    reg        l1_bitmap_mode_r,              l1_bitmap_mode_next;
+    reg        l1_attr_mode_r,                l1_attr_mode_next;
+    reg        l1_tile_height_r,              l1_tile_height_next;
+    reg        l1_tile_width_r,               l1_tile_width_next;
+    reg  [1:0] l1_map_height_r,               l1_map_height_next;
+    reg  [1:0] l1_map_width_r,                l1_map_width_next;
+    reg  [7:0] l1_map_baseaddr_r,             l1_map_baseaddr_next;
+    reg  [7:0] l1_tile_baseaddr_r,            l1_tile_baseaddr_next;
+    reg [11:0] l1_hscroll_r,                  l1_hscroll_next;
+    reg [11:0] l1_vscroll_r,                  l1_vscroll_next;
 
-        // Bus master interface
-        .bm_addr(regbus_addr),
-        .bm_wrdata(regbus_wrdata),
-        .bm_rddata(regbus_rddata),
-        .bm_strobe(regbus_strobe),
-        .bm_write(regbus_write),
-        .bm_ack(regbus_ack),
-        
-        .irqs(irqs));
+    reg  [1:0] video_output_mode_r,           video_output_mode_next;
 
-    assign irqs = {4'b0, uart_irq, sprcol_irq, line_irq, vblank_pulse};
+    wire [3:0] collisions;
+    wire       current_field;
+    wire [7:0] vram_rddata;
 
-    // Register bus memory map:
-    // 00000-1FFFF  Main RAM
-    // F0000-F001F  Composer registers
-    // F1000-F01FF  Palette
-    // F2000-F200F  Layer 0 registers
-    // F3000-F300F  Layer 0 registers
-    // F4000-F400F  Sprite registers
-    // F5000-F53FF  Sprite attributes
-    // F6000-F6xxx  Audio
-    // F7000-F7001  SPI
-    // F8000-F8003  UART
-    wire regbus_sel        = regbus_addr[19:16] == 4'hF;
-    wire membus_sel        = !regbus_sel;
-    wire composer_regs_sel = regbus_sel && regbus_addr[15:12] == 4'h0;
-    wire palette_sel       = regbus_sel && regbus_addr[15:12] == 4'h1;
-    wire layer0_regs_sel   = regbus_sel && regbus_addr[15:12] == 4'h2;
-    wire layer1_regs_sel   = regbus_sel && regbus_addr[15:12] == 4'h3;
-    wire sprites_regs_sel  = regbus_sel && regbus_addr[15:12] == 4'h4;
-    wire sprite_attr_sel   = regbus_sel && regbus_addr[15:12] == 4'h5;
-    wire spi_sel           = regbus_sel && regbus_addr[15:12] == 4'h7;
-    wire uart_sel          = regbus_sel && regbus_addr[15:12] == 4'h8;
+    reg  [7:0] spi_rddata;
+    reg        spi_select_r,                  spi_select_next;
+    wire       spi_busy;
 
-    // Memory bus read data selection
-    reg [7:0] membus_rddata8;
-    always @* case (regbus_addr[1:0])
-        2'b00: membus_rddata8 = membus_rddata[7:0];
-        2'b01: membus_rddata8 = membus_rddata[15:8];
-        2'b10: membus_rddata8 = membus_rddata[23:16];
-        2'b11: membus_rddata8 = membus_rddata[31:24];
+    reg [7:0] rddata;
+    always @* case (extbus_a)
+        5'h00: rddata = vram_addr_select_r ? vram_addr_1_r[7:0] : vram_addr_0_r[7:0];
+        5'h01: rddata = vram_addr_select_r ? vram_addr_1_r[15:8] : vram_addr_0_r[15:8];
+        5'h02: rddata = vram_addr_select_r ? {vram_addr_incr_1_r, 3'b0, vram_addr_1_r[16]} : {vram_addr_incr_0_r, 3'b0, vram_addr_0_r[16]};
+        5'h03: rddata = vram_rddata;
+        5'h04: rddata = 8'h00;
+        5'h05: rddata = {7'b0, vram_addr_select_r};
+        5'h06: rddata = {irq_line_r[8], 4'b0, irq_enable_sprite_collision_r, irq_enable_line_r, irq_enable_vsync_r};
+        5'h07: rddata = {collisions, current_field, irq_status_sprite_collision_r, irq_status_line_r, irq_status_vsync_r};
+        5'h08: rddata = irq_line_r[7:0];
+        5'h09: rddata = {1'b0, sprites_enabled_r, l1_enabled_r, l0_enabled_r, layer_select_r, chroma_disable_r, video_output_mode_r};
+        5'h0A: rddata = dc_frac_x_incr_r;
+        5'h0B: rddata = dc_frac_y_incr_r;
+        5'h0C: rddata = dc_border_color_r;
+        5'h0D: rddata = dc_active_hstart_r[7:0];
+        5'h0E: rddata = dc_active_hstop_r[7:0];
+        5'h0F: rddata = dc_active_vstart_r[7:0];
+        5'h10: rddata = dc_active_vstop_r[7:0];
+        5'h11: rddata = {2'b0, dc_active_vstop_r[8], dc_active_vstart_r[8], dc_active_hstop_r[9:8], dc_active_hstart_r[9:8]};
+        5'h12: rddata = layer_select_r ? {4'b0, l1_attr_mode_r, l1_bitmap_mode_r, l1_color_depth_r} : {4'b0, l0_attr_mode_r, l0_bitmap_mode_r, l0_color_depth_r};
+        5'h13: rddata = layer_select_r ? {2'b0, l1_tile_height_r, l1_tile_width_r, l1_map_height_r, l1_map_width_r} : {2'b0, l0_tile_height_r, l0_tile_width_r, l0_map_height_r, l0_map_width_r};
+        5'h14: rddata = layer_select_r ? l1_map_baseaddr_r : l0_map_baseaddr_r;
+        5'h15: rddata = layer_select_r ? l1_tile_baseaddr_r : l0_tile_baseaddr_r;
+        5'h16: rddata = l0_hscroll_r[7:0];
+        5'h17: rddata = {4'b0, l0_hscroll_r[11:8]};
+        5'h18: rddata = l0_vscroll_r[7:0];
+        5'h19: rddata = {4'b0, l0_vscroll_r[11:8]};
+        5'h1A: rddata = l1_hscroll_r[7:0];
+        5'h1B: rddata = {4'b0, l1_hscroll_r[11:8]};
+        5'h1C: rddata = l1_vscroll_r[7:0];
+        5'h1D: rddata = {4'b0, l1_vscroll_r[11:8]};
+        5'h1E: rddata = spi_rddata;
+        5'h1F: rddata = {spi_busy, 6'b0, spi_select_r};
     endcase
 
-    // Register bus read data mux
-    always @* begin
-        regbus_rddata = 8'h00;
-        if (membus_sel)        regbus_rddata = membus_rddata8;
-        if (layer0_regs_sel)   regbus_rddata = layer0_regs_rddata;
-        if (layer1_regs_sel)   regbus_rddata = layer1_regs_rddata;
-        if (sprites_regs_sel)  regbus_rddata = sprites_regs_rddata;
-        if (composer_regs_sel) regbus_rddata = composer_regs_rddata;
-        if (palette_sel)       regbus_rddata = palette_rddata;
-        if (sprite_attr_sel)   regbus_rddata = sprite_attr_rddata;
-        if (spi_sel)           regbus_rddata = spi_rddata;
-        if (uart_sel)          regbus_rddata = uart_rddata;
+    wire bus_read  = !extbus_cs_n &&  extbus_wr_n && !extbus_rd_n;
+    wire bus_write = !extbus_cs_n && !extbus_wr_n;
+    assign extbus_d = bus_read ? rddata : 8'bZ;
+
+    // Capture address / write-data at end of write cycle
+    reg [4:0] rdaddr_r;
+    reg [4:0] wraddr_r;
+    reg [7:0] wrdata_r;
+    always @(negedge bus_write) begin
+        wraddr_r <= extbus_a;
+        wrdata_r <= extbus_d;
+    end
+    always @(negedge bus_read) begin
+        rdaddr_r <= extbus_a;
     end
 
-    reg regbus_strobe_r;
-    always @(posedge clk) regbus_strobe_r <= regbus_strobe;
+    // Synchronize chipselect and write signal
+    reg [2:0] chipselect_r;
+    reg [1:0] bus_write_r;
+    always @(posedge clk) begin
+        chipselect_r <= {chipselect_r[1:0], !extbus_cs_n};
+        bus_write_r <= {bus_write_r[0], bus_write};
+    end
 
-    assign regbus_ack = membus_sel ? regbus_bm_ack : regbus_strobe_r;
+    wire end_of_cycle = chipselect_r[2:1] == 2'b10;
 
-    //////////////////////////////////////////////////////////////////////////
-    // Memory bus
-    //////////////////////////////////////////////////////////////////////////
+    // Keep track if this is a write cycle
+    reg is_write_r = 0;
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            is_write_r <= 0;
+        end else begin
+            if (chipselect_r[2:1] == 2'b01) begin
+                is_write_r <= 0;
+            end
+            if (chipselect_r[1]) begin
+                if (bus_write_r[1]) begin
+                    is_write_r <= 1;
+                end
+            end
+        end
+    end
 
-    assign membus_wrdata = {4{regbus_wrdata}};
-    always @* case (membus_addr[1:0])
-        2'b00: membus_bytesel = 4'b0001;
-        2'b01: membus_bytesel = 4'b0010;
-        2'b10: membus_bytesel = 4'b0100;
-        2'b11: membus_bytesel = 4'b1000;
+    wire       do_read     = end_of_cycle && !is_write_r;
+    wire       do_write    = end_of_cycle && is_write_r;
+    wire [4:0] access_addr = is_write_r ? wraddr_r : rdaddr_r;
+    wire [7:0] write_data  = wrdata_r;
+
+    // Decode increment value
+    wire [3:0] incr_regval = (access_addr == 5'h03) ? vram_addr_incr_0_r : vram_addr_incr_1_r;
+    reg [15:0] increment;
+    always @* case (incr_regval)
+        4'h0: increment = 'd0;
+        4'h1: increment = 'd1;
+        4'h2: increment = 'd2;
+        4'h3: increment = 'd4;
+        4'h4: increment = 'd8;
+        4'h5: increment = 'd16;
+        4'h6: increment = 'd32;
+        4'h7: increment = 'd64;
+        4'h8: increment = 'd128;
+        4'h9: increment = 'd256;
+        4'hA: increment = 'd512;
+        4'hB: increment = 'd1024;
+        4'hC: increment = 'd2048;
+        4'hD: increment = 'd4096;
+        4'hE: increment = 'd8192;
+        4'hF: increment = 'd16384;
     endcase
 
-    assign membus_rddata = mainram_rddata;
+    reg [16:0] ib_addr_r,      ib_addr_next;
+    reg  [7:0] ib_wrdata_r,    ib_wrdata_next;
+    reg        ib_write_r,     ib_write_next;
+    reg        ib_do_access_r, ib_do_access_next;
 
-    assign regbus_bm_strobe = membus_sel && regbus_strobe;
+    reg        fetch_ahead_r,  fetch_ahead_next;
 
-    assign membus_strobe = regbus_bm_strobe || layer0_bm_strobe || layer1_bm_strobe || sprite_bm_strobe;
+    wire [16:0] vram_addr = (access_addr == 5'h03) ? vram_addr_0_r : vram_addr_1_r;
+    wire [16:0] vram_addr_incremented = vram_addr + increment;
 
     always @* begin
-        membus_addr        = 18'b0;
-        membus_write       = 1'b0;
-        regbus_bm_ack_next = 1'b0;
-        layer0_bm_ack_next = 1'b0;
-        layer1_bm_ack_next = 1'b0;
-        sprite_bm_ack_next = 1'b0;
+        vram_addr_0_next                 = vram_addr_0_r;
+        vram_addr_1_next                 = vram_addr_1_r;
+        vram_addr_incr_0_next            = vram_addr_incr_0_r;
+        vram_addr_incr_1_next            = vram_addr_incr_1_r;
+        vram_addr_select_next            = vram_addr_select_r;
+        fpga_reconfigure_next            = fpga_reconfigure_r;
+        irq_status_vsync_next            = irq_status_vsync_r;
+        irq_status_line_next             = irq_status_line_r;
+        irq_status_sprite_collision_next = irq_status_sprite_collision_r;
+        irq_enable_vsync_next            = irq_enable_vsync_r;
+        irq_enable_line_next             = irq_enable_line_r;
+        irq_enable_sprite_collision_next = irq_enable_sprite_collision_r;
+        irq_line_next                    = irq_line_r;
+        sprites_enabled_next             = sprites_enabled_r;
+        l0_enabled_next                  = l0_enabled_r;
+        l1_enabled_next                  = l1_enabled_r;
+        layer_select_next                = layer_select_r;
+        chroma_disable_next              = chroma_disable_r;
+        dc_frac_x_incr_next              = dc_frac_x_incr_r;
+        dc_frac_y_incr_next              = dc_frac_y_incr_r;
+        dc_border_color_next             = dc_border_color_r;
+        dc_active_hstart_next            = dc_active_hstart_r;
+        dc_active_hstop_next             = dc_active_hstop_r;
+        dc_active_vstart_next            = dc_active_vstart_r;
+        dc_active_vstop_next             = dc_active_vstop_r;
+        l0_color_depth_next              = l0_color_depth_r;
+        l0_bitmap_mode_next              = l0_bitmap_mode_r;
+        l0_attr_mode_next                = l0_attr_mode_r;
+        l0_tile_height_next              = l0_tile_height_r;
+        l0_tile_width_next               = l0_tile_width_r;
+        l0_map_height_next               = l0_map_height_r;
+        l0_map_width_next                = l0_map_width_r;
+        l0_map_baseaddr_next             = l0_map_baseaddr_r;
+        l0_tile_baseaddr_next            = l0_tile_baseaddr_r;
+        l0_hscroll_next                  = l0_hscroll_r;
+        l0_vscroll_next                  = l0_vscroll_r;
+        l1_color_depth_next              = l1_color_depth_r;
+        l1_bitmap_mode_next              = l1_bitmap_mode_r;
+        l1_attr_mode_next                = l1_attr_mode_r;
+        l1_tile_height_next              = l1_tile_height_r;
+        l1_tile_width_next               = l1_tile_width_r;
+        l1_map_height_next               = l1_map_height_r;
+        l1_map_width_next                = l1_map_width_r;
+        l1_map_baseaddr_next             = l1_map_baseaddr_r;
+        l1_tile_baseaddr_next            = l1_tile_baseaddr_r;
+        l1_hscroll_next                  = l1_hscroll_r;
+        l1_vscroll_next                  = l1_vscroll_r;
+        video_output_mode_next           = video_output_mode_r;
+        spi_select_next                  = spi_select_r;
 
-        if (layer0_bm_strobe) begin
-            membus_addr        = {layer0_bm_addr, 2'b0};
-            layer0_bm_ack_next = 1'b1;
+        ib_addr_next      = ib_addr_r;
+        ib_wrdata_next    = ib_wrdata_r;
+        ib_write_next     = ib_write_r;
+        ib_do_access_next = 0;
 
-        end else if (layer1_bm_strobe) begin
-            membus_addr        = {layer1_bm_addr, 2'b0};
-            layer1_bm_ack_next = 1'b1;
+        fetch_ahead_next = 0;
 
-        end else if (sprite_bm_strobe) begin
-            membus_addr        = {sprite_bm_addr, 2'b0};
-            sprite_bm_ack_next = 1'b1;
-
-        end else if (regbus_bm_strobe) begin
-            membus_addr        = regbus_addr[17:0];
-            membus_write       = regbus_write;
-            regbus_bm_ack_next = 1'b1;
+        if (do_write) begin
+            case (access_addr)
+                5'h00: begin
+                    if (vram_addr_select_r) begin
+                        vram_addr_1_next[7:0] = write_data;
+                    end else begin
+                        vram_addr_0_next[7:0] = write_data;
+                        fetch_ahead_next = 1;
+                    end
+                end
+                5'h01: begin
+                    if (vram_addr_select_r) begin
+                        vram_addr_1_next[15:8] = write_data;
+                    end else begin
+                        vram_addr_0_next[15:8] = write_data;
+                        fetch_ahead_next = 1;
+                    end
+                end
+                5'h02: begin
+                    if (vram_addr_select_r) begin
+                        vram_addr_incr_1_next = write_data[7:4];
+                        vram_addr_1_next[16]  = write_data[0];
+                    end else begin
+                        vram_addr_incr_0_next = write_data[7:4];
+                        vram_addr_0_next[16]  = write_data[0];
+                        fetch_ahead_next = 1;
+                    end
+                end
+                5'h03: begin
+                end
+                5'h04: begin
+                end
+                5'h05: begin
+                    fpga_reconfigure_next = write_data[7];
+                    vram_addr_select_next = write_data[0];
+                end
+                5'h06: begin
+                    irq_line_next[8]                 = write_data[7];
+                    irq_enable_sprite_collision_next = write_data[2];
+                    irq_enable_line_next             = write_data[1];
+                    irq_enable_vsync_next            = write_data[0];
+                end
+                5'h07: begin
+                    // Clear status bits
+                    irq_status_sprite_collision_next = irq_status_sprite_collision_r & !write_data[2];
+                    irq_status_line_next             = irq_status_line_r             & !write_data[1];
+                    irq_status_vsync_next            = irq_status_vsync_r            & !write_data[0];
+                end
+                5'h08: irq_line_next[7:0] = write_data;
+                5'h09: begin
+                    sprites_enabled_next   = write_data[6];
+                    l1_enabled_next        = write_data[5];
+                    l0_enabled_next        = write_data[4];
+                    layer_select_next      = write_data[3];
+                    chroma_disable_next    = write_data[2];
+                    video_output_mode_next = write_data[1:0];
+                end
+                5'h0A: dc_frac_x_incr_next        = write_data;
+                5'h0B: dc_frac_y_incr_next        = write_data;
+                5'h0C: dc_border_color_next       = write_data;
+                5'h0D: dc_active_hstart_next[7:0] = write_data;
+                5'h0E: dc_active_hstop_next[7:0]  = write_data;
+                5'h0F: dc_active_vstart_next[7:0] = write_data;
+                5'h10: dc_active_vstop_next[7:0]  = write_data;
+                5'h11: begin
+                    dc_active_vstop_next[8]    = write_data[5];
+                    dc_active_vstart_next[8]   = write_data[4];
+                    dc_active_hstop_next[9:8]  = write_data[3:2];
+                    dc_active_hstart_next[9:8] = write_data[1:0];
+                end
+                5'h12: begin
+                    if (layer_select_r) begin
+                        l1_attr_mode_next   = write_data[3];
+                        l1_bitmap_mode_next = write_data[2];
+                        l1_color_depth_next = write_data[1:0];
+                    end else begin
+                        l0_attr_mode_next   = write_data[3];
+                        l0_bitmap_mode_next = write_data[2];
+                        l0_color_depth_next = write_data[1:0];
+                    end
+                end
+                5'h13: begin
+                    if (layer_select_r) begin
+                        l1_tile_height_next = write_data[5];
+                        l1_tile_width_next  = write_data[4];
+                        l1_map_height_next  = write_data[3:2];
+                        l1_map_width_next   = write_data[1:0];
+                    end else begin
+                        l0_tile_height_next = write_data[5];
+                        l0_tile_width_next  = write_data[4];
+                        l0_map_height_next  = write_data[3:2];
+                        l0_map_width_next   = write_data[1:0];
+                    end
+                end
+                5'h14: begin
+                    if (layer_select_r) begin
+                        l1_map_baseaddr_next = write_data;
+                    end else begin
+                        l0_map_baseaddr_next = write_data;
+                    end
+                end
+                5'h15: begin
+                    if (layer_select_r) begin
+                        l1_tile_baseaddr_next = write_data;
+                    end else begin
+                        l0_tile_baseaddr_next = write_data;
+                    end
+                end
+                5'h16: l0_hscroll_next[7:0]  = write_data;
+                5'h17: l0_hscroll_next[11:8] = write_data[3:0];
+                5'h18: l0_vscroll_next[7:0]  = write_data;
+                5'h19: l0_vscroll_next[11:8] = write_data[3:0];
+                5'h1A: l1_hscroll_next[7:0]  = write_data;
+                5'h1B: l1_hscroll_next[11:8] = write_data[3:0];
+                5'h1C: l1_vscroll_next[7:0]  = write_data;
+                5'h1D: l1_vscroll_next[11:8] = write_data[3:0];
+                5'h1E: begin
+                    // spi_rddata
+                end
+                5'h1F: begin
+                    // spi_busy, 6'b0, spi_select
+                    spi_select_next = write_data[0];
+                end
+            endcase
         end
 
+        if (fetch_ahead_r) begin
+            ib_addr_next      = vram_addr_0_r;
+            ib_write_next     = 0;
+            ib_do_access_next = 1;
+        end
+
+        if (end_of_cycle) begin
+            if (access_addr == 5'h03) begin
+                ib_wrdata_next    = write_data;
+                ib_write_next     = do_write;
+                ib_do_access_next = 1;
+
+                if (do_write) begin
+                    ib_addr_next = vram_addr_0_r;
+                    fetch_ahead_next = 1;
+                end else begin
+                    ib_addr_next = vram_addr_incremented;
+                end
+                vram_addr_0_next = vram_addr_incremented;
+
+            end else if (access_addr == 5'h04 && do_write) begin
+                ib_addr_next      = vram_addr_1_r;
+                ib_wrdata_next    = write_data;
+                ib_write_next     = do_write;
+                ib_do_access_next = 1;
+
+                vram_addr_1_next  = vram_addr_incremented;
+            end
+        end
     end
 
-    always @(posedge clk) regbus_bm_ack <= regbus_bm_ack_next;
-    always @(posedge clk) layer0_bm_ack <= layer0_bm_ack_next;
-    always @(posedge clk) layer1_bm_ack <= layer1_bm_ack_next;
-    always @(posedge clk) sprite_bm_ack <= sprite_bm_ack_next;
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            vram_addr_0_r                 <= 0;
+            vram_addr_1_r                 <= 0;
+            vram_addr_incr_0_r            <= 0;
+            vram_addr_incr_1_r            <= 0;
+            vram_addr_select_r            <= 0;
+            fpga_reconfigure_r            <= 0;
+            irq_status_vsync_r            <= 0;
+            irq_status_line_r             <= 0;
+            irq_status_sprite_collision_r <= 0;
+            irq_enable_vsync_r            <= 0;
+            irq_enable_line_r             <= 0;
+            irq_enable_sprite_collision_r <= 0;
+            irq_line_r                    <= 0;
+            sprites_enabled_r             <= 0;
+            l0_enabled_r                  <= 0;
+            l1_enabled_r                  <= 0;
+            layer_select_r                <= 0;
+            chroma_disable_r              <= 0;
+            dc_frac_x_incr_r              <= 8'd128;
+            dc_frac_y_incr_r              <= 8'd128;
+            dc_border_color_r             <= 0;
+            dc_active_hstart_r            <= 10'd0;
+            dc_active_hstop_r             <= 10'd640;
+            dc_active_vstart_r            <= 9'd0;
+            dc_active_vstop_r             <= 9'd480;
+            l0_color_depth_r              <= 0;
+            l0_bitmap_mode_r              <= 0;
+            l0_attr_mode_r                <= 0;
+            l0_tile_height_r              <= 0;
+            l0_tile_width_r               <= 0;
+            l0_map_height_r               <= 0;
+            l0_map_width_r                <= 0;
+            l0_map_baseaddr_r             <= 0;
+            l0_tile_baseaddr_r            <= 0;
+            l0_hscroll_r                  <= 0;
+            l0_vscroll_r                  <= 0;
+            l1_color_depth_r              <= 0;
+            l1_bitmap_mode_r              <= 0;
+            l1_attr_mode_r                <= 0;
+            l1_tile_height_r              <= 0;
+            l1_tile_width_r               <= 0;
+            l1_map_height_r               <= 0;
+            l1_map_width_r                <= 0;
+            l1_map_baseaddr_r             <= 0;
+            l1_tile_baseaddr_r            <= 0;
+            l1_hscroll_r                  <= 0;
+            l1_vscroll_r                  <= 0;
+            video_output_mode_r           <= 0;
+            spi_select_r                  <= 0;
+
+            ib_addr_r      <= 0;
+            ib_wrdata_r    <= 0;
+            ib_do_access_r <= 0;
+            ib_write_r     <= 0;
+
+            fetch_ahead_r <= 0;
+
+        end else begin
+            vram_addr_0_r                 <= vram_addr_0_next;
+            vram_addr_1_r                 <= vram_addr_1_next;
+            vram_addr_incr_0_r            <= vram_addr_incr_0_next;
+            vram_addr_incr_1_r            <= vram_addr_incr_1_next;
+            vram_addr_select_r            <= vram_addr_select_next;
+            fpga_reconfigure_r            <= fpga_reconfigure_next;
+            irq_status_vsync_r            <= irq_status_vsync_next;
+            irq_status_line_r             <= irq_status_line_next;
+            irq_status_sprite_collision_r <= irq_status_sprite_collision_next;
+            irq_enable_vsync_r            <= irq_enable_vsync_next;
+            irq_enable_line_r             <= irq_enable_line_next;
+            irq_enable_sprite_collision_r <= irq_enable_sprite_collision_next;
+            irq_line_r                    <= irq_line_next;
+            sprites_enabled_r             <= sprites_enabled_next;
+            l0_enabled_r                  <= l0_enabled_next;
+            l1_enabled_r                  <= l1_enabled_next;
+            layer_select_r                <= layer_select_next;
+            chroma_disable_r              <= chroma_disable_next;
+            dc_frac_x_incr_r              <= dc_frac_x_incr_next;
+            dc_frac_y_incr_r              <= dc_frac_y_incr_next;
+            dc_border_color_r             <= dc_border_color_next;
+            dc_active_hstart_r            <= dc_active_hstart_next;
+            dc_active_hstop_r             <= dc_active_hstop_next;
+            dc_active_vstart_r            <= dc_active_vstart_next;
+            dc_active_vstop_r             <= dc_active_vstop_next;
+            l0_color_depth_r              <= l0_color_depth_next;
+            l0_bitmap_mode_r              <= l0_bitmap_mode_next;
+            l0_attr_mode_r                <= l0_attr_mode_next;
+            l0_tile_height_r              <= l0_tile_height_next;
+            l0_tile_width_r               <= l0_tile_width_next;
+            l0_map_height_r               <= l0_map_height_next;
+            l0_map_width_r                <= l0_map_width_next;
+            l0_map_baseaddr_r             <= l0_map_baseaddr_next;
+            l0_tile_baseaddr_r            <= l0_tile_baseaddr_next;
+            l0_hscroll_r                  <= l0_hscroll_next;
+            l0_vscroll_r                  <= l0_vscroll_next;
+            l1_color_depth_r              <= l1_color_depth_next;
+            l1_bitmap_mode_r              <= l1_bitmap_mode_next;
+            l1_attr_mode_r                <= l1_attr_mode_next;
+            l1_tile_height_r              <= l1_tile_height_next;
+            l1_tile_width_r               <= l1_tile_width_next;
+            l1_map_height_r               <= l1_map_height_next;
+            l1_map_width_r                <= l1_map_width_next;
+            l1_map_baseaddr_r             <= l1_map_baseaddr_next;
+            l1_tile_baseaddr_r            <= l1_tile_baseaddr_next;
+            l1_hscroll_r                  <= l1_hscroll_next;
+            l1_vscroll_r                  <= l1_vscroll_next;
+            video_output_mode_r           <= video_output_mode_next;
+            spi_select_r                  <= spi_select_next;
+
+            ib_addr_r      <= ib_addr_next;
+            ib_wrdata_r    <= ib_wrdata_next;
+            ib_do_access_r <= ib_do_access_next;
+            ib_write_r     <= ib_write_next;
+
+            fetch_ahead_r <= fetch_ahead_next;
+        end
+    end
+
+    //////////////////////////////////////////////////////////////////////////
+    // Video RAM
+    //////////////////////////////////////////////////////////////////////////
+    wire [14:0] l0_addr;
+    wire [31:0] l0_rddata;
+    wire        l0_strobe;
+    wire        l0_ack;
+
+    wire [14:0] l1_addr;
+    wire [31:0] l1_rddata;
+    wire        l1_strobe;
+    wire        l1_ack;
+
+    wire [14:0] spr_addr;
+    wire [31:0] spr_rddata;
+    wire        spr_strobe;
+    wire        spr_ack;
+
+    vram_if vram_if(
+        .clk(clk),
+
+        // Interface 0 - 8-bit (highest priority)
+        .if0_addr(ib_addr_r),
+        .if0_wrdata(ib_wrdata_r),
+        .if0_rddata(vram_rddata),
+        .if0_strobe(ib_do_access_r),
+        .if0_write(ib_write_r),
+
+        // Interface 1 - 32-bit read only
+        .if1_addr(l0_addr),
+        .if1_rddata(l0_rddata),
+        .if1_strobe(l0_strobe),
+        .if1_ack(l0_ack),
+
+        // Interface 2 - 32-bit read only
+        .if2_addr(l1_addr),
+        .if2_rddata(l1_rddata),
+        .if2_strobe(l1_strobe),
+        .if2_ack(l1_ack),
+
+        // Interface 3 - 32-bit read only
+        .if3_addr(spr_addr),
+        .if3_rddata(spr_rddata),
+        .if3_strobe(spr_strobe),
+        .if3_ack(spr_ack));
+
+    //////////////////////////////////////////////////////////////////////////
+    // Renderers
+    //////////////////////////////////////////////////////////////////////////
+    wire  [9:0] lb_rdidx;
+    wire  [7:0] l0_lb_rddata;
+    wire  [7:0] l1_lb_rddata;
+    wire [15:0] spr_lb_rddata;
+    wire        spr_lb_erase_start;
+
+    wire        vblank_pulse;
+
+    wire  [8:0] line_idx;
+    wire        line_render_start;
+
+    reg active_line_buf_r;
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            active_line_buf_r <= 0;
+        end else begin
+            if (next_line) begin
+                active_line_buf_r <= !active_line_buf_r;
+            end
+        end
+    end
 
     //////////////////////////////////////////////////////////////////////////
     // Layer 0 renderer
     //////////////////////////////////////////////////////////////////////////
-    wire  [8:0] layer0_line_idx;
-    wire        layer0_line_render_start;
-    wire        layer0_line_render_done;
-    wire        layer0_enabled;
+    wire  [9:0] l0_linebuf_wridx;
+    wire  [7:0] l0_linebuf_wrdata;
+    wire        l0_linebuf_wren;
 
-    layer_renderer layer0_renderer(
+    layer_renderer l0_renderer(
         .rst(reset),
         .clk(clk),
 
         // Composer interface
-        .line_idx(layer0_line_idx),
-        .line_render_start(layer0_line_render_start),
-        .line_render_done(layer0_line_render_done),
-        .layer_enabled(layer0_enabled),
+        .line_idx(line_idx),
+        .line_render_start(line_render_start),
 
-        // Register interface (on register bus)
-        .regs_addr(regbus_addr[3:0]),
-        .regs_wrdata(regbus_wrdata),
-        .regs_rddata(layer0_regs_rddata),
-        .regs_sel(layer0_regs_sel),
-        .regs_strobe(regbus_strobe),
-        .regs_write(regbus_write),
+        // Register interface
+        .color_depth(l0_color_depth_r),
+        .bitmap_mode(l0_bitmap_mode_r),
+        .attr_mode(l0_attr_mode_r),
+        .tile_height(l0_tile_height_r),
+        .tile_width(l0_tile_width_r),
+        .map_height(l0_map_height_r),
+        .map_width(l0_map_width_r),
+        .map_baseaddr(l0_map_baseaddr_r),
+        .tile_baseaddr(l0_tile_baseaddr_r),
+        .hscroll(l0_hscroll_r),
+        .vscroll(l0_vscroll_r),
 
         // Bus master interface
-        .bus_addr(layer0_bm_addr),
-        .bus_rddata(membus_rddata),
-        .bus_strobe(layer0_bm_strobe),
-        .bus_ack(layer0_bm_ack),
+        .bus_addr(l0_addr),
+        .bus_rddata(l0_rddata),
+        .bus_strobe(l0_strobe),
+        .bus_ack(l0_ack),
 
         // Line buffer interface
-        .linebuf_wridx(layer0_linebuf_wridx),
-        .linebuf_wrdata(layer0_linebuf_wrdata),
-        .linebuf_wren(layer0_linebuf_wren));
+        .linebuf_wridx(l0_linebuf_wridx),
+        .linebuf_wrdata(l0_linebuf_wrdata),
+        .linebuf_wren(l0_linebuf_wren));
+
+    // Layer 0 line buffer
+    layer_line_buffer l0_line_buffer(
+        .rst(reset),
+        .clk(clk),
+
+        .active_render_buffer(active_line_buf_r),
+
+        // Renderer interface
+        .renderer_wr_idx(l0_linebuf_wridx),
+        .renderer_wr_data(l0_linebuf_wrdata),
+        .renderer_wr_en(l0_linebuf_wren),
+
+        // Composer interface
+        .composer_rd_idx(lb_rdidx),
+        .composer_rd_data(l0_lb_rddata));
 
     //////////////////////////////////////////////////////////////////////////
     // Layer 1 renderer
     //////////////////////////////////////////////////////////////////////////
-    wire  [8:0] layer1_line_idx;
-    wire        layer1_line_render_start;
-    wire        layer1_line_render_done;
-    wire        layer1_enabled;
+    wire  [9:0] l1_linebuf_wridx;
+    wire  [7:0] l1_linebuf_wrdata;
+    wire        l1_linebuf_wren;
 
-    layer_renderer layer1_renderer(
+    layer_renderer l1_renderer(
         .rst(reset),
         .clk(clk),
 
         // Composer interface
-        .line_idx(layer1_line_idx),
-        .line_render_start(layer1_line_render_start),
-        .line_render_done(layer1_line_render_done),
-        .layer_enabled(layer1_enabled),
+        .line_idx(line_idx),
+        .line_render_start(line_render_start),
 
-        // Register interface (on register bus)
-        .regs_addr(regbus_addr[3:0]),
-        .regs_wrdata(regbus_wrdata),
-        .regs_rddata(layer1_regs_rddata),
-        .regs_sel(layer1_regs_sel),
-        .regs_strobe(regbus_strobe),
-        .regs_write(regbus_write),
+        // Register interface
+        .color_depth(l1_color_depth_r),
+        .bitmap_mode(l1_bitmap_mode_r),
+        .attr_mode(l1_attr_mode_r),
+        .tile_height(l1_tile_height_r),
+        .tile_width(l1_tile_width_r),
+        .map_height(l1_map_height_r),
+        .map_width(l1_map_width_r),
+        .map_baseaddr(l1_map_baseaddr_r),
+        .tile_baseaddr(l1_tile_baseaddr_r),
+        .hscroll(l1_hscroll_r),
+        .vscroll(l1_vscroll_r),
 
         // Bus master interface
-        .bus_addr(layer1_bm_addr),
-        .bus_rddata(membus_rddata),
-        .bus_strobe(layer1_bm_strobe),
-        .bus_ack(layer1_bm_ack),
+        .bus_addr(l1_addr),
+        .bus_rddata(l1_rddata),
+        .bus_strobe(l1_strobe),
+        .bus_ack(l1_ack),
 
         // Line buffer interface
-        .linebuf_wridx(layer1_linebuf_wridx),
-        .linebuf_wrdata(layer1_linebuf_wrdata),
-        .linebuf_wren(layer1_linebuf_wren));
+        .linebuf_wridx(l1_linebuf_wridx),
+        .linebuf_wrdata(l1_linebuf_wrdata),
+        .linebuf_wren(l1_linebuf_wren));
+
+    // Layer 1 line buffer
+    layer_line_buffer l1_line_buffer(
+        .rst(reset),
+        .clk(clk),
+
+        .active_render_buffer(active_line_buf_r),
+
+        // Renderer interface
+        .renderer_wr_idx(l1_linebuf_wridx),
+        .renderer_wr_data(l1_linebuf_wrdata),
+        .renderer_wr_en(l1_linebuf_wren),
+
+        // Composer interface
+        .composer_rd_idx(lb_rdidx),
+        .composer_rd_data(l1_lb_rddata));
 
     //////////////////////////////////////////////////////////////////////////
     // Sprite renderer
     //////////////////////////////////////////////////////////////////////////
-    wire  [8:0] sprites_line_idx;
-    wire        sprites_line_render_start;
-    wire        sprites_line_render_done;
-    wire        sprites_enabled;
+    wire  [7:0] sprite_idx;
+    wire [31:0] sprite_attr;
+    wire  [9:0] sprite_lb_renderer_rd_idx;
+    wire [15:0] sprite_lb_renderer_rd_data;
+    wire  [9:0] sprite_lb_renderer_wr_idx;
+    wire [15:0] sprite_lb_renderer_wr_data;
+    wire        sprite_lb_renderer_wr_en;
+
+    wire sprcol_irq;
 
     sprite_renderer sprite_renderer(
         .rst(reset),
         .clk(clk),
 
+        // Register interface
+        .collisions(collisions),
         .sprcol_irq(sprcol_irq),
 
         // Composer interface
-        .line_idx(sprites_line_idx),
-        .line_render_start(sprites_line_render_start),
-        .line_render_done(sprites_line_render_done),
-        .sprites_enabled(sprites_enabled),
+        .line_idx(line_idx),
+        .line_render_start(line_render_start),
         .frame_done(vblank_pulse),
 
-        // Register interface (on register bus)
-        .regs_addr(regbus_addr[3:0]),
-        .regs_wrdata(regbus_wrdata),
-        .regs_rddata(sprites_regs_rddata),
-        .regs_sel(sprites_regs_sel),
-        .regs_strobe(regbus_strobe),
-        .regs_write(regbus_write),
-
         // Bus master interface
-        .bus_addr(sprite_bm_addr),
-        .bus_rddata(membus_rddata),
-        .bus_strobe(sprite_bm_strobe),
-        .bus_ack(sprite_bm_ack),
+        .bus_addr(spr_addr),
+        .bus_rddata(spr_rddata),
+        .bus_strobe(spr_strobe),
+        .bus_ack(spr_ack),
 
         // Sprite attribute RAM interface
         .sprite_idx(sprite_idx),
@@ -383,211 +782,7 @@ module top(
         .linebuf_wrdata(sprite_lb_renderer_wr_data),
         .linebuf_wren(sprite_lb_renderer_wr_en));
 
-    //////////////////////////////////////////////////////////////////////////
-    // Composer
-    //////////////////////////////////////////////////////////////////////////
-    wire [7:0] composer_display_data;
-    wire       next_pixel;
-    wire [1:0] display_mode;
-    wire       display_chroma_disable;
-    wire       composer_display_current_field;
-
-    composer composer(
-        .rst(reset),
-        .clk(clk),
-
-        .line_irq(line_irq),
-
-        // Register interface
-        .regs_addr(regbus_addr[4:0]),
-        .regs_wrdata(regbus_wrdata),
-        .regs_rddata(composer_regs_rddata),
-        .regs_sel(composer_regs_sel),
-        .regs_strobe(regbus_strobe),
-        .regs_write(regbus_write),
-
-        // Layer 0 interface
-        .layer0_line_idx(layer0_line_idx),
-        .layer0_line_render_start(layer0_line_render_start),
-        .layer0_line_render_done(layer0_line_render_done),
-        .layer0_enabled(layer0_enabled),
-        .layer0_lb_rdidx(layer0_linebuf_rdidx),
-        .layer0_lb_rddata(layer0_linebuf_rddata),
-
-        // Layer 1 interface
-        .layer1_line_idx(layer1_line_idx),
-        .layer1_line_render_start(layer1_line_render_start),
-        .layer1_line_render_done(layer1_line_render_done),
-        .layer1_enabled(layer1_enabled),
-        .layer1_lb_rdidx(layer1_linebuf_rdidx),
-        .layer1_lb_rddata(layer1_linebuf_rddata),
-
-        // Sprite interface
-        .sprites_line_idx(sprites_line_idx),
-        .sprites_line_render_start(sprites_line_render_start),
-        .sprites_line_render_done(sprites_line_render_done),
-        .sprites_enabled(sprites_enabled),
-
-        .sprite_lb_rdidx(sprite_lb_composer_rd_idx),
-        .sprite_lb_rddata(sprite_lb_composer_rd_data),
-        .sprite_lb_erase_start(sprite_lb_composer_erase_start),
-        .sprite_lb_erase_busy(sprite_lb_composer_erase_busy),
-
-        // Display interface
-        .display_next_frame(next_frame),
-        .display_next_line(next_line),
-        .display_next_pixel(next_pixel),
-        .display_current_field(composer_display_current_field),
-        .display_data(composer_display_data),
-
-        // Video selection
-        .display_mode(display_mode),
-        .chroma_disable(display_chroma_disable));
-
-    //////////////////////////////////////////////////////////////////////////
-    // Palette (2 instances to allow for readback of palette entries)
-    //////////////////////////////////////////////////////////////////////////
-    wire        palette_write   = palette_sel && regbus_strobe && regbus_write;
-    wire  [1:0] palette_bytesel = regbus_addr[0] ? 2'b10 : 2'b01;
-
-    wire [15:0] palette_rgb_data;
-    wire [15:0] palette_rddata16;
-
-    assign palette_rddata = regbus_addr[0] ? palette_rddata16[15:8] : palette_rddata16[7:0];
-
-    palette_ram palette_ram(
-        .wr_clk_i(clk),
-        .rd_clk_i(clk),
-        .wr_clk_en_i(1'b1),
-        .rd_en_i(1'b1),
-        .rd_clk_en_i(1'b1),
-        .wr_en_i(palette_write),
-        .wr_data_i({2{regbus_wrdata}}),
-        .ben_i(palette_bytesel),
-        .wr_addr_i(regbus_addr[8:1]),
-        .rd_addr_i(composer_display_data),
-        .rd_data_o(palette_rgb_data));
-
-    palette_ram palette_ram_readback(
-        .wr_clk_i(clk),
-        .rd_clk_i(clk),
-        .wr_clk_en_i(1'b1),
-        .rd_en_i(1'b1),
-        .rd_clk_en_i(1'b1),
-        .wr_en_i(palette_write),
-        .wr_data_i({2{regbus_wrdata}}),
-        .ben_i(palette_bytesel),
-        .wr_addr_i(regbus_addr[8:1]),
-        .rd_addr_i(regbus_addr[8:1]),
-        .rd_data_o(palette_rddata16));
-
-    //////////////////////////////////////////////////////////////////////////
-    // Sprite attribute RAM
-    //////////////////////////////////////////////////////////////////////////
-    wire sprite_attr_write = sprite_attr_sel && regbus_strobe && regbus_write;
-
-    reg [3:0] sprite_attr_bytesel;
-    always @* case (regbus_addr[1:0])
-        3'd0: sprite_attr_bytesel = 4'b0001;
-        3'd1: sprite_attr_bytesel = 4'b0010;
-        3'd2: sprite_attr_bytesel = 4'b0100;
-        3'd3: sprite_attr_bytesel = 4'b1000;
-    endcase
-
-    wire [31:0] sprite_ram_rddata32;
-    always @* case (regbus_addr[1:0])
-        3'd0: sprite_attr_rddata = sprite_ram_rddata32[7:0];
-        3'd1: sprite_attr_rddata = sprite_ram_rddata32[15:8];
-        3'd2: sprite_attr_rddata = sprite_ram_rddata32[23:16];
-        3'd3: sprite_attr_rddata = sprite_ram_rddata32[31:24];
-    endcase
-
-    sprite_ram sprite_attr_ram(
-        .wr_clk_i(clk),
-        .rd_clk_i(clk),
-        .wr_clk_en_i(1'b1),
-        .rd_en_i(1'b1),
-        .rd_clk_en_i(1'b1),
-        .wr_en_i(sprite_attr_write),
-        .wr_data_i({4{regbus_wrdata}}),
-        .ben_i(sprite_attr_bytesel),
-        .wr_addr_i(regbus_addr[9:2]),
-        .rd_addr_i(sprite_idx),
-        .rd_data_o(sprite_attr));
-
-    sprite_ram sprite_attr_ram_readback(
-        .wr_clk_i(clk),
-        .rd_clk_i(clk),
-        .wr_clk_en_i(1'b1),
-        .rd_en_i(1'b1),
-        .rd_clk_en_i(1'b1),
-        .wr_en_i(sprite_attr_write),
-        .wr_data_i({4{regbus_wrdata}}),
-        .ben_i(sprite_attr_bytesel),
-        .wr_addr_i(regbus_addr[9:2]),
-        .rd_addr_i(regbus_addr[9:2]),
-        .rd_data_o(sprite_ram_rddata32));
-
-    //////////////////////////////////////////////////////////////////////////
-    // Main RAM
-    //////////////////////////////////////////////////////////////////////////
-    wire mainram_write = membus_strobe && membus_write;
-
-    main_ram main_ram(
-        .clk(clk),
-        .bus_addr(membus_addr[16:2]),
-        .bus_wrdata(membus_wrdata),
-        .bus_wrbytesel(membus_bytesel),
-        .bus_rddata(mainram_rddata),
-        .bus_write(mainram_write));
-
-    //////////////////////////////////////////////////////////////////////////
-    // Line buffers
-    //////////////////////////////////////////////////////////////////////////
-    reg active_line_buf_r;
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
-            active_line_buf_r <= 0;
-        end else begin
-            if (next_line) begin
-                active_line_buf_r <= !active_line_buf_r;
-            end
-        end
-    end
-
-    // Layer 0 line buffer
-    layer_line_buffer layer0_line_buffer(
-        .rst(reset),
-        .clk(clk),
-
-        .active_render_buffer(active_line_buf_r),
-
-        // Renderer interface
-        .renderer_wr_idx(layer0_linebuf_wridx),
-        .renderer_wr_data(layer0_linebuf_wrdata),
-        .renderer_wr_en(layer0_linebuf_wren),
-
-        // Composer interface
-        .composer_rd_idx(layer0_linebuf_rdidx),
-        .composer_rd_data(layer0_linebuf_rddata));
-
-    // Layer 1 line buffer
-    layer_line_buffer layer1_line_buffer(
-        .rst(reset),
-        .clk(clk),
-
-        .active_render_buffer(active_line_buf_r),
-
-        // Renderer interface
-        .renderer_wr_idx(layer1_linebuf_wridx),
-        .renderer_wr_data(layer1_linebuf_wrdata),
-        .renderer_wr_en(layer1_linebuf_wren),
-
-        // Composer interface
-        .composer_rd_idx(layer1_linebuf_rdidx),
-        .composer_rd_data(layer1_linebuf_rddata));
-
-    // Sprite line buffers
+    // Sprite line buffer
     sprite_line_buffer sprite_line_buffer(
         .rst(reset),
         .clk(clk),
@@ -602,10 +797,108 @@ module top(
         .renderer_wr_en(sprite_lb_renderer_wr_en),
 
         // Composer interface
-        .composer_rd_idx(sprite_lb_composer_rd_idx),
-        .composer_rd_data(sprite_lb_composer_rd_data),
-        .composer_erase_start(sprite_lb_composer_erase_start),
-        .composer_erase_busy(sprite_lb_composer_erase_busy));
+        .composer_rd_idx(lb_rdidx),
+        .composer_rd_data(spr_lb_rddata),
+        .composer_erase_start(spr_lb_erase_start));
+
+    // Sprite attribute RAM
+    wire        sprite_attr_write  = (ib_addr_r[16:10] == 'b1111111) && ib_do_access_r && ib_write_r;
+    wire  [7:0] sprite_attr_wraddr = ib_addr_r[9:2];
+    wire [31:0] sprite_attr_wrdata = {4{ib_wrdata_r}};
+
+    reg [3:0] sprite_attr_bytesel;
+    always @* case (ib_addr_r[1:0])
+        3'd0: sprite_attr_bytesel = 4'b0001;
+        3'd1: sprite_attr_bytesel = 4'b0010;
+        3'd2: sprite_attr_bytesel = 4'b0100;
+        3'd3: sprite_attr_bytesel = 4'b1000;
+    endcase
+
+    sprite_ram sprite_attr_ram(
+        .wr_clk_i(clk),
+        .rd_clk_i(clk),
+        .wr_clk_en_i(1'b1),
+        .rd_en_i(1'b1),
+        .rd_clk_en_i(1'b1),
+        .wr_en_i(sprite_attr_write),
+        .wr_data_i(sprite_attr_wrdata),
+        .ben_i(sprite_attr_bytesel),
+        .wr_addr_i(sprite_attr_wraddr),
+        .rd_addr_i(sprite_idx),
+        .rd_data_o(sprite_attr));
+
+    //////////////////////////////////////////////////////////////////////////
+    // Composer
+    //////////////////////////////////////////////////////////////////////////
+    wire [7:0] composer_display_data;
+    wire       next_pixel;
+    wire       next_frame;
+    wire       next_line;
+    wire       composer_display_current_field;
+
+    wire       line_irq;
+
+    wire       dc_interlaced = video_output_mode_r[1];
+
+    composer composer(
+        .rst(reset),
+        .clk(clk),
+
+        // Register interface
+        .interlaced(dc_interlaced),
+        .frac_x_incr(dc_frac_x_incr_r),
+        .frac_y_incr(dc_frac_y_incr_r),
+        .border_color(dc_border_color_r),
+        .active_hstart(dc_active_hstart_r),
+        .active_hstop(dc_active_hstop_r),
+        .active_vstart(dc_active_vstart_r),
+        .active_vstop(dc_active_vstop_r),
+        .irqline(irq_line_r),
+        .layer0_enabled(l0_enabled_r),
+        .layer1_enabled(l1_enabled_r),
+        .sprites_enabled(sprites_enabled_r),
+
+        .current_field(current_field),
+        .line_irq(line_irq),
+
+        // Render interface
+        .line_idx(line_idx),
+        .line_render_start(line_render_start),
+        .lb_rdidx(lb_rdidx),
+        .layer0_lb_rddata(l0_lb_rddata),
+        .layer1_lb_rddata(l1_lb_rddata),
+        .sprite_lb_rddata(spr_lb_rddata),
+        .sprite_lb_erase_start(spr_lb_erase_start),
+
+        // Display interface
+        .display_next_frame(next_frame),
+        .display_next_line(next_line),
+        .display_next_pixel(next_pixel),
+        .display_current_field(composer_display_current_field),
+        .display_data(composer_display_data));
+
+    //////////////////////////////////////////////////////////////////////////
+    // Palette
+    //////////////////////////////////////////////////////////////////////////
+    wire [15:0] palette_rgb_data;
+
+    wire        palette_write   = (ib_addr_r[16:9] == 'b11111101) && ib_do_access_r && ib_write_r;
+    wire  [1:0] palette_bytesel = ib_addr_r[0] ? 2'b10 : 2'b01;
+    wire  [7:0] palette_wridx   = ib_addr_r[8:1];
+    wire [15:0] palette_wrdata  = {2{ib_wrdata_r}};
+
+    palette_ram palette_ram(
+        .wr_clk_i(clk),
+        .rd_clk_i(clk),
+        .wr_clk_en_i(1'b1),
+        .rd_en_i(1'b1),
+        .rd_clk_en_i(1'b1),
+        .wr_en_i(palette_write),
+        .wr_data_i(palette_wrdata),
+        .ben_i(palette_bytesel),
+        .wr_addr_i(palette_wridx),
+        .rd_addr_i(composer_display_data),
+        .rd_data_o(palette_rgb_data));
 
     //////////////////////////////////////////////////////////////////////////
     // Composite video
@@ -618,8 +911,7 @@ module top(
     wire [5:0] video_composite_luma, video_composite_chroma;
     wire [3:0] video_rgb_r, video_rgb_g, video_rgb_b;
     wire       video_rgb_sync_n;
-
-    wire [5:0] video_composite_chroma2 = display_chroma_disable ? 0 : video_composite_chroma;
+    wire [5:0] video_composite_chroma2 = chroma_disable_r ? 0 : video_composite_chroma;
 
     video_composite video_composite(
         .rst(reset),
@@ -677,12 +969,12 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     // Video output selection
     //////////////////////////////////////////////////////////////////////////
-    assign next_frame   = display_mode[1] ? video_composite_next_frame         : video_vga_next_frame;
-    assign next_line    = display_mode[1] ? video_composite_next_line          : video_vga_next_line;
-    assign next_pixel   = display_mode[1] ? video_composite_display_next_pixel : video_vga_display_next_pixel;
-    assign vblank_pulse = display_mode[1] ? video_composite_vblank_pulse       : video_vga_vblank_pulse;
+    assign next_frame   = video_output_mode_r[1] ? video_composite_next_frame         : video_vga_next_frame;
+    assign next_line    = video_output_mode_r[1] ? video_composite_next_line          : video_vga_next_line;
+    assign next_pixel   = video_output_mode_r[1] ? video_composite_display_next_pixel : video_vga_display_next_pixel;
+    assign vblank_pulse = video_output_mode_r[1] ? video_composite_vblank_pulse       : video_vga_vblank_pulse;
 
-    always @(posedge clk) case (display_mode)
+    always @(posedge clk) case (video_output_mode_r)
         2'b01: begin
             vga_r     <= video_vga_r;
             vga_g     <= video_vga_g;
@@ -717,25 +1009,84 @@ module top(
     endcase
 
     //////////////////////////////////////////////////////////////////////////
-    // UART
+    // FPGA reconfiguration
     //////////////////////////////////////////////////////////////////////////
-    uart uart(
-        .rst(reset),
-        .clk(clk),
+`ifndef __ICARUS__
+    WARMBOOT warmboot(
+        .S1(1'b0),
+        .S0(1'b0),
+        .BOOT(fpga_reconfigure_r));
+`endif
 
-        .irq(uart_irq),
-        
-        // Slave bus interface
-        .bus_addr(regbus_addr[1:0]),
-        .bus_wrdata(regbus_wrdata),
-        .bus_rddata(uart_rddata),
-        .bus_sel(uart_sel),
-        .bus_strobe(regbus_strobe),
-        .bus_write(regbus_write),
+    //////////////////////////////////////////////////////////////////////////
+    // SPI interface
+    //////////////////////////////////////////////////////////////////////////
+    assign spi_ssel_n_sd = spi_select_r;
 
-        // UART interface
-        .uart_rxd(uart_rxd),
-        .uart_txd(uart_txd));
+
+/*
+    wire  [7:0] spi_rddata;
+
+    wire        regbus_ack;
+    wire        regbus_bm_strobe;
+    reg         regbus_bm_ack;
+    reg         regbus_bm_ack_next;
+
+    wire        line_irq;
+    wire        sprcol_irq;
+
+    wire next_frame;
+    wire vblank_pulse;
+    wire next_line;
+
+    assign irqs = {5'b0, sprcol_irq, line_irq, vblank_pulse};
+
+    // Register bus memory map:
+    // 00000-1FFFF  Main RAM
+    // F0000-F001F  Composer registers
+    // F1000-F01FF  Palette
+    // F2000-F200F  Layer 0 registers
+    // F3000-F300F  Layer 0 registers
+    // F4000-F400F  Sprite registers
+    // F5000-F53FF  Sprite attributes
+    // F6000-F6xxx  Audio
+    // F7000-F7001  SPI
+    wire regbus_sel        = regbus_addr[19:16] == 4'hF;
+    wire membus_sel        = !regbus_sel;
+    wire composer_regs_sel = regbus_sel && regbus_addr[15:12] == 4'h0;
+    wire palette_sel       = regbus_sel && regbus_addr[15:12] == 4'h1;
+    wire l0_regs_sel   = regbus_sel && regbus_addr[15:12] == 4'h2;
+    wire l1_regs_sel   = regbus_sel && regbus_addr[15:12] == 4'h3;
+    wire sprites_regs_sel  = regbus_sel && regbus_addr[15:12] == 4'h4;
+    wire sprite_attr_sel   = regbus_sel && regbus_addr[15:12] == 4'h5;
+    wire spi_sel           = regbus_sel && regbus_addr[15:12] == 4'h7;
+
+    reg regbus_strobe_r;
+    always @(posedge clk) regbus_strobe_r <= regbus_strobe;
+
+    assign regbus_ack = membus_sel ? regbus_bm_ack : regbus_strobe_r;
+
+    //////////////////////////////////////////////////////////////////////////
+    // Sprite attribute RAM
+    //////////////////////////////////////////////////////////////////////////
+    wire sprite_attr_write = sprite_attr_sel && regbus_strobe && regbus_write;
+
+    reg [3:0] sprite_attr_bytesel;
+    always @* case (regbus_addr[1:0])
+        3'd0: sprite_attr_bytesel = 4'b0001;
+        3'd1: sprite_attr_bytesel = 4'b0010;
+        3'd2: sprite_attr_bytesel = 4'b0100;
+        3'd3: sprite_attr_bytesel = 4'b1000;
+    endcase
+
+    wire [31:0] sprite_ram_rddata32;
+    always @* case (regbus_addr[1:0])
+        3'd0: sprite_attr_rddata = sprite_ram_rddata32[7:0];
+        3'd1: sprite_attr_rddata = sprite_ram_rddata32[15:8];
+        3'd2: sprite_attr_rddata = sprite_ram_rddata32[23:16];
+        3'd3: sprite_attr_rddata = sprite_ram_rddata32[31:24];
+    endcase
+
 
     //////////////////////////////////////////////////////////////////////////
     // SPI
@@ -759,7 +1110,7 @@ module top(
         .spi_ssel_n_sd(spi_ssel_n_sd));
 
     //////////////////////////////////////////////////////////////////////////
-    // SPI
+    // Audio
     //////////////////////////////////////////////////////////////////////////
     audio audio(
         .rst(reset),
@@ -781,5 +1132,6 @@ module top(
         .audio_lrck(audio_lrck),
         .audio_bck(audio_bck),
         .audio_data(audio_data));
+*/
 
 endmodule

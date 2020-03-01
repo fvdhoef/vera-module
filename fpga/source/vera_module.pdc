@@ -2,12 +2,14 @@
 ldc_set_location -site {35} [get_ports clk25]
 
 # Bus
-ldc_set_location -site {37} [get_ports extbus_phi2_n]
+ldc_set_location -site {37} [get_ports extbus_rd_n]
 ldc_set_location -site {28} [get_ports extbus_cs_n]
-ldc_set_location -site {31} [get_ports extbus_rw_n]
+ldc_set_location -site {31} [get_ports extbus_wr_n]
 ldc_set_location -site {41} [get_ports {extbus_a[0]}]
 ldc_set_location -site {40} [get_ports {extbus_a[1]}]
 ldc_set_location -site {39} [get_ports {extbus_a[2]}]
+ldc_set_location -site {34} [get_ports {extbus_a[3]}]
+ldc_set_location -site {36} [get_ports {extbus_a[4]}]
 ldc_set_location -site {27} [get_ports {extbus_d[0]}]
 ldc_set_location -site {26} [get_ports {extbus_d[1]}]
 ldc_set_location -site {25} [get_ports {extbus_d[2]}]
@@ -39,10 +41,6 @@ ldc_set_location -site {15} [get_ports spi_sck]
 ldc_set_location -site {14} [get_ports spi_mosi]
 ldc_set_location -site {17} [get_ports spi_miso]
 ldc_set_location -site {16} [get_ports spi_ssel_n_sd]
-
-# UART
-ldc_set_location -site {34} [get_ports uart_rxd]
-ldc_set_location -site {36} [get_ports uart_txd]
 
 # Audio
 ldc_set_location -site {43} [get_ports audio_lrck]

@@ -133,24 +133,15 @@ module video_composite(
         end
     end
 
-    // Generate line counter based on line index in progressive frame
-    reg  [8:0] field_line_cnt;
-    wire [9:0] frame_line_cnt = {field_line_cnt, field};
-
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             field <= 0;
-            field_line_cnt <= 0;
 
         end else begin
             if (h_half_line_last && v_last) begin
                 field <= 1;
-                field_line_cnt <= 0;
             end else if (h_half_line_last && v_even_field_last) begin
                 field <= 0;
-                field_line_cnt <= 0;
-            end else if (h_last) begin
-                field_line_cnt <= field_line_cnt + 1;
             end
         end
     end

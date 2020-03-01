@@ -1,248 +1,72 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Sun Sep 22 13:05:26 2019
+[*] Sat Feb 29 19:22:49 2020
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Sun Sep 22 13:03:30 2019"
-[dumpfile_size] 77960265
+[dumpfile_mtime] "Sat Feb 29 19:21:48 2020"
+[dumpfile_size] 3441445
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
-[timestart] 3120000
-[size] 2560 1377
-[pos] -1 -1
-*-19.378208 7470000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[timestart] 4026000
+[size] 1920 1013
+[pos] -10 -30
+*-20.223043 6062500 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
-[treeopen] tb.top.extbus.
 [sst_width] 261
 [signals_width] 332
 [sst_expanded] 1
-[sst_vpaned_height] 504
+[sst_vpaned_height] 478
 @200
 -External bus
 @28
-tb.sysclk
+tb.top.clk
+tb.top.reset
 tb.phi2
-@24
-tb.top.extbus_a[2:0]
 @22
+tb.top.extbus_a[4:0]
 tb.top.extbus_d[7:0]
 @28
-tb.top.extbus_rw_n
 tb.top.extbus_cs_n
+@29
+tb.top.extbus_wr_n
+@28
+tb.top.extbus_rd_n
 tb.top.extbus_irq_n
 @200
--
+-Internal
 @28
-tb.top.extbus.busy_r
-tb.top.extbus.do_read
-tb.top.extbus.do_write
-tb.top.extbus.bm_ack
-tb.top.extbus.bm_strobe
-tb.top.extbus.ib_do_access
-@22
-tb.top.regbus_addr[19:0]
-@28
-tb.top.membus_sel
-@29
-tb.top.regbus_bm_strobe
+tb.top.bus_read
+tb.top.bus_write
+tb.top.end_of_cycle
 @200
 -
-@8024
-tb.top.video_composite.luma[5:0]
-@20000
--
--
--
-@8024
-tb.top.video_composite.chroma[5:0]
+@28
+tb.top.do_read
+tb.top.do_write
+@22
+tb.top.access_addr[4:0]
+tb.top.write_data[7:0]
+@28
+tb.top.fetch_ahead_next
+tb.top.fetch_ahead_r
 @200
 -
-@22
-tb.top.extbus.bm_wrdata[7:0]
-tb.top.extbus.bm_rddata[7:0]
 @28
-tb.top.extbus.bm_strobe
-tb.top.extbus.bm_write
+tb.top.bus_read
+tb.top.bus_write
+tb.top.do_write
+@22
+tb.top.write_data[7:0]
+tb.top.vram_addr_0_r[16:0]
+tb.top.vram_addr_incr_0_r[3:0]
+tb.top.increment[15:0]
 @200
 -
 @22
-tb.top.extbus.reg_addr0_incr_r[3:0]
-@200
--Memory bus
-@22
-tb.top.membus_addr[17:0]
-tb.top.membus_wrdata[31:0]
-tb.top.membus_rddata[31:0]
+tb.top.ib_addr_r[16:0]
+tb.top.ib_wrdata_r[7:0]
 @28
-tb.top.membus_bytesel[3:0]
-@22
-tb.top.membus_rddata8[7:0]
-@28
-tb.top.membus_sel
-tb.top.membus_write
-tb.top.membus_strobe
-@200
--
-@28
-tb.top.regbus_bm_strobe
-tb.top.layer1_bm_strobe
-tb.top.sprite_bm_strobe
-@200
--
-@28
-tb.top.layer1_renderer.line_render_done
-tb.top.sprite_renderer.line_render_done
-@200
--Line buffers
-@28
-tb.top.composer.reg_mode_r[1:0]
-@24
-tb.top.composer.layer1_line_idx[8:0]
-@28
-tb.top.composer.layer1_line_render_start
-@24
-tb.top.composer.y_counter_rr[8:0]
-tb.top.composer.y_counter_r[8:0]
-tb.top.composer.scaled_y_counter_r[15:0]
-tb.top.composer.y_counter[8:0]
-@28
-tb.top.composer.vactive
-@22
-tb.top.composer.display_data[7:0]
-@200
--
-@28
-tb.top.composer.display_next_line
-tb.top.composer.display_next_frame
-tb.top.video_composite.current_field
-@22
-tb.top.layer1_renderer.line_idx[8:0]
-@28
-tb.top.layer1_renderer.line_render_start
-@24
-tb.top.video_vga.y_counter[9:0]
-@28
-tb.top.composer.display_active
-@200
--
--Sprite renderer
-@22
-tb.top.sprite_renderer.bus_addr[15:0]
-tb.top.sprite_renderer.bus_rddata[31:0]
-@28
-tb.top.sprite_renderer.bus_strobe
-tb.top.sprite_renderer.bus_ack
-@200
--
-@24
-tb.top.sprite_renderer.xcnt_r[5:0]
-tb.top.sprite_renderer.sprite_width_pixels[5:0]
-tb.top.sprite_renderer.linebuf_rdidx[9:0]
-tb.top.sprite_renderer.linebuf_wridx[9:0]
-@22
-tb.top.sprite_renderer.linebuf_wrdata[15:0]
-@28
-tb.top.sprite_renderer.linebuf_wren
-@200
--
-@8024
-tb.top.video_composite.luma[5:0]
-tb.top.video_composite.chroma[5:0]
-@200
--
-@22
-tb.top.sprite_renderer.render_data_r[31:0]
-tb.top.sprite_renderer.line_addr[15:0]
-@28
-tb.top.sprite_renderer.clk
-tb.top.sprite_renderer.line_render_start
-@22
-tb.top.sprite_renderer.line_idx[8:0]
-tb.top.sprite_renderer.cur_pixel_data_4bpp[3:0]
-tb.top.sprite_renderer.cur_pixel_data_8bpp[7:0]
-@200
--
-@28
-tb.top.sprite_renderer.reg_enable_r
-@200
--
-@2028
-^1 /c/Work/vera-module/fpga/source/sim/sprite_renderer_state.txt
-tb.top.sprite_renderer.state_r[1:0]
-@22
-tb.top.sprite_renderer.line_addr[15:0]
-@200
--
--
-@22
-tb.top.sprite_renderer.line_addr[15:0]
-@200
--
-@28
-tb.top.sprite_renderer.sprite_on_line
-tb.top.sprite_renderer.sprite_enabled
-@24
-tb.top.sprite_renderer.sprite_line[5:0]
-@200
--
-@c00024
-#{tb.top.sprite_renderer.sprite_idx[7:1]} (0)tb.top.sprite_renderer.sprite_idx[7:0] (1)tb.top.sprite_renderer.sprite_idx[7:0] (2)tb.top.sprite_renderer.sprite_idx[7:0] (3)tb.top.sprite_renderer.sprite_idx[7:0] (4)tb.top.sprite_renderer.sprite_idx[7:0] (5)tb.top.sprite_renderer.sprite_idx[7:0] (6)tb.top.sprite_renderer.sprite_idx[7:0]
-@28
-(0)tb.top.sprite_renderer.sprite_idx[7:0]
-(1)tb.top.sprite_renderer.sprite_idx[7:0]
-(2)tb.top.sprite_renderer.sprite_idx[7:0]
-(3)tb.top.sprite_renderer.sprite_idx[7:0]
-(4)tb.top.sprite_renderer.sprite_idx[7:0]
-(5)tb.top.sprite_renderer.sprite_idx[7:0]
-(6)tb.top.sprite_renderer.sprite_idx[7:0]
-@1401200
--group_end
-@28
-(7)tb.top.sprite_renderer.sprite_idx[7:0]
-tb.top.sprite_renderer.render_busy
-@200
--
-@24
-tb.top.sprite_renderer.sprite_idx_r[7:0]
-@28
-tb.top.sprite_renderer.sf_state_r[1:0]
-tb.top.sprite_renderer.start_render_r
-@200
--
-@28
-tb.top.sprite_renderer.save_hi
-@22
-tb.top.sprite_renderer.sprite_addr_r[11:0]
-@28
-tb.top.sprite_renderer.sprite_mode_r
-@24
-tb.top.sprite_renderer.sprite_x_r[9:0]
-@28
-tb.top.sprite_renderer.save_lo
-@22
-tb.top.sprite_renderer.sprite_line_r[5:0]
-@28
-tb.top.sprite_renderer.sprite_hflip_r
-@24
-tb.top.sprite_renderer.sprite_z_r[1:0]
-tb.top.sprite_renderer.sprite_collision_mask_r[3:0]
-tb.top.sprite_renderer.sprite_palette_offset_r[3:0]
-tb.top.sprite_renderer.sprite_width_r[1:0]
-tb.top.sprite_renderer.sprite_height_r[1:0]
-@200
--
-@28
-tb.top.sprite_line_buffer.composer_erase_start
-tb.top.active_line_buf_r
-tb.top.sprite_line_buffer.composer_erase_busy
-@24
-tb.top.sprite_line_buffer.composer_wr_idx[7:0]
-@28
-tb.top.sprite_line_buffer.composer_wr_en
-@24
-tb.top.composer.x_counter_r[10:0]
-tb.top.composer.x_counter[9:0]
-tb.top.sprite_line_buffer.composer_rd_idx[9:0]
-tb.top.layer1_linebuf_rdidx[9:0]
+tb.top.ib_do_access_r
+tb.top.ib_write_r
 [pattern_trace] 1
 [pattern_trace] 0
