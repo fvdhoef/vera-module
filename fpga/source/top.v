@@ -103,9 +103,14 @@ module top(
     wire       current_field;
     wire [7:0] vram_rddata;
 
-    reg  [7:0] spi_rddata;
+    wire       vblank_pulse;
+    wire       line_irq;
+
     reg        spi_select_r,                  spi_select_next;
+    reg  [7:0] spi_txdata;
+    reg        spi_txstart;
     wire       spi_busy;
+    wire [7:0] spi_rxdata;
 
     reg [7:0] rddata;
     always @* case (extbus_a)
@@ -139,13 +144,18 @@ module top(
         5'h1B: rddata = {4'b0, l1_hscroll_r[11:8]};
         5'h1C: rddata = l1_vscroll_r[7:0];
         5'h1D: rddata = {4'b0, l1_vscroll_r[11:8]};
-        5'h1E: rddata = spi_rddata;
+        5'h1E: rddata = spi_rxdata;
         5'h1F: rddata = {spi_busy, 6'b0, spi_select_r};
     endcase
 
     wire bus_read  = !extbus_cs_n &&  extbus_wr_n && !extbus_rd_n;
     wire bus_write = !extbus_cs_n && !extbus_wr_n;
     assign extbus_d = bus_read ? rddata : 8'bZ;
+
+    wire [2:0] irq_status = {irq_status_sprite_collision_r, irq_status_line_r, irq_status_vsync_r};
+    wire [2:0] irq_enable = {irq_enable_sprite_collision_r, irq_enable_line_r, irq_enable_vsync_r};
+
+    assign extbus_irq_n = (irq_status & irq_enable) == 0;
 
     // Capture address / write-data at end of write cycle
     reg [4:0] rdaddr_r;
@@ -281,6 +291,9 @@ module top(
 
         fetch_ahead_next = 0;
 
+        spi_txdata = write_data;
+        spi_txstart = 0;
+
         if (do_write) begin
             case (access_addr)
                 5'h00: begin
@@ -397,14 +410,19 @@ module top(
                 5'h1B: l1_hscroll_next[11:8] = write_data[3:0];
                 5'h1C: l1_vscroll_next[7:0]  = write_data;
                 5'h1D: l1_vscroll_next[11:8] = write_data[3:0];
-                5'h1E: begin
-                    // spi_rddata
-                end
-                5'h1F: begin
-                    // spi_busy, 6'b0, spi_select
-                    spi_select_next = write_data[0];
-                end
+                5'h1E: spi_txstart = 1;
+                5'h1F: spi_select_next = write_data[0];
             endcase
+        end
+
+        if (sprcol_irq) begin
+            irq_status_sprite_collision_next = 1;
+        end
+        if (line_irq) begin
+            irq_status_line_next = 1;
+        end
+        if (vblank_pulse) begin
+            irq_status_vsync_next = 1;
         end
 
         if (fetch_ahead_r) begin
@@ -611,8 +629,6 @@ module top(
     wire  [7:0] l1_lb_rddata;
     wire [15:0] spr_lb_rddata;
     wire        spr_lb_erase_start;
-
-    wire        vblank_pulse;
 
     wire  [8:0] line_idx;
     wire        line_render_start;
@@ -836,8 +852,6 @@ module top(
     wire       next_line;
     wire       composer_display_current_field;
 
-    wire       line_irq;
-
     wire       dc_interlaced = video_output_mode_r[1];
 
     composer composer(
@@ -1021,94 +1035,24 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     // SPI interface
     //////////////////////////////////////////////////////////////////////////
-    assign spi_ssel_n_sd = spi_select_r;
+    assign spi_ssel_n_sd = !spi_select_r;
 
-
-/*
-    wire  [7:0] spi_rddata;
-
-    wire        regbus_ack;
-    wire        regbus_bm_strobe;
-    reg         regbus_bm_ack;
-    reg         regbus_bm_ack_next;
-
-    wire        line_irq;
-    wire        sprcol_irq;
-
-    wire next_frame;
-    wire vblank_pulse;
-    wire next_line;
-
-    assign irqs = {5'b0, sprcol_irq, line_irq, vblank_pulse};
-
-    // Register bus memory map:
-    // 00000-1FFFF  Main RAM
-    // F0000-F001F  Composer registers
-    // F1000-F01FF  Palette
-    // F2000-F200F  Layer 0 registers
-    // F3000-F300F  Layer 0 registers
-    // F4000-F400F  Sprite registers
-    // F5000-F53FF  Sprite attributes
-    // F6000-F6xxx  Audio
-    // F7000-F7001  SPI
-    wire regbus_sel        = regbus_addr[19:16] == 4'hF;
-    wire membus_sel        = !regbus_sel;
-    wire composer_regs_sel = regbus_sel && regbus_addr[15:12] == 4'h0;
-    wire palette_sel       = regbus_sel && regbus_addr[15:12] == 4'h1;
-    wire l0_regs_sel   = regbus_sel && regbus_addr[15:12] == 4'h2;
-    wire l1_regs_sel   = regbus_sel && regbus_addr[15:12] == 4'h3;
-    wire sprites_regs_sel  = regbus_sel && regbus_addr[15:12] == 4'h4;
-    wire sprite_attr_sel   = regbus_sel && regbus_addr[15:12] == 4'h5;
-    wire spi_sel           = regbus_sel && regbus_addr[15:12] == 4'h7;
-
-    reg regbus_strobe_r;
-    always @(posedge clk) regbus_strobe_r <= regbus_strobe;
-
-    assign regbus_ack = membus_sel ? regbus_bm_ack : regbus_strobe_r;
-
-    //////////////////////////////////////////////////////////////////////////
-    // Sprite attribute RAM
-    //////////////////////////////////////////////////////////////////////////
-    wire sprite_attr_write = sprite_attr_sel && regbus_strobe && regbus_write;
-
-    reg [3:0] sprite_attr_bytesel;
-    always @* case (regbus_addr[1:0])
-        3'd0: sprite_attr_bytesel = 4'b0001;
-        3'd1: sprite_attr_bytesel = 4'b0010;
-        3'd2: sprite_attr_bytesel = 4'b0100;
-        3'd3: sprite_attr_bytesel = 4'b1000;
-    endcase
-
-    wire [31:0] sprite_ram_rddata32;
-    always @* case (regbus_addr[1:0])
-        3'd0: sprite_attr_rddata = sprite_ram_rddata32[7:0];
-        3'd1: sprite_attr_rddata = sprite_ram_rddata32[15:8];
-        3'd2: sprite_attr_rddata = sprite_ram_rddata32[23:16];
-        3'd3: sprite_attr_rddata = sprite_ram_rddata32[31:24];
-    endcase
-
-
-    //////////////////////////////////////////////////////////////////////////
-    // SPI
-    //////////////////////////////////////////////////////////////////////////
     spictrl spictrl(
         .rst(reset),
         .clk(clk),
 
-        // Slave bus interface
-        .bus_addr(regbus_addr[0]),
-        .bus_wrdata(regbus_wrdata),
-        .bus_rddata(spi_rddata),
-        .bus_sel(spi_sel),
-        .bus_strobe(regbus_strobe),
-        .bus_write(regbus_write),
-    
+        // Register interface
+        .txdata(spi_txdata),
+        .txstart(spi_txstart),
+        .rxdata(spi_rxdata),
+        .busy(spi_busy),
+        
         // SPI interface
         .spi_sck(spi_sck),
         .spi_mosi(spi_mosi),
-        .spi_miso(spi_miso),
-        .spi_ssel_n_sd(spi_ssel_n_sd));
+        .spi_miso(spi_miso));
 
+/*
     //////////////////////////////////////////////////////////////////////////
     // Audio
     //////////////////////////////////////////////////////////////////////////

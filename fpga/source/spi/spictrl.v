@@ -4,42 +4,30 @@ module spictrl(
     input  wire       rst,
     input  wire       clk,
     
-    // Slave bus interface
-    input  wire       bus_addr,
-    input  wire [7:0] bus_wrdata,
-    output wire [7:0] bus_rddata,
-    input  wire       bus_sel,
-    input  wire       bus_strobe,
-    input  wire       bus_write,
+    // Register interface
+    input  wire [7:0] txdata,
+    input  wire       txstart,
+    output wire [7:0] rxdata,
+    output wire       busy,
     
     // SPI interface
     output wire       spi_sck,
     output wire       spi_mosi,
-    input  wire       spi_miso,
-    output wire       spi_ssel_n_sd);
+    input  wire       spi_miso);
 
     reg [3:0] bitcnt_r;
-    wire busy = (bitcnt_r != 'd0);
-
-    wire bus_access = bus_sel && bus_strobe;
-
-    reg bus_access_r;
-    always @(posedge clk) bus_access_r <= bus_access;
-
-    // Slave select
-    reg ssel_r;
-    assign spi_ssel_n_sd = !ssel_r;
+    assign busy = (bitcnt_r != 'd0);
 
     reg [7:0] tx_shift_r, rx_shift_r;
 
     assign spi_mosi = tx_shift_r[7];
+    assign rxdata = rx_shift_r;
 
     reg clk_r;
     assign spi_sck = clk_r;
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
-            ssel_r     <= 0;
             tx_shift_r <= 0;
             rx_shift_r <= 0;
             bitcnt_r   <= 0;
@@ -56,20 +44,12 @@ module spictrl(
                 end
 
             end else begin
-                if (!bus_access_r && bus_access) begin
-                    if (bus_write) begin
-                        if (bus_addr) begin
-                            ssel_r <= bus_wrdata[0];
-                        end else begin
-                            tx_shift_r <= bus_wrdata;
-                            bitcnt_r <= 4'd8;
-                        end
-                    end
+                if (txstart) begin
+                    tx_shift_r <= txdata;
+                    bitcnt_r <= 4'd8;
                 end
             end
         end
     end
-
-    assign bus_rddata = bus_addr ? {busy, 6'b0, ssel_r} : rx_shift_r;
 
 endmodule

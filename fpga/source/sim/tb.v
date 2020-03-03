@@ -9,7 +9,8 @@ module tb();
     end
 
     initial begin
-        #3000000 $finish;
+        // #3000000 $finish;
+        #30000 $finish;
     end
 
     // Generate 8MHz phi2
@@ -70,6 +71,11 @@ module tb();
             extbus_a = 16'b0;
             extbus_rw_n = 1'b1;
             extbus_d_wr = 8'bX;
+
+            @(negedge phi2);
+            @(negedge phi2);
+            @(negedge phi2);
+
         end
     endtask
 
@@ -90,6 +96,11 @@ module tb();
             #10;
             extbus_a = 16'b0;
             extbus_rw_n = 1'b1;
+
+
+            @(negedge phi2);
+            @(negedge phi2);
+            @(negedge phi2);
         end
     endtask
 

@@ -2,20 +2,14 @@
 <RadiantProject version="4.1" title="vera_module" device="iCE40UP5K-SG48I" performance_grade="High-Performance_1.2V" default_implementation="impl">
     <Options/>
     <Implementation title="impl" dir="impl" description="impl" synthesis="synplify" default_strategy="Strategy1">
-        <Options def_top="pulse2pulse" top="top"/>
+        <Options top="top"/>
         <Source name="source/top.v" type="Verilog" type_short="Verilog">
             <Options top_module="top"/>
         </Source>
         <Source name="source/reset_sync.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
-        <Source name="source/extbusif_6502.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
         <Source name="source/main_ram.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
-        <Source name="source/pulse2pulse.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
         <Source name="source/dpram.v" type="Verilog" type_short="Verilog">
@@ -57,18 +51,6 @@
         <Source name="source/video/video_vga.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
-        <Source name="source/uart/uart.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
-        <Source name="source/uart/uart_rx.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
-        <Source name="source/uart/uart_rx_fifo.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
-        <Source name="source/uart/uart_tx.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
         <Source name="source/spi/spictrl.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
@@ -85,6 +67,9 @@
             <Options/>
         </Source>
         <Source name="source/audio/operator.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/vram_if.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
         <Source name="source/vera_module.ldc" type="LSE Design Constraints File" type_short="LDC">

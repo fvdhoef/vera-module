@@ -2,14 +2,16 @@
 ldc_set_location -site {35} [get_ports clk25]
 
 # Bus
-ldc_set_location -site {37} [get_ports extbus_rd_n]
 ldc_set_location -site {28} [get_ports extbus_cs_n]
+ldc_set_location -site {32} [get_ports extbus_rd_n]
 ldc_set_location -site {31} [get_ports extbus_wr_n]
-ldc_set_location -site {41} [get_ports {extbus_a[0]}]
-ldc_set_location -site {40} [get_ports {extbus_a[1]}]
-ldc_set_location -site {39} [get_ports {extbus_a[2]}]
-ldc_set_location -site {34} [get_ports {extbus_a[3]}]
-ldc_set_location -site {36} [get_ports {extbus_a[4]}]
+
+ldc_set_location -site {36} [get_ports {extbus_a[0]}]
+ldc_set_location -site {37} [get_ports {extbus_a[1]}]
+ldc_set_location -site {41} [get_ports {extbus_a[2]}]
+ldc_set_location -site {40} [get_ports {extbus_a[3]}]
+ldc_set_location -site {39} [get_ports {extbus_a[4]}]
+
 ldc_set_location -site {27} [get_ports {extbus_d[0]}]
 ldc_set_location -site {26} [get_ports {extbus_d[1]}]
 ldc_set_location -site {25} [get_ports {extbus_d[2]}]
@@ -18,7 +20,8 @@ ldc_set_location -site {21} [get_ports {extbus_d[4]}]
 ldc_set_location -site {20} [get_ports {extbus_d[5]}]
 ldc_set_location -site {19} [get_ports {extbus_d[6]}]
 ldc_set_location -site {18} [get_ports {extbus_d[7]}]
-ldc_set_location -site {32} [get_ports extbus_irq_n]
+
+ldc_set_location -site {34} [get_ports extbus_irq_n]
 
 # VGA
 ldc_set_location -site {10} [get_ports {vga_r[0]}]
