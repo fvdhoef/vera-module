@@ -51,22 +51,23 @@ module top(
     reg  [3:0] vram_addr_incr_0_r,            vram_addr_incr_0_next;
     reg  [3:0] vram_addr_incr_1_r,            vram_addr_incr_1_next;
     reg        vram_addr_select_r,            vram_addr_select_next;
+    reg        dc_select_r,                   dc_select_next;
     reg        fpga_reconfigure_r,            fpga_reconfigure_next;
-    reg        irq_status_vsync_r,            irq_status_vsync_next;
-    reg        irq_status_line_r,             irq_status_line_next;
-    reg        irq_status_sprite_collision_r, irq_status_sprite_collision_next;
     reg        irq_enable_vsync_r,            irq_enable_vsync_next;
     reg        irq_enable_line_r,             irq_enable_line_next;
     reg        irq_enable_sprite_collision_r, irq_enable_sprite_collision_next;
+    reg        irq_enable_audio_fifo_low_r,   irq_enable_audio_fifo_low_next;
+    reg        irq_status_vsync_r,            irq_status_vsync_next;
+    reg        irq_status_line_r,             irq_status_line_next;
+    reg        irq_status_sprite_collision_r, irq_status_sprite_collision_next;
     reg  [8:0] irq_line_r,                    irq_line_next;
     reg        sprites_enabled_r,             sprites_enabled_next;
     reg        l0_enabled_r,                  l0_enabled_next;
     reg        l1_enabled_r,                  l1_enabled_next;
-    reg        layer_select_r,                layer_select_next;
 
     reg        chroma_disable_r,              chroma_disable_next;
-    reg  [7:0] dc_frac_x_incr_r,              dc_frac_x_incr_next;
-    reg  [7:0] dc_frac_y_incr_r,              dc_frac_y_incr_next;
+    reg  [7:0] dc_hscale_r,                   dc_hscale_next;
+    reg  [7:0] dc_vscale_r,                   dc_vscale_next;
     reg  [7:0] dc_border_color_r,             dc_border_color_next;
     reg  [9:0] dc_active_hstart_r,            dc_active_hstart_next;
     reg  [9:0] dc_active_hstop_r,             dc_active_hstop_next;
@@ -99,7 +100,7 @@ module top(
 
     reg  [1:0] video_output_mode_r,           video_output_mode_next;
 
-    wire [3:0] collisions;
+    wire [3:0] sprite_collisions;
     wire       current_field;
     wire [7:0] vram_rddata;
 
@@ -107,10 +108,13 @@ module top(
     wire       line_irq;
 
     reg        spi_select_r,                  spi_select_next;
+    reg        spi_slow_r,                    spi_slow_next;
     reg  [7:0] spi_txdata;
     reg        spi_txstart;
     wire       spi_busy;
     wire [7:0] spi_rxdata;
+
+    wire audio_fifo_low = 0;
 
     reg [7:0] rddata;
     always @* case (extbus_a)
@@ -119,41 +123,71 @@ module top(
         5'h02: rddata = vram_addr_select_r ? {vram_addr_incr_1_r, 3'b0, vram_addr_1_r[16]} : {vram_addr_incr_0_r, 3'b0, vram_addr_0_r[16]};
         5'h03: rddata = vram_rddata;
         5'h04: rddata = 8'h00;
-        5'h05: rddata = {7'b0, vram_addr_select_r};
-        5'h06: rddata = {irq_line_r[8], 4'b0, irq_enable_sprite_collision_r, irq_enable_line_r, irq_enable_vsync_r};
-        5'h07: rddata = {collisions, current_field, irq_status_sprite_collision_r, irq_status_line_r, irq_status_vsync_r};
+        5'h05: rddata = {6'b0, dc_select_r, vram_addr_select_r};
+
+        5'h06: rddata = {irq_line_r[8], 3'b0, irq_enable_audio_fifo_low_r, irq_enable_sprite_collision_r, irq_enable_line_r, irq_enable_vsync_r};
+        5'h07: rddata = {sprite_collisions,   audio_fifo_low,              irq_status_sprite_collision_r, irq_status_line_r, irq_status_vsync_r};
         5'h08: rddata = irq_line_r[7:0];
-        5'h09: rddata = {1'b0, sprites_enabled_r, l1_enabled_r, l0_enabled_r, layer_select_r, chroma_disable_r, video_output_mode_r};
-        5'h0A: rddata = dc_frac_x_incr_r;
-        5'h0B: rddata = dc_frac_y_incr_r;
-        5'h0C: rddata = dc_border_color_r;
-        5'h0D: rddata = dc_active_hstart_r[7:0];
-        5'h0E: rddata = dc_active_hstop_r[7:0];
-        5'h0F: rddata = dc_active_vstart_r[7:0];
-        5'h10: rddata = dc_active_vstop_r[7:0];
-        5'h11: rddata = {2'b0, dc_active_vstop_r[8], dc_active_vstart_r[8], dc_active_hstop_r[9:8], dc_active_hstart_r[9:8]};
-        5'h12: rddata = layer_select_r ? {4'b0, l1_attr_mode_r, l1_bitmap_mode_r, l1_color_depth_r} : {4'b0, l0_attr_mode_r, l0_bitmap_mode_r, l0_color_depth_r};
-        5'h13: rddata = layer_select_r ? {2'b0, l1_tile_height_r, l1_tile_width_r, l1_map_height_r, l1_map_width_r} : {2'b0, l0_tile_height_r, l0_tile_width_r, l0_map_height_r, l0_map_width_r};
-        5'h14: rddata = layer_select_r ? l1_map_baseaddr_r : l0_map_baseaddr_r;
-        5'h15: rddata = layer_select_r ? l1_tile_baseaddr_r : l0_tile_baseaddr_r;
-        5'h16: rddata = l0_hscroll_r[7:0];
-        5'h17: rddata = {4'b0, l0_hscroll_r[11:8]};
-        5'h18: rddata = l0_vscroll_r[7:0];
-        5'h19: rddata = {4'b0, l0_vscroll_r[11:8]};
-        5'h1A: rddata = l1_hscroll_r[7:0];
-        5'h1B: rddata = {4'b0, l1_hscroll_r[11:8]};
-        5'h1C: rddata = l1_vscroll_r[7:0];
-        5'h1D: rddata = {4'b0, l1_vscroll_r[11:8]};
+
+        5'h09: begin
+            if (dc_select_r == 0) begin
+                rddata = {current_field, sprites_enabled_r, l1_enabled_r, l0_enabled_r, 1'b0, chroma_disable_r, video_output_mode_r};
+            end else begin
+                rddata = dc_active_hstart_r[9:2];
+            end
+        end
+        5'h0A: begin
+            if (dc_select_r == 0) begin
+                rddata = dc_hscale_r;
+            end else begin
+                rddata = dc_active_hstop_r[9:2];
+            end
+        end
+        5'h0B: begin
+            if (dc_select_r == 0) begin
+                rddata = dc_vscale_r;
+            end else begin
+                rddata = dc_active_vstart_r[8:1];
+            end
+        end
+        5'h0C: begin
+            if (dc_select_r == 0) begin
+                rddata = dc_border_color_r;
+            end else begin
+                rddata = dc_active_vstop_r[8:1];
+            end
+        end
+
+        5'h0D: rddata = {l0_map_height_r, l0_map_width_r, l0_attr_mode_r, l0_bitmap_mode_r, l0_color_depth_r};
+        5'h0E: rddata = l0_map_baseaddr_r;
+        5'h0F: rddata = {l0_tile_baseaddr_r[7:2], l0_tile_height_r, l0_tile_width_r};
+        5'h10: rddata = l0_hscroll_r[7:0];
+        5'h11: rddata = {4'b0, l0_hscroll_r[11:8]};
+        5'h12: rddata = l0_vscroll_r[7:0];
+        5'h13: rddata = {4'b0, l0_vscroll_r[11:8]};
+
+        5'h14: rddata = {l1_map_height_r, l1_map_width_r, l1_attr_mode_r, l1_bitmap_mode_r, l1_color_depth_r};
+        5'h15: rddata = l1_map_baseaddr_r;
+        5'h16: rddata = {l1_tile_baseaddr_r[7:2], l1_tile_height_r, l1_tile_width_r};
+        5'h17: rddata = l1_hscroll_r[7:0];
+        5'h18: rddata = {4'b0, l1_hscroll_r[11:8]};
+        5'h19: rddata = l1_vscroll_r[7:0];
+        5'h1A: rddata = {4'b0, l1_vscroll_r[11:8]};
+
+        5'h1B: rddata = 8'h00;
+        5'h1C: rddata = 8'h00;
+        5'h1D: rddata = 8'h00;
+
         5'h1E: rddata = spi_rxdata;
-        5'h1F: rddata = {spi_busy, 6'b0, spi_select_r};
+        5'h1F: rddata = {spi_busy, 5'b0, spi_slow_r, spi_select_r};
     endcase
 
     wire bus_read  = !extbus_cs_n &&  extbus_wr_n && !extbus_rd_n;
     wire bus_write = !extbus_cs_n && !extbus_wr_n;
     assign extbus_d = bus_read ? rddata : 8'bZ;
 
-    wire [2:0] irq_status = {irq_status_sprite_collision_r, irq_status_line_r, irq_status_vsync_r};
-    wire [2:0] irq_enable = {irq_enable_sprite_collision_r, irq_enable_line_r, irq_enable_vsync_r};
+    wire [3:0] irq_enable = {irq_enable_audio_fifo_low_r, irq_enable_sprite_collision_r, irq_enable_line_r, irq_enable_vsync_r};
+    wire [3:0] irq_status = {audio_fifo_low,              irq_status_sprite_collision_r, irq_status_line_r, irq_status_vsync_r};
 
     assign extbus_irq_n = (irq_status & irq_enable) == 0;
 
@@ -239,21 +273,21 @@ module top(
         vram_addr_incr_0_next            = vram_addr_incr_0_r;
         vram_addr_incr_1_next            = vram_addr_incr_1_r;
         vram_addr_select_next            = vram_addr_select_r;
+        dc_select_next                   = dc_select_r;
         fpga_reconfigure_next            = fpga_reconfigure_r;
-        irq_status_vsync_next            = irq_status_vsync_r;
-        irq_status_line_next             = irq_status_line_r;
-        irq_status_sprite_collision_next = irq_status_sprite_collision_r;
         irq_enable_vsync_next            = irq_enable_vsync_r;
         irq_enable_line_next             = irq_enable_line_r;
         irq_enable_sprite_collision_next = irq_enable_sprite_collision_r;
+        irq_status_vsync_next            = irq_status_vsync_r;
+        irq_status_line_next             = irq_status_line_r;
+        irq_status_sprite_collision_next = irq_status_sprite_collision_r;
         irq_line_next                    = irq_line_r;
         sprites_enabled_next             = sprites_enabled_r;
         l0_enabled_next                  = l0_enabled_r;
         l1_enabled_next                  = l1_enabled_r;
-        layer_select_next                = layer_select_r;
         chroma_disable_next              = chroma_disable_r;
-        dc_frac_x_incr_next              = dc_frac_x_incr_r;
-        dc_frac_y_incr_next              = dc_frac_y_incr_r;
+        dc_hscale_next                   = dc_hscale_r;
+        dc_vscale_next                   = dc_vscale_r;
         dc_border_color_next             = dc_border_color_r;
         dc_active_hstart_next            = dc_active_hstart_r;
         dc_active_hstop_next             = dc_active_hstop_r;
@@ -283,6 +317,7 @@ module top(
         l1_vscroll_next                  = l1_vscroll_r;
         video_output_mode_next           = video_output_mode_r;
         spi_select_next                  = spi_select_r;
+        spi_slow_next                    = spi_slow_r;
 
         ib_addr_next      = ib_addr_r;
         ib_wrdata_next    = ib_wrdata_r;
@@ -328,10 +363,13 @@ module top(
                 end
                 5'h05: begin
                     fpga_reconfigure_next = write_data[7];
+                    dc_select_next        = write_data[1];
                     vram_addr_select_next = write_data[0];
                 end
+
                 5'h06: begin
                     irq_line_next[8]                 = write_data[7];
+                    irq_enable_audio_fifo_low_next   = write_data[3];
                     irq_enable_sprite_collision_next = write_data[2];
                     irq_enable_line_next             = write_data[1];
                     irq_enable_vsync_next            = write_data[0];
@@ -343,75 +381,96 @@ module top(
                     irq_status_vsync_next            = irq_status_vsync_r            & !write_data[0];
                 end
                 5'h08: irq_line_next[7:0] = write_data;
+
                 5'h09: begin
-                    sprites_enabled_next   = write_data[6];
-                    l1_enabled_next        = write_data[5];
-                    l0_enabled_next        = write_data[4];
-                    layer_select_next      = write_data[3];
-                    chroma_disable_next    = write_data[2];
-                    video_output_mode_next = write_data[1:0];
-                end
-                5'h0A: dc_frac_x_incr_next        = write_data;
-                5'h0B: dc_frac_y_incr_next        = write_data;
-                5'h0C: dc_border_color_next       = write_data;
-                5'h0D: dc_active_hstart_next[7:0] = write_data;
-                5'h0E: dc_active_hstop_next[7:0]  = write_data;
-                5'h0F: dc_active_vstart_next[7:0] = write_data;
-                5'h10: dc_active_vstop_next[7:0]  = write_data;
-                5'h11: begin
-                    dc_active_vstop_next[8]    = write_data[5];
-                    dc_active_vstart_next[8]   = write_data[4];
-                    dc_active_hstop_next[9:8]  = write_data[3:2];
-                    dc_active_hstart_next[9:8] = write_data[1:0];
-                end
-                5'h12: begin
-                    if (layer_select_r) begin
-                        l1_attr_mode_next   = write_data[3];
-                        l1_bitmap_mode_next = write_data[2];
-                        l1_color_depth_next = write_data[1:0];
+                    if (dc_select_r == 0) begin
+                        sprites_enabled_next   = write_data[6];
+                        l1_enabled_next        = write_data[5];
+                        l0_enabled_next        = write_data[4];
+                        chroma_disable_next    = write_data[2];
+                        video_output_mode_next = write_data[1:0];
                     end else begin
-                        l0_attr_mode_next   = write_data[3];
-                        l0_bitmap_mode_next = write_data[2];
-                        l0_color_depth_next = write_data[1:0];
+                        dc_active_hstart_next[9:2] = write_data;
+                        dc_active_hstart_next[1:0] = 0;
                     end
                 end
-                5'h13: begin
-                    if (layer_select_r) begin
-                        l1_tile_height_next = write_data[5];
-                        l1_tile_width_next  = write_data[4];
-                        l1_map_height_next  = write_data[3:2];
-                        l1_map_width_next   = write_data[1:0];
+                5'h0A: begin
+                    if (dc_select_r == 0) begin
+                        dc_hscale_next            = write_data;
                     end else begin
-                        l0_tile_height_next = write_data[5];
-                        l0_tile_width_next  = write_data[4];
-                        l0_map_height_next  = write_data[3:2];
-                        l0_map_width_next   = write_data[1:0];
+                        dc_active_hstop_next[9:2] = write_data;
+                        dc_active_hstop_next[1:0] = 0;
                     end
                 end
+                5'h0B: begin
+                    if (dc_select_r == 0) begin
+                        dc_vscale_next             = write_data;
+                    end else begin
+                        dc_active_vstart_next[8:1] = write_data;
+                        dc_active_vstart_next[0]   = 0;
+                    end
+                end
+                5'h0C: begin
+                    if (dc_select_r == 0) begin
+                        dc_border_color_next      = write_data;
+                    end else begin
+                        dc_active_vstop_next[8:1] = write_data;
+                        dc_active_vstop_next[0]   = 0;
+                    end
+                end
+
+                5'h0D: begin
+                    l0_map_height_next  = write_data[7:6];
+                    l0_map_width_next   = write_data[5:4];
+                    l0_attr_mode_next   = write_data[3];
+                    l0_bitmap_mode_next = write_data[2];
+                    l0_color_depth_next = write_data[1:0];
+                end
+                5'h0E: l0_map_baseaddr_next = write_data;
+                5'h0F: begin
+                    l0_tile_baseaddr_next[7:2] = write_data[7:2];
+                    l0_tile_baseaddr_next[1:0] = 0;
+
+                    l0_tile_height_next = write_data[1];
+                    l0_tile_width_next  = write_data[0];
+                end
+                5'h10: l0_hscroll_next[7:0]  = write_data;
+                5'h11: l0_hscroll_next[11:8] = write_data[3:0];
+                5'h12: l0_vscroll_next[7:0]  = write_data;
+                5'h13: l0_vscroll_next[11:8] = write_data[3:0];
+
                 5'h14: begin
-                    if (layer_select_r) begin
-                        l1_map_baseaddr_next = write_data;
-                    end else begin
-                        l0_map_baseaddr_next = write_data;
-                    end
+                    l1_map_height_next  = write_data[7:6];
+                    l1_map_width_next   = write_data[5:4];
+                    l1_attr_mode_next   = write_data[3];
+                    l1_bitmap_mode_next = write_data[2];
+                    l1_color_depth_next = write_data[1:0];
                 end
-                5'h15: begin
-                    if (layer_select_r) begin
-                        l1_tile_baseaddr_next = write_data;
-                    end else begin
-                        l0_tile_baseaddr_next = write_data;
-                    end
+                5'h15: l1_map_baseaddr_next = write_data;
+                5'h16: begin
+                    l1_tile_baseaddr_next[7:2] = write_data[7:2];
+                    l1_tile_baseaddr_next[1:0] = 0;
+
+                    l1_tile_height_next = write_data[1];
+                    l1_tile_width_next  = write_data[0];
                 end
-                5'h16: l0_hscroll_next[7:0]  = write_data;
-                5'h17: l0_hscroll_next[11:8] = write_data[3:0];
-                5'h18: l0_vscroll_next[7:0]  = write_data;
-                5'h19: l0_vscroll_next[11:8] = write_data[3:0];
-                5'h1A: l1_hscroll_next[7:0]  = write_data;
-                5'h1B: l1_hscroll_next[11:8] = write_data[3:0];
-                5'h1C: l1_vscroll_next[7:0]  = write_data;
-                5'h1D: l1_vscroll_next[11:8] = write_data[3:0];
+                5'h17: l1_hscroll_next[7:0]  = write_data;
+                5'h18: l1_hscroll_next[11:8] = write_data[3:0];
+                5'h19: l1_vscroll_next[7:0]  = write_data;
+                5'h1A: l1_vscroll_next[11:8] = write_data[3:0];
+
+                5'h1B: begin
+                end
+                5'h1C: begin
+                end
+                5'h1D: begin
+                end
+
                 5'h1E: spi_txstart = 1;
-                5'h1F: spi_select_next = write_data[0];
+                5'h1F: begin
+                    spi_slow_next = write_data[1];
+                    spi_select_next = write_data[0];
+                end
             endcase
         end
 
@@ -463,21 +522,21 @@ module top(
             vram_addr_incr_0_r            <= 0;
             vram_addr_incr_1_r            <= 0;
             vram_addr_select_r            <= 0;
+            dc_select_r                   <= 0;
             fpga_reconfigure_r            <= 0;
-            irq_status_vsync_r            <= 0;
-            irq_status_line_r             <= 0;
-            irq_status_sprite_collision_r <= 0;
             irq_enable_vsync_r            <= 0;
             irq_enable_line_r             <= 0;
             irq_enable_sprite_collision_r <= 0;
+            irq_status_vsync_r            <= 0;
+            irq_status_line_r             <= 0;
+            irq_status_sprite_collision_r <= 0;
             irq_line_r                    <= 0;
             sprites_enabled_r             <= 0;
             l0_enabled_r                  <= 0;
             l1_enabled_r                  <= 0;
-            layer_select_r                <= 0;
             chroma_disable_r              <= 0;
-            dc_frac_x_incr_r              <= 8'd128;
-            dc_frac_y_incr_r              <= 8'd128;
+            dc_hscale_r                   <= 8'd128;
+            dc_vscale_r                   <= 8'd128;
             dc_border_color_r             <= 0;
             dc_active_hstart_r            <= 10'd0;
             dc_active_hstop_r             <= 10'd640;
@@ -507,6 +566,7 @@ module top(
             l1_vscroll_r                  <= 0;
             video_output_mode_r           <= 0;
             spi_select_r                  <= 0;
+            spi_slow_r                    <= 0;
 
             ib_addr_r      <= 0;
             ib_wrdata_r    <= 0;
@@ -521,21 +581,21 @@ module top(
             vram_addr_incr_0_r            <= vram_addr_incr_0_next;
             vram_addr_incr_1_r            <= vram_addr_incr_1_next;
             vram_addr_select_r            <= vram_addr_select_next;
+            dc_select_r                   <= dc_select_next;
             fpga_reconfigure_r            <= fpga_reconfigure_next;
-            irq_status_vsync_r            <= irq_status_vsync_next;
-            irq_status_line_r             <= irq_status_line_next;
-            irq_status_sprite_collision_r <= irq_status_sprite_collision_next;
             irq_enable_vsync_r            <= irq_enable_vsync_next;
             irq_enable_line_r             <= irq_enable_line_next;
             irq_enable_sprite_collision_r <= irq_enable_sprite_collision_next;
+            irq_status_vsync_r            <= irq_status_vsync_next;
+            irq_status_line_r             <= irq_status_line_next;
+            irq_status_sprite_collision_r <= irq_status_sprite_collision_next;
             irq_line_r                    <= irq_line_next;
             sprites_enabled_r             <= sprites_enabled_next;
             l0_enabled_r                  <= l0_enabled_next;
             l1_enabled_r                  <= l1_enabled_next;
-            layer_select_r                <= layer_select_next;
             chroma_disable_r              <= chroma_disable_next;
-            dc_frac_x_incr_r              <= dc_frac_x_incr_next;
-            dc_frac_y_incr_r              <= dc_frac_y_incr_next;
+            dc_hscale_r                   <= dc_hscale_next;
+            dc_vscale_r                   <= dc_vscale_next;
             dc_border_color_r             <= dc_border_color_next;
             dc_active_hstart_r            <= dc_active_hstart_next;
             dc_active_hstop_r             <= dc_active_hstop_next;
@@ -565,6 +625,7 @@ module top(
             l1_vscroll_r                  <= l1_vscroll_next;
             video_output_mode_r           <= video_output_mode_next;
             spi_select_r                  <= spi_select_next;
+            spi_slow_r                    <= spi_slow_next;
 
             ib_addr_r      <= ib_addr_next;
             ib_wrdata_r    <= ib_wrdata_next;
@@ -772,7 +833,7 @@ module top(
         .clk(clk),
 
         // Register interface
-        .collisions(collisions),
+        .collisions(sprite_collisions),
         .sprcol_irq(sprcol_irq),
 
         // Composer interface
@@ -860,8 +921,8 @@ module top(
 
         // Register interface
         .interlaced(dc_interlaced),
-        .frac_x_incr(dc_frac_x_incr_r),
-        .frac_y_incr(dc_frac_y_incr_r),
+        .frac_x_incr(dc_hscale_r),
+        .frac_y_incr(dc_vscale_r),
         .border_color(dc_border_color_r),
         .active_hstart(dc_active_hstart_r),
         .active_hstop(dc_active_hstop_r),

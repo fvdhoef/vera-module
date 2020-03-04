@@ -1,81 +1,225 @@
-Audio 8/16-bit mono/stereo
-Sample rate
 
-00000-1F9FF Video RAM
+Video RAM layout
+----------------
+00000-1F97F Video RAM
+1F980-1F9FF PSG registers
 1FA00-1FBFF Palette
 1FC00-1FFFF Sprite attributes
 
-       7     6     5     4     3     2     1     0
+Important notes:
+----------------
+Video RAM locations 1F980-1FFFF contain registers for the PSG/Palette/Sprite attributes.
+Reading or writing to a VRAM address will always read and write the actual 128kB video memory in addition to the (write-only) registers.
+Since the video RAM contains random values at startup the values read back in the register area will not correspond to the actual values in the write-only registers.
+Because of this it is recommended to initialize the area from 1F980-1FFFF at startup.
+
+If the PSG isn't used, PsgEn in VERA_AUDIO_CTRL can be cleared. This way the PSG register area can be used for regular use.
+
+Register map
+------------
+
+      7     6     5     4     3     2     1     0
    +-----------------------------------------------+
-00 |           Video RAM address low 7:0           | VRAM_ADDR_LO  (multiplexed by ADDRSEL)
+00 |           Video RAM address low 7:0           | VERA_ADDRx_LO  (multiplexed by AdSel)
    +-----------------------------------------------+
-01 |           Video RAM address mid 15:8          | VRAM_ADDR_MID (multiplexed by ADDRSEL)
+01 |           Video RAM address mid 15:8          | VERA_ADDRx_MID (multiplexed by AdSel)
    +-----------------------+-----------------+-----+
-02 |   Address increment   |                 |Adr16| VRAM_ADDR_HI  (multiplexed by ADDRSEL)
+02 |   Address increment   |        -        |Adr16| VERA_ADDRx_HI  (multiplexed by AdSel)
    +-----------------------+-----------------+-----+
-03 |       Video RAM data port 0 (read/write)      | VRAM_DATA0    (read/write)
+03 |       Video RAM data port 0 (read/write)      | VERA_DATA0 (read/write)
    +-----------------------------------------------+
-04 |       Video RAM data port 1 (write only)      | VRAM_DATA1    (write-only)
-   +-----+-----------------------------------+-----+
-05 |Reset|                                   |Adsel| VRAM_CTRL
-   +-----+-----------------------+-----+-----+-----+
-06 |irql8|                       |Spcol|Line |Vsync| IRQ_ENABLE
+04 |       Video RAM data port 1 (write only)      | VERA_DATA1 (write-only)
+   +-----+-----------------------------+-----+-----+
+05 |Reset|              -              |DcSel|AdSel| VERA_CTRL
    +-----+-----------------+-----+-----+-----+-----+
-07 |      Collisions       |Field|Spcol|Line |Vsync| STATUS
+06 |irql8|        -        |AFLow|Spcol|Line |Vsync| VERA_IEN
+   +-----+-----------------+-----+-----+-----+-----+
+07 | Sprite collisions (R) |AFLow|Spcol|Line |Vsync| VERA_ISR
    +-----------------------+-----+-----+-----+-----+
-08 |                 IRQ line 7:0                  | IRQ_LINE_L
+08 |        IRQ line 7:0   (bit 8 in irql8)        | VERA_IRQLINE_L
    +-----+-----+-----+-----+-----+-----+-----------+
-09 |     |SprEn|L1_En|L0_En|Lsel |Chdis| OUT_MODE  | DC_VIDEO
+09 |Field|SprEn|L1En |L0En |  -  |Chdis| OUT_MODE  | VERA_DC_VIDEO           (DcSel = 0)
    +-----+-----+-----+-----+-----+-----+-----------+
-0A |                Display H-Scale                | DC_HSCALE
+0A |                Display H-Scale                | VERA_DC_HSCALE          (DcSel = 0)
    +-----------------------------------------------+
-0B |                Display V-Scale                | DC_VSCALE
+0B |                Display V-Scale                | VERA_DC_VSCALE          (DcSel = 0)
    +-----------------------------------------------+
-0C |                 Border color                  | DC_BORDER_COLOR
+0C |                 Border color                  | VERA_DC_BORDER_COLOR    (DcSel = 0)
    +-----------------------------------------------+
-0D |           Active display H-Start 7:0          | DC_HSTART_L
+09 |           Active display H-Start 9:2          | VERA_DC_HSTART          (DcSel = 1)
    +-----------------------------------------------+
-0E |           Active display H-Stop 7:0           | DC_HSTOP_L
+0A |           Active display H-Stop 9:2           | VERA_DC_HSTOP           (DcSel = 1)
    +-----------------------------------------------+
-0F |           Active display V-Start 7:0          | DC_VSTART_L
+0B |           Active display V-Start 8:1          | VERA_DC_VSTART          (DcSel = 1)
    +-----------------------------------------------+
-10 |           Active display V-Stop 7:0           | DC_VSTOP_L
-   +-----------+-----+-----+-----------+-----------+
-11 |           |VStp8|VSta8|H-Stop 9:8 |H-Start 9:8| DC_STARTSTOP_H
+0C |           Active display V-Stop 8:1           | VERA_DC_VSTOP           (DcSel = 1)
    +-----------+-----------+-----+-----+-----------+
-12 |                       |tx256|Bitmp| Bitdepth  | Lx_CTRL0         (multiplexed by Lsel)
-   +-----------+-----+-----+-----+-----+-----------+
-13 |           |TileH|TileW|Map height | Map width | Lx_CTRL1         (multiplexed by Lsel)
-   +-----------+-----+-----+-----------+-----------+
-14 |                 Map base 16:9                 | Lx_MAP_BASE      (multiplexed by Lsel)
+0D |   MapH    |   MapW    |Tx256|Bitmp|ColorDepth | VERA_L0_CONFIG
+   +-----------+-----------+-----+-----+-----------+
+0E |                 Map base 16:9                 | VERA_L0_MAP_BASE
+   +-----------------------------------+-----+-----+
+0F |          Tile base 16:11          |TileH|TileW| VERA_L0_TILE_BASE
+   +-----------------------------------+-----+-----+
+10 |                 H-Scroll 7:0                  | VERA_L0_HSCROLL_L
+   +-----------------------+-----------------------+
+11 |           -           |     H-Scroll 11:8     | VERA_L0_HSCROLL_H
+   +-----------------------+-----------------------+
+12 |                 V-Scroll 7:0                  | VERA_L0_VSCROLL_L
+   +-----------------------+-----------------------+
+13 |           -           |     V-Scroll 11:8     | VERA_L0_VSCROLL_H
+   +-----------+-----------+-----+-----+-----------+
+14 |   MapH    |   MapW    |T256c|Bitmp|ColorDepth | VERA_L1_CONFIG
+   +-----------+-----------+-----+-----+-----------+
+15 |                 Map base 16:9                 | VERA_L1_MAP_BASE
+   +-----------------------------------+-----+-----+
+16 |          Tile base 16:11          |TileH|TileW| VERA_L1_TILE_BASE
+   +-----------------------------------+-----+-----+
+17 |                 H-Scroll 7:0                  | VERA_L1_HSCROLL_L
+   +-----------------------+-----------------------+
+18 |           -           |     H-Scroll 11:8     | VERA_L1_HSCROLL_H
+   +-----------------------+-----------------------+
+19 |                 V-Scroll 7:0                  | VERA_L1_VSCROLL_L
+   +-----------------------+-----------------------+
+1A |           -           |     V-Scroll 11:8     | VERA_L1_VSCROLL_H
+   +-----+-----+-----+-----+-----+-----+-----+-----+
+1B |AFFul|PsgEn|FRst |16bit| 2ch | Dup | SR  |PcmEn| VERA_AUDIO_CTRL
+   +-----+-----+-----+-----+-----+-----+-----+-----+
+1C |                    Volume                     | VERA_AUDIO_VOLUME
    +-----------------------------------------------+
-15 |                 Tile base 16:9                | Lx_TILE_BASE     (multiplexed by Lsel)
+1D |            Audio data (write-only)            | VERA_AUDIO_FIFO (W)
    +-----------------------------------------------+
-16 |                 H-Scroll 7:0                  | L0_HSCROLL_L
-   +-----------------------+-----------------------+
-17 |                       |     H-Scroll 11:8     | L0_HSCROLL_H
-   +-----------------------+-----------------------+
-18 |                 V-Scroll 7:0                  | L0_VSCROLL_L
-   +-----------------------+-----------------------+
-19 |                       |     V-Scroll 11:8     | L0_VSCROLL_H
-   +-----------------------+-----------------------+
-1A |                 H-Scroll 7:0                  | L1_HSCROLL_L
-   +-----------------------+-----------------------+
-1B |                       |     H-Scroll 11:8     | L1_HSCROLL_H
-   +-----------------------+-----------------------+
-1C |                 V-Scroll 7:0                  | L1_VSCROLL_L
-   +-----------------------+-----------------------+
-1D |                       |     V-Scroll 11:8     | L1_VSCROLL_H
-   +-----------------------+-----------------------+
-1E |                      Data                     | SPI_DATA
-   +-----+-----------------------------------+-----+
-1F |Busy |                                   | Sel | SPI_CTRL
-   +-----+-----------------------------------+-----+
+1E |                      Data                     | VERA_SPI_DATA
+   +-----+-----------------------------+-----+-----+
+1F |Busy |              -              |Slow | Sel | VERA_SPI_CTRL
+   +-----+-----------------------------+-----+-----+
 
-Bit depth:
-1/2/4/8
+Display composer (DC):
+Field       read-only, active interlaced field 0:even/1:odd
+SprEn       Enable sprites
+L1En        Enable layer 1
+L0En        Enable layer 0
+Chdis       Disable chroma output on composite signal and S-video chroma signal
 
-Tile mode (0) / bitmap mode (1)
 
-256 color bitmap mode
 
+Layers:
+-------
+ColorDepth  0:1bpp / 1:2bpp / 2:4bpp / 3:8bpp
+Bitmp       0:tile mode / 1:bitmap mode
+Tx256       0:16 color 1bpp tile mode, 1:256 color 1bpp tile mode
+MapW        0:32 / 1:64 / 2:128 / 3:256 tiles
+MapH        0:32 / 1:64 / 2:128 / 3:256 tiles
+TileW       0:8 pixels, 1:16 pixels
+TileH       0:8 pixels, 1:16 pixels
+
+SPI:
+----
+Busy        SPI busy
+Slow        0:12.5MHz SPI clock, 1:390kHz SPI clock
+Sel         0:not selected, 1:selected
+
+
+Audio module
+------------
+- 4kB audio FIFO
+
+AFLow (Audio FIFO low) interrupt set when FIFO is less than 1/4 filled.
+
+Audio registers:
+----------------
+AFFul       Read-only FIFO full flag (if 1 any new writes to AUDIO_FIFO will be ignored)
+PsgEn       Enable the programmable sound generator
+FRst        FIFO reset, clear FIFO contents (bit will auto clear; don't need to write it to 0 again)
+16bit       16-bit sample mode
+2ch         stereo mode
+Dup         play each sample twice, effectively halving sample rate
+SR          sample rate 
+            - SR=0: 25MHz / 512 = 48828.125 Hz  ->  84 ms buffer @ 8-bit mono
+            - SR=1: 25MHz / 768 = 32552.083 Hz  -> 126 ms buffer @ 8-bit mono
+PcmEn       Enable play back (can be used to prefill FIFO before starting playback)
+Volume      each sample will be multiplied by this value, before being output
+
+Audio data formats
+------------------
+Audio data is two's complement signed.
+Depending on the selected mode the data that needs to be wr
+
+8-bit mono:
+- Mono sample
+
+8-bit stereo:
+- Left sample
+- Right sample
+
+16-bit mono:
+- Mono sample 7:0
+- Mono sample 15:8
+
+16-bit stereo:
+- Left sample 7:0
+- Left sample 15:8
+- Right sample 7:0
+- Right sample 15:8
+
+Sprite attributes (128x)
+------------------------
+
+      7     6     5     4     3     2     1     0
+   +-----------------------------------------------+
+0  |                 Address 12:5                  |
+   +-----+-----------------------+-----------------+
+1  |Mode |           -           |  Address 16:13  |
+   +-----+-----------------------+-----------------+
+2  |                     X 7:0                     |
+   +-----------------------------------+-----------+
+3  |                 -                 |   X 9:8   |
+   +-----------------------------------+-----------+
+4  |                     Y 7:0                     |
+   +-----------------------------------+-----------+
+5  |                 -                 |   Y 9:8   |
+   +-----------------------+-----------+-----+-----+
+6  |     Collision mask    |  Z-depth  |Vflip|Hflip|
+   +-----------+-----------+-----------+-----+-----+
+7  | SprHeight | SprWidth  |    Palette offset     |
+   +-----------------------+-----------------------+
+
+Mode        0:4bpp / 1:16bpp
+Z-depth     0:sprite disabled
+            1:between background and layer0
+            2:between layer0 and layer1
+            3:in front of layer1
+SprHeight   0:8 pixels, 1:16 pixels, 2:32 pixels, 3:64 pixels
+SprWidth    0:8 pixels, 1:16 pixels, 2:32 pixels, 3:64 pixels
+
+
+Palette (256x)
+--------------
+
+      7     6     5     4     3     2     1     0
+   +-----------------------+-----------------------+
+0  |         Green         |         Blue          |
+   +-----------------------+-----------------------+
+1  |           -           |          Red          |
+   +-----------------------+-----------------------+
+
+
+PSG registers (32x)
+-------------------
+
+      7     6     5     4     3     2     1     0
+   +-----------------------------------------------+
+0  |                 Frequency 7:0                 |
+   +-----------------------------------------------+
+1  |                 Frequency 15:8                |
+   +-----+-----+-----------------------------------+
+2  |Right|Left |              Volume               |
+   +-----+-----+-----------------------------------+
+3  | Waveform  |            Pulse width            |
+   +-----------+-----------------------------------+
+
+Frequency       Frequency word: 
+Volume          Volume, has a logarithmic curve
+Left            Output to left channel
+Right           Output to right channel
+Waveform        0:pulse, 1:sawtooth, 2:triangle, 3:noise
+Pulse width     0:very narrow pulse, 63:square wave
