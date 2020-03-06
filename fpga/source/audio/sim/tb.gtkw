@@ -1,39 +1,69 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Sat Sep 21 12:46:20 2019
+[*] Fri Mar  6 13:23:24 2020
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/audio/sim/tb.vcd"
-[dumpfile_mtime] "Sat Sep 21 12:46:11 2019"
-[dumpfile_size] 38608618
+[dumpfile_mtime] "Fri Mar  6 13:22:53 2020"
+[dumpfile_size] 13837415
 [savefile] "/c/Work/vera-module/fpga/source/audio/sim/tb.gtkw"
 [timestart] 0
-[size] 2560 1377
-[pos] 233 -9
-*-31.000000 20580000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[size] 1920 1019
+[pos] 222 103
+*-30.606045 1184000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.audio.
-[sst_width] 213
-[signals_width] 225
+[treeopen] tb.audio.psg.
+[sst_width] 261
+[signals_width] 289
 [sst_expanded] 1
-[sst_vpaned_height] 422
+[sst_vpaned_height] 407
 @28
 tb.audio.clk
 tb.audio.rst
 @200
 -
 @28
-tb.audio.audio_bck
-tb.audio.audio_lrck
-tb.audio.audio_data
+tb.audio.i2s_bck
+tb.audio.i2s_lrck
+tb.audio.i2s_data
 @200
 -
 @28
-tb.audio.dacif.next_sample
+tb.audio.next_sample
 @200
 -
-@8421
-tb.audio.dacif.left_data[23:0]
+-PSG
+@20000
+-
+-
+-
+-
 @22
-tb.audio.dacif.right_data[23:0]
+tb.audio.psg.audio_attr_ram.wr_data_i[7:0]
+@28
+tb.audio.psg.audio_attr_ram.wr_en_i
+@200
+-
+@24
+tb.audio.psg.state_r[1:0]
+@22
+tb.audio.psg.cur_channel_attr[31:0]
+tb.audio.psg.cur_working_data[25:0]
+@24
+tb.audio.psg.cur_phase[19:0]
+@8022
+tb.audio.psg.signal_saw[5:0]
+tb.audio.psg.signal_pw[5:0]
+tb.audio.psg.signal_triangle[5:0]
+tb.audio.psg.signal_noise[5:0]
+@200
+-
+@8420
+tb.audio.psg.signed_signal[5:0]
+tb.audio.psg.right_audio[15:0]
+@20000
+-
+@20001
+-
 [pattern_trace] 1
 [pattern_trace] 0

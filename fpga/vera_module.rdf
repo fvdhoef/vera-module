@@ -60,16 +60,13 @@
         <Source name="source/audio/dacif.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
-        <Source name="source/audio/exp_table.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
-        <Source name="source/audio/logsin_table.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
-        <Source name="source/audio/operator.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
         <Source name="source/vram_if.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/audio/psg.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/generated/audio_attr_ram/audio_attr_ram.ipx" type="IPX_Module" type_short="IPX">
             <Options/>
         </Source>
         <Source name="source/vera_module.ldc" type="LSE Design Constraints File" type_short="LDC">

@@ -4,59 +4,89 @@ module audio(
     input  wire        rst,
     input  wire        clk,
 
+    // PSG interface
+    input  wire  [5:0] attr_addr,
+    input  wire  [7:0] attr_wrdata,
+    input  wire        attr_write,
+
     // Register interface
-    input  wire  [3:0] regs_addr,
-    input  wire  [7:0] regs_wrdata,
-    output reg   [7:0] regs_rddata,
-    input  wire        regs_write,
+    input  wire        pcm_enable,
+    input  wire        sample_rate,
+    input  wire        sample_duplicate,
+    input  wire        mode_stereo,
+    input  wire        mode_16bit,
+    input  wire        psg_enable,
+    input  wire  [7:0] volume,
 
-    // Bus master interface
-    output reg  [15:0] bus_addr,
-    input  wire [31:0] bus_rddata,
-    output wire        bus_strobe,
-    input  wire        bus_ack,
-
+    // Audio FIFO interface
+    input  wire        fifo_reset,
+    input  wire  [7:0] fifo_wrdata,
+    input  wire        fifo_write,
+    output wire        fifo_full,
+    output wire        fifo_almost_empty,
+    
     // I2S audio output
-    output wire        audio_lrck,
-    output wire        audio_bck,
-    output wire        audio_data);
+    output wire        i2s_lrck,
+    output wire        i2s_bck,
+    output wire        i2s_data);
 
     wire        next_sample;
-    wire [23:0] left_data;
-    wire [23:0] right_data;
+    wire [15:0] psg_left;
+    wire [15:0] psg_right;
 
-    reg  [19:0] phase;
-    wire [11:0] attenuation;
-    wire [12:0] result;
-
-    reg [7:0] cnt_r = 0;
-    always @(posedge clk or posedge rst) begin
-        if (rst) begin
-            phase <= 0;
-        end else begin
-            if (next_sample) begin
-                phase <= phase + 'd10240;
-            end
-        end
-    end
-
-
-    assign attenuation = 12'b0;
-
-    operator operator(
+    //////////////////////////////////////////////////////////////////////////
+    // Programmable Sound Generator
+    //////////////////////////////////////////////////////////////////////////
+    psg psg(
+        .rst(rst),
         .clk(clk),
-        .phase(phase),
-        .attenuation(attenuation),
-        .result(result));
 
+        // PSG interface
+        .attr_addr(attr_addr),
+        .attr_wrdata(attr_wrdata),
+        .attr_write(attr_write),
 
-    assign left_data  = { result, 11'b0 };
-    assign right_data = { result, 11'b0 };
+        .enable(psg_enable),
+        .next_sample(next_sample),
 
-    // DAC interface
+        // Audio output
+        .left_audio(psg_left),
+        .right_audio(psg_right));
+
+    //////////////////////////////////////////////////////////////////////////
+    // Audio FIFO
+    //////////////////////////////////////////////////////////////////////////
+    // wire       audio_fifo_reset = rst || fifo_reset;
+
+    // wire [7:0] fifo_rddata;
+    // wire       fifo_read;
+    // wire       fifo_empty;
+
+    // audio_fifo audio_fifo(
+    //     .clk(clk),
+    //     .rst(audio_fifo_reset),
+
+    //     .wrdata(fifo_wrdata),
+    //     .wr_en(fifo_write),
+
+    //     .rddata(fifo_rddata),
+    //     .rd_en(fifo_read),
+        
+    //     .empty(fifo_empty),
+    //     .almost_empty(fifo_almost_empty),
+    //     .full(fifo_full));
+
+    //////////////////////////////////////////////////////////////////////////
+    // I2S DAC interface
+    //////////////////////////////////////////////////////////////////////////
+    wire [23:0] left_data = {psg_left, 8'b0};
+    wire [23:0] right_data = {psg_right, 8'b0};
+
     dacif dacif(
         .rst(rst),
         .clk(clk),
+
+        .sample_rate(sample_rate),
 
         // Sample input
         .next_sample(next_sample),
@@ -64,8 +94,8 @@ module audio(
         .right_data(right_data),
 
         // I2S audio output
-        .audio_lrck(audio_lrck),
-        .audio_bck(audio_bck),
-        .audio_data(audio_data));
+        .i2s_lrck(i2s_lrck),
+        .i2s_bck(i2s_bck),
+        .i2s_data(i2s_data));
 
 endmodule

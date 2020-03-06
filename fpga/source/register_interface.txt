@@ -1,17 +1,17 @@
 
 Video RAM layout
 ----------------
-00000-1F97F Video RAM
-1F980-1F9FF PSG registers
+00000-1F9BF Video RAM
+1F9C0-1F9FF PSG registers
 1FA00-1FBFF Palette
 1FC00-1FFFF Sprite attributes
 
 Important notes:
 ----------------
-Video RAM locations 1F980-1FFFF contain registers for the PSG/Palette/Sprite attributes.
+Video RAM locations 1F9C0-1FFFF contain registers for the PSG/Palette/Sprite attributes.
 Reading or writing to a VRAM address will always read and write the actual 128kB video memory in addition to the (write-only) registers.
 Since the video RAM contains random values at startup the values read back in the register area will not correspond to the actual values in the write-only registers.
-Because of this it is recommended to initialize the area from 1F980-1FFFF at startup.
+Because of this it is recommended to initialize the area from 1F9C0-1FFFF at startup.
 
 If the PSG isn't used, PsgEn in VERA_AUDIO_CTRL can be cleared. This way the PSG register area can be used for regular use.
 
@@ -81,17 +81,18 @@ Register map
 19 |                 V-Scroll 7:0                  | VERA_L1_VSCROLL_L
    +-----------------------+-----------------------+
 1A |           -           |     V-Scroll 11:8     | VERA_L1_VSCROLL_H
-   +-----+-----+-----+-----+-----+-----+-----+-----+
-1B |AFFul|PsgEn|FRst |16bit| 2ch | Dup | SR  |PcmEn| VERA_AUDIO_CTRL
-   +-----+-----+-----+-----+-----+-----+-----+-----+
-1C |                    Volume                     | VERA_AUDIO_VOLUME
+   +-----+-----+-----+-----+-----------------------+
+1B |FFull|PsgEn|16bit| 2ch |      PCM Volume       | VERA_AUDIO_CTRL
+   +-----+-----+-----+-----+-----------------------+
+1C |                PCM sample rate                | VERA_AUDIO_RATE
    +-----------------------------------------------+
-1D |            Audio data (write-only)            | VERA_AUDIO_FIFO (W)
+1D |            Audio data (write-only)            | VERA_AUDIO_FIFO (W) / VERA_AUDIO_FIFO_STATUS (R)
    +-----------------------------------------------+
 1E |                      Data                     | VERA_SPI_DATA
    +-----+-----------------------------+-----+-----+
 1F |Busy |              -              |Slow | Sel | VERA_SPI_CTRL
    +-----+-----------------------------+-----+-----+
+
 
 Display composer (DC):
 Field       read-only, active interlaced field 0:even/1:odd
@@ -127,17 +128,20 @@ AFLow (Audio FIFO low) interrupt set when FIFO is less than 1/4 filled.
 
 Audio registers:
 ----------------
-AFFul       Read-only FIFO full flag (if 1 any new writes to AUDIO_FIFO will be ignored)
-PsgEn       Enable the programmable sound generator
-FRst        FIFO reset, clear FIFO contents (bit will auto clear; don't need to write it to 0 again)
+FFull       FIFO full flag (writing 1 to this flag will reset the FIFO)
+PsgEn       Enable the programmable sound generator (0 will mute the PSG)
 16bit       16-bit sample mode
-2ch         stereo mode
-Dup         play each sample twice, effectively halving sample rate
-SR          sample rate 
-            - SR=0: 25MHz / 512 = 48828.125 Hz  ->  84 ms buffer @ 8-bit mono
-            - SR=1: 25MHz / 768 = 32552.083 Hz  -> 126 ms buffer @ 8-bit mono
-PcmEn       Enable play back (can be used to prefill FIFO before starting playback)
-Volume      each sample will be multiplied by this value, before being output
+2ch         Stereo mode
+PCM Volume  Control volume of played samples (0: silent, 15: loudest)
+
+PCM sample rate:
+    128: normal speed   (25MHz / 512 = 48828.125 Hz)
+     64: half speed     (24414 Hz)
+     32: quarter speed  (12207 Hz)
+      0: stop playback
+
+(values greater than 128 are invalid)
+
 
 Audio data formats
 ------------------
@@ -203,7 +207,7 @@ Palette (256x)
    +-----------------------+-----------------------+
 
 
-PSG registers (32x)
+PSG registers (16x)
 -------------------
 
       7     6     5     4     3     2     1     0

@@ -9,6 +9,8 @@ module spictrl(
     input  wire       txstart,
     output wire [7:0] rxdata,
     output wire       busy,
+
+    input  wire       slow,
     
     // SPI interface
     output wire       spi_sck,

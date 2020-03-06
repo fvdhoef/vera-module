@@ -4,30 +4,39 @@ module dacif(
     input  wire        rst,
     input  wire        clk,
 
+    input  wire        sample_rate,     // 0:lrclk=clk/512, 1:lrclk=clk/768
+
     // Sample input
     output wire        next_sample,
     input  wire [23:0] left_data,       // 2's complement signed left data
     input  wire [23:0] right_data,      // 2's complement signed right data
 
     // I2S audio output
-    output wire        audio_lrck,
-    output wire        audio_bck,
-    output wire        audio_data);
+    output reg         i2s_lrck,
+    output wire        i2s_bck,
+    output wire        i2s_data);
 
     // Generate LRCK
-    reg [8:0] div_r;
+    reg  [8:0] div_r;
+    // wire [8:0] div_max = sample_rate ? 9'd383 : 9'd255;
+    wire [8:0] div_max = 9'd63;
+
     always @(posedge clk or posedge rst) begin
         if (rst) begin
-            div_r <= 'd0;
+            div_r    <= 'd0;
+            i2s_lrck <= 0;
         end else begin
-            div_r <= div_r + 'd1;
+            if (div_r == div_max) begin
+                i2s_lrck <= !i2s_lrck;
+                div_r    <= 0;
+            end else begin
+                div_r <= div_r + 'd1;
+            end
         end
     end
 
-    assign audio_lrck = div_r[8];
-
     reg lrck_r;
-    always @(posedge clk) lrck_r <= audio_lrck;
+    always @(posedge clk) lrck_r <= i2s_lrck;
 
     // Generate BCK
     reg bck_r;
@@ -39,11 +48,11 @@ module dacif(
         end
     end
 
-    assign audio_bck = bck_r;
+    assign i2s_bck = bck_r;
 
     // Generate start signals
-    wire start_left  = lrck_r  && !audio_lrck;
-    wire start_right = !lrck_r && audio_lrck;
+    wire start_left  = lrck_r  && !i2s_lrck;
+    wire start_right = !lrck_r && i2s_lrck;
     assign next_sample = start_left;
 
     // Shift register and sample buffer
@@ -69,6 +78,6 @@ module dacif(
         end
     end
 
-    assign audio_data  = shiftreg_r[24];
+    assign i2s_data  = shiftreg_r[24];
 
 endmodule

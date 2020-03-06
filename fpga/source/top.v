@@ -100,6 +100,18 @@ module top(
 
     reg  [1:0] video_output_mode_r,           video_output_mode_next;
 
+    reg        audio_pcm_enable_r,            audio_pcm_enable_next;
+    reg        audio_sample_rate_r,           audio_sample_rate_next;
+    reg        audio_sample_duplicate_r,      audio_sample_duplicate_next;
+    reg        audio_mode_stereo_r,           audio_mode_stereo_next;
+    reg        audio_mode_16bit_r,            audio_mode_16bit_next;
+    reg        audio_psg_enable_r,            audio_psg_enable_next;
+    reg        audio_fifo_reset_r,            audio_fifo_reset_next;
+    wire       audio_fifo_full;
+    reg  [7:0] audio_volume_r,                audio_volume_next;
+    reg  [7:0] audio_fifo_wrdata_r,           audio_fifo_wrdata_next;
+    reg        audio_fifo_write_r,            audio_fifo_write_next;
+
     wire [3:0] sprite_collisions;
     wire       current_field;
     wire [7:0] vram_rddata;
@@ -174,8 +186,8 @@ module top(
         5'h19: rddata = l1_vscroll_r[7:0];
         5'h1A: rddata = {4'b0, l1_vscroll_r[11:8]};
 
-        5'h1B: rddata = 8'h00;
-        5'h1C: rddata = 8'h00;
+        5'h1B: rddata = {audio_fifo_full, audio_psg_enable_r, 1'b0, audio_mode_16bit_r, audio_mode_stereo_r, audio_sample_duplicate_r, audio_sample_rate_r, audio_pcm_enable_r};
+        5'h1C: rddata = audio_volume_r;
         5'h1D: rddata = 8'h00;
 
         5'h1E: rddata = spi_rxdata;
@@ -316,6 +328,18 @@ module top(
         l1_hscroll_next                  = l1_hscroll_r;
         l1_vscroll_next                  = l1_vscroll_r;
         video_output_mode_next           = video_output_mode_r;
+
+        audio_pcm_enable_next            = audio_pcm_enable_r;
+        audio_sample_rate_next           = audio_sample_rate_r;
+        audio_sample_duplicate_next      = audio_sample_duplicate_r;
+        audio_mode_stereo_next           = audio_mode_stereo_r;
+        audio_mode_16bit_next            = audio_mode_16bit_r;
+        audio_psg_enable_next            = audio_psg_enable_r;
+        audio_fifo_reset_next            = 0;
+        audio_volume_next                = audio_volume_r;
+        audio_fifo_wrdata_next           = audio_fifo_wrdata_r;
+        audio_fifo_write_next            = 0;
+
         spi_select_next                  = spi_select_r;
         spi_slow_next                    = spi_slow_r;
 
@@ -460,10 +484,18 @@ module top(
                 5'h1A: l1_vscroll_next[11:8] = write_data[3:0];
 
                 5'h1B: begin
+                    audio_psg_enable_next       = write_data[6];
+                    audio_fifo_reset_next       = write_data[5];
+                    audio_mode_16bit_next       = write_data[4];
+                    audio_mode_stereo_next      = write_data[3];
+                    audio_sample_duplicate_next = write_data[2];
+                    audio_sample_rate_next      = write_data[1];
+                    audio_pcm_enable_next       = write_data[0];
                 end
-                5'h1C: begin
-                end
+                5'h1C: audio_volume_next = write_data;
                 5'h1D: begin
+                    audio_fifo_wrdata_next = write_data;
+                    audio_fifo_write_next  = 1;
                 end
 
                 5'h1E: spi_txstart = 1;
@@ -565,6 +597,16 @@ module top(
             l1_hscroll_r                  <= 0;
             l1_vscroll_r                  <= 0;
             video_output_mode_r           <= 0;
+            audio_pcm_enable_r            <= 0;
+            audio_sample_rate_r           <= 0;
+            audio_sample_duplicate_r      <= 0;
+            audio_mode_stereo_r           <= 0;
+            audio_mode_16bit_r            <= 0;
+            audio_psg_enable_r            <= 0;
+            audio_fifo_reset_r            <= 0;
+            audio_volume_r                <= 0;
+            audio_fifo_wrdata_r           <= 0;
+            audio_fifo_write_r            <= 0;
             spi_select_r                  <= 0;
             spi_slow_r                    <= 0;
 
@@ -624,6 +666,16 @@ module top(
             l1_hscroll_r                  <= l1_hscroll_next;
             l1_vscroll_r                  <= l1_vscroll_next;
             video_output_mode_r           <= video_output_mode_next;
+            audio_pcm_enable_r            <= audio_pcm_enable_next;
+            audio_sample_rate_r           <= audio_sample_rate_next;
+            audio_sample_duplicate_r      <= audio_sample_duplicate_next;
+            audio_mode_stereo_r           <= audio_mode_stereo_next;
+            audio_mode_16bit_r            <= audio_mode_16bit_next;
+            audio_psg_enable_r            <= audio_psg_enable_next;
+            audio_fifo_reset_r            <= audio_fifo_reset_next;
+            audio_volume_r                <= audio_volume_next;
+            audio_fifo_wrdata_r           <= audio_fifo_wrdata_next;
+            audio_fifo_write_r            <= audio_fifo_write_next;
             spi_select_r                  <= spi_select_next;
             spi_slow_r                    <= spi_slow_next;
 
@@ -1107,36 +1159,47 @@ module top(
         .txstart(spi_txstart),
         .rxdata(spi_rxdata),
         .busy(spi_busy),
+
+        .slow(spi_slow_r),
         
         // SPI interface
         .spi_sck(spi_sck),
         .spi_mosi(spi_mosi),
         .spi_miso(spi_miso));
 
-/*
     //////////////////////////////////////////////////////////////////////////
     // Audio
     //////////////////////////////////////////////////////////////////////////
+    wire audio_write = (ib_addr_r[16:6] == 'b11111100111) && ib_do_access_r && ib_write_r;
+
     audio audio(
         .rst(reset),
         .clk(clk),
 
-        // Register interface
-        .regs_addr(4'b0),
-        .regs_wrdata(8'b0),
-        .regs_rddata(),
-        .regs_write(1'b0),
+        // PSG interface
+        .attr_addr(ib_addr_r[5:0]),
+        .attr_wrdata(ib_wrdata_r),
+        .attr_write(audio_write),
 
-        // Bus master interface
-        .bus_addr(),
-        .bus_rddata(32'b0),
-        .bus_strobe(),
-        .bus_ack(1'b0),
+        // Register interface
+        .pcm_enable(audio_pcm_enable_r),
+        .sample_rate(audio_sample_rate_r),
+        .sample_duplicate(audio_sample_duplicate_r),
+        .mode_stereo(audio_mode_stereo_r),
+        .mode_16bit(audio_mode_16bit_r),
+        .psg_enable(audio_psg_enable_r),
+        .volume(audio_volume_r),
+
+        // Audio FIFO interface
+        .fifo_reset(audio_fifo_reset_r),
+        .fifo_wrdata(audio_fifo_wrdata_r),
+        .fifo_write(audio_fifo_write_r),
+        .fifo_full(audio_fifo_full),
+        .fifo_almost_empty(audio_fifo_low),
 
         // I2S audio output
-        .audio_lrck(audio_lrck),
-        .audio_bck(audio_bck),
-        .audio_data(audio_data));
-*/
+        .i2s_lrck(audio_lrck),
+        .i2s_bck(audio_bck),
+        .i2s_data(audio_data));
 
 endmodule

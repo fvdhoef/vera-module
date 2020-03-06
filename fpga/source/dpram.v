@@ -15,4 +15,13 @@ module dpram #(parameter ADDR_WIDTH = 8, DATA_WIDTH = 8) (
     always @(posedge wr_clk) if (wr_en) mem[wr_addr] <= wr_data;
     always @(posedge rd_clk) rd_data <= mem[rd_addr];
 
+`ifdef __ICARUS__
+    initial begin: INIT
+        integer i;
+        for (i=0; i<(1<<ADDR_WIDTH); i=i+1) begin
+            mem[i] = 0;
+        end
+    end
+`endif
+
 endmodule
