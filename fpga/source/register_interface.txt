@@ -23,9 +23,9 @@ Register map
 00 |           Video RAM address low 7:0           | VERA_ADDRx_LO  (multiplexed by AdSel)
    +-----------------------------------------------+
 01 |           Video RAM address mid 15:8          | VERA_ADDRx_MID (multiplexed by AdSel)
-   +-----------------------+-----------------+-----+
-02 |   Address increment   |        -        |Adr16| VERA_ADDRx_HI  (multiplexed by AdSel)
-   +-----------------------+-----------------+-----+
+   +-----------------------+-----+-----+-----+-----+
+02 |   Address increment   |  -  |IncTg|TgEn |Adr16| VERA_ADDRx_HI  (multiplexed by AdSel)
+   +-----------------------+-----+-----+-----+-----+
 03 |       Video RAM data port 0 (read/write)      | VERA_DATA0 (read/write)
    +-----------------------------------------------+
 04 |       Video RAM data port 1 (write only)      | VERA_DATA1 (write-only)
@@ -93,6 +93,10 @@ Register map
 1F |Busy |              -              |Slow | Sel | VERA_SPI_CTRL
    +-----+-----------------------------+-----+-----+
 
+Address registers:
+IncTg   Current increment toggle -> 0:next increment by 1, 1:next increment by address increment  (toggles on every increment)
+TgEn    Enable increment toggle mechanism
+
 
 Display composer (DC):
 Field       read-only, active interlaced field 0:even/1:odd
@@ -100,7 +104,6 @@ SprEn       Enable sprites
 L1En        Enable layer 1
 L0En        Enable layer 0
 Chdis       Disable chroma output on composite signal and S-video chroma signal
-
 
 
 Layers:
