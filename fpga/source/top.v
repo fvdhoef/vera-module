@@ -49,11 +49,7 @@ module top(
     reg [16:0] vram_addr_0_r,                 vram_addr_0_next;
     reg [16:0] vram_addr_1_r,                 vram_addr_1_next;
     reg  [3:0] vram_addr_incr_0_r,            vram_addr_incr_0_next;
-    reg        vram_addr_incr_toggle_en_0_r,  vram_addr_incr_toggle_en_0_next;
-    reg        vram_addr_incr_toggle_0_r,     vram_addr_incr_toggle_0_next;
     reg  [3:0] vram_addr_incr_1_r,            vram_addr_incr_1_next;
-    reg        vram_addr_incr_toggle_en_1_r,  vram_addr_incr_toggle_en_1_next;
-    reg        vram_addr_incr_toggle_1_r,     vram_addr_incr_toggle_1_next;
     reg        vram_addr_select_r,            vram_addr_select_next;
     reg        dc_select_r,                   dc_select_next;
     reg        fpga_reconfigure_r,            fpga_reconfigure_next;
@@ -104,15 +100,12 @@ module top(
 
     reg  [1:0] video_output_mode_r,           video_output_mode_next;
 
-    reg        audio_pcm_enable_r,            audio_pcm_enable_next;
-    reg        audio_sample_rate_r,           audio_sample_rate_next;
-    reg        audio_sample_duplicate_r,      audio_sample_duplicate_next;
+    reg  [7:0] audio_pcm_sample_rate_r,       audio_pcm_sample_rate_next;
     reg        audio_mode_stereo_r,           audio_mode_stereo_next;
     reg        audio_mode_16bit_r,            audio_mode_16bit_next;
-    reg        audio_psg_enable_r,            audio_psg_enable_next;
     reg        audio_fifo_reset_r,            audio_fifo_reset_next;
     wire       audio_fifo_full;
-    reg  [7:0] audio_volume_r,                audio_volume_next;
+    reg  [3:0] audio_pcm_volume_r,            audio_pcm_volume_next;
     reg  [7:0] audio_fifo_wrdata_r,           audio_fifo_wrdata_next;
     reg        audio_fifo_write_r,            audio_fifo_write_next;
 
@@ -120,6 +113,8 @@ module top(
     wire       current_field;
     wire [7:0] vram_rddata;
 
+    wire       audio_fifo_low;
+    wire       sprcol_irq;
     wire       vblank_pulse;
     wire       line_irq;
 
@@ -130,15 +125,11 @@ module top(
     wire       spi_busy;
     wire [7:0] spi_rxdata;
 
-    wire audio_fifo_low = 0;
-
     reg [7:0] rddata;
     always @* case (extbus_a)
         5'h00: rddata = vram_addr_select_r ? vram_addr_1_r[7:0] : vram_addr_0_r[7:0];
         5'h01: rddata = vram_addr_select_r ? vram_addr_1_r[15:8] : vram_addr_0_r[15:8];
-        5'h02: rddata = vram_addr_select_r ?
-            {vram_addr_incr_1_r, 1'b0, vram_addr_incr_toggle_1_r, vram_addr_incr_toggle_en_1_r, vram_addr_1_r[16]} :
-            {vram_addr_incr_0_r, 1'b0, vram_addr_incr_toggle_0_r, vram_addr_incr_toggle_en_0_r, vram_addr_0_r[16]};
+        5'h02: rddata = vram_addr_select_r ? {vram_addr_incr_1_r, 3'b0, vram_addr_1_r[16]} : {vram_addr_incr_0_r, 3'b0, vram_addr_0_r[16]};
         5'h03: rddata = vram_rddata;
         5'h04: rddata = 8'h00;
         5'h05: rddata = {6'b0, dc_select_r, vram_addr_select_r};
@@ -192,8 +183,8 @@ module top(
         5'h19: rddata = l1_vscroll_r[7:0];
         5'h1A: rddata = {4'b0, l1_vscroll_r[11:8]};
 
-        5'h1B: rddata = {audio_fifo_full, audio_psg_enable_r, 1'b0, audio_mode_16bit_r, audio_mode_stereo_r, audio_sample_duplicate_r, audio_sample_rate_r, audio_pcm_enable_r};
-        5'h1C: rddata = audio_volume_r;
+        5'h1B: rddata = {audio_fifo_full, 1'b0, audio_mode_16bit_r, audio_mode_stereo_r, audio_pcm_volume_r};
+        5'h1C: rddata = audio_pcm_sample_rate_r;
         5'h1D: rddata = 8'h00;
 
         5'h1E: rddata = spi_rxdata;
@@ -254,10 +245,7 @@ module top(
     wire [7:0] write_data  = wrdata_r;
 
     // Decode increment value
-    wire [3:0] incr_regval0 = (!vram_addr_incr_toggle_en_0_r || vram_addr_incr_toggle_0_r) ? vram_addr_incr_0_r : 4'h1;
-    wire [3:0] incr_regval1 = (!vram_addr_incr_toggle_en_1_r || vram_addr_incr_toggle_1_r) ? vram_addr_incr_1_r : 4'h1;
-
-    wire [3:0] incr_regval = (access_addr == 5'h03) ? incr_regval0 : incr_regval1;
+    wire [3:0] incr_regval = (access_addr == 5'h03) ? vram_addr_incr_0_r : vram_addr_incr_1_r;
     reg [9:0] increment;
     always @* case (incr_regval)
         4'h0: increment = 'd0;
@@ -290,15 +278,13 @@ module top(
 
     always @* begin
         vram_addr_0_next                 = vram_addr_0_r;
+        vram_addr_1_next                 = vram_addr_1_r;
         vram_addr_incr_0_next            = vram_addr_incr_0_r;
-        vram_addr_incr_toggle_en_0_next  = vram_addr_incr_toggle_en_0_r;
-        vram_addr_incr_toggle_0_next     = vram_addr_incr_toggle_0_r;
         vram_addr_incr_1_next            = vram_addr_incr_1_r;
-        vram_addr_incr_toggle_en_1_next  = vram_addr_incr_toggle_en_1_r;
-        vram_addr_incr_toggle_1_next     = vram_addr_incr_toggle_1_r;
         vram_addr_select_next            = vram_addr_select_r;
         dc_select_next                   = dc_select_r;
         fpga_reconfigure_next            = fpga_reconfigure_r;
+        irq_enable_audio_fifo_low_next   = irq_enable_audio_fifo_low_r;
         irq_enable_vsync_next            = irq_enable_vsync_r;
         irq_enable_line_next             = irq_enable_line_r;
         irq_enable_sprite_collision_next = irq_enable_sprite_collision_r;
@@ -341,14 +327,11 @@ module top(
         l1_vscroll_next                  = l1_vscroll_r;
         video_output_mode_next           = video_output_mode_r;
 
-        audio_pcm_enable_next            = audio_pcm_enable_r;
-        audio_sample_rate_next           = audio_sample_rate_r;
-        audio_sample_duplicate_next      = audio_sample_duplicate_r;
+        audio_pcm_sample_rate_next       = audio_pcm_sample_rate_r;
         audio_mode_stereo_next           = audio_mode_stereo_r;
         audio_mode_16bit_next            = audio_mode_16bit_r;
-        audio_psg_enable_next            = audio_psg_enable_r;
         audio_fifo_reset_next            = 0;
-        audio_volume_next                = audio_volume_r;
+        audio_pcm_volume_next            = audio_pcm_volume_r;
         audio_fifo_wrdata_next           = audio_fifo_wrdata_r;
         audio_fifo_write_next            = 0;
 
@@ -386,13 +369,9 @@ module top(
                 5'h02: begin
                     if (vram_addr_select_r) begin
                         vram_addr_incr_1_next           = write_data[7:4];
-                        vram_addr_incr_toggle_1_next    = write_data[2];
-                        vram_addr_incr_toggle_en_1_next = write_data[1];
                         vram_addr_1_next[16]            = write_data[0];
                     end else begin
                         vram_addr_incr_0_next           = write_data[7:4];
-                        vram_addr_incr_toggle_0_next    = write_data[2];
-                        vram_addr_incr_toggle_en_0_next = write_data[1];
                         vram_addr_0_next[16]            = write_data[0];
                         fetch_ahead_next = 1;
                     end
@@ -500,15 +479,12 @@ module top(
                 5'h1A: l1_vscroll_next[11:8] = write_data[3:0];
 
                 5'h1B: begin
-                    audio_psg_enable_next       = write_data[6];
-                    audio_fifo_reset_next       = write_data[5];
-                    audio_mode_16bit_next       = write_data[4];
-                    audio_mode_stereo_next      = write_data[3];
-                    audio_sample_duplicate_next = write_data[2];
-                    audio_sample_rate_next      = write_data[1];
-                    audio_pcm_enable_next       = write_data[0];
+                    audio_fifo_reset_next       = write_data[7];
+                    audio_mode_16bit_next       = write_data[5];
+                    audio_mode_stereo_next      = write_data[4];
+                    audio_pcm_volume_next       = write_data[3:0];
                 end
-                5'h1C: audio_volume_next = write_data;
+                5'h1C: audio_pcm_sample_rate_next = write_data;
                 5'h1D: begin
                     audio_fifo_wrdata_next = write_data;
                     audio_fifo_write_next  = 1;
@@ -552,34 +528,25 @@ module top(
                 end
                 vram_addr_0_next = vram_addr_incremented;
 
-                if (vram_addr_incr_toggle_en_0_next) begin
-                    vram_addr_incr_toggle_0_next = !vram_addr_incr_toggle_0_r;
-                end
-
             end else if (access_addr == 5'h04 && do_write) begin
                 ib_addr_next      = vram_addr_1_r;
                 ib_wrdata_next    = write_data;
                 ib_write_next     = do_write;
                 ib_do_access_next = 1;
-
-                if (vram_addr_incr_toggle_en_1_next) begin
-                    vram_addr_incr_toggle_1_next = !vram_addr_incr_toggle_1_r;
-                end
             end
         end
     end
 
     always @(posedge clk or posedge reset) begin
         if (reset) begin
+            vram_addr_0_r                 <= 0;
+            vram_addr_1_r                 <= 0;
             vram_addr_incr_0_r            <= 0;
-            vram_addr_incr_toggle_en_0_r  <= 0;
-            vram_addr_incr_toggle_0_r     <= 0;
             vram_addr_incr_1_r            <= 0;
-            vram_addr_incr_toggle_en_1_r  <= 0;
-            vram_addr_incr_toggle_1_r     <= 0;
             vram_addr_select_r            <= 0;
             dc_select_r                   <= 0;
             fpga_reconfigure_r            <= 0;
+            irq_enable_audio_fifo_low_r   <= 0;
             irq_enable_vsync_r            <= 0;
             irq_enable_line_r             <= 0;
             irq_enable_sprite_collision_r <= 0;
@@ -621,14 +588,11 @@ module top(
             l1_hscroll_r                  <= 0;
             l1_vscroll_r                  <= 0;
             video_output_mode_r           <= 0;
-            audio_pcm_enable_r            <= 0;
-            audio_sample_rate_r           <= 0;
-            audio_sample_duplicate_r      <= 0;
+            audio_pcm_sample_rate_r       <= 0;
             audio_mode_stereo_r           <= 0;
             audio_mode_16bit_r            <= 0;
-            audio_psg_enable_r            <= 0;
             audio_fifo_reset_r            <= 0;
-            audio_volume_r                <= 0;
+            audio_pcm_volume_r            <= 0;
             audio_fifo_wrdata_r           <= 0;
             audio_fifo_write_r            <= 0;
             spi_select_r                  <= 0;
@@ -642,14 +606,14 @@ module top(
             fetch_ahead_r <= 0;
 
         end else begin
+            vram_addr_0_r                 <= vram_addr_0_next;
+            vram_addr_1_r                 <= vram_addr_1_next;
             vram_addr_incr_0_r            <= vram_addr_incr_0_next;
-            vram_addr_incr_toggle_en_0_r  <= vram_addr_incr_toggle_en_0_next;
-            vram_addr_incr_toggle_0_r     <= vram_addr_incr_toggle_0_next;
             vram_addr_incr_1_r            <= vram_addr_incr_1_next;
-            vram_addr_incr_toggle_en_1_r  <= vram_addr_incr_toggle_en_1_next;
-            vram_addr_incr_toggle_1_r     <= vram_addr_incr_toggle_1_next;
+            vram_addr_select_r            <= vram_addr_select_next;
             dc_select_r                   <= dc_select_next;
             fpga_reconfigure_r            <= fpga_reconfigure_next;
+            irq_enable_audio_fifo_low_r   <= irq_enable_audio_fifo_low_next;
             irq_enable_vsync_r            <= irq_enable_vsync_next;
             irq_enable_line_r             <= irq_enable_line_next;
             irq_enable_sprite_collision_r <= irq_enable_sprite_collision_next;
@@ -691,14 +655,11 @@ module top(
             l1_hscroll_r                  <= l1_hscroll_next;
             l1_vscroll_r                  <= l1_vscroll_next;
             video_output_mode_r           <= video_output_mode_next;
-            audio_pcm_enable_r            <= audio_pcm_enable_next;
-            audio_sample_rate_r           <= audio_sample_rate_next;
-            audio_sample_duplicate_r      <= audio_sample_duplicate_next;
+            audio_pcm_sample_rate_r       <= audio_pcm_sample_rate_next;
             audio_mode_stereo_r           <= audio_mode_stereo_next;
             audio_mode_16bit_r            <= audio_mode_16bit_next;
-            audio_psg_enable_r            <= audio_psg_enable_next;
             audio_fifo_reset_r            <= audio_fifo_reset_next;
-            audio_volume_r                <= audio_volume_next;
+            audio_pcm_volume_r            <= audio_pcm_volume_next;
             audio_fifo_wrdata_r           <= audio_fifo_wrdata_next;
             audio_fifo_write_r            <= audio_fifo_write_next;
             spi_select_r                  <= spi_select_next;
@@ -902,8 +863,6 @@ module top(
     wire  [9:0] sprite_lb_renderer_wr_idx;
     wire [15:0] sprite_lb_renderer_wr_data;
     wire        sprite_lb_renderer_wr_en;
-
-    wire sprcol_irq;
 
     sprite_renderer sprite_renderer(
         .rst(reset),
@@ -1207,13 +1166,10 @@ module top(
         .attr_write(audio_write),
 
         // Register interface
-        .pcm_enable(audio_pcm_enable_r),
-        .sample_rate(audio_sample_rate_r),
-        .sample_duplicate(audio_sample_duplicate_r),
+        .sample_rate(audio_pcm_sample_rate_r),
         .mode_stereo(audio_mode_stereo_r),
         .mode_16bit(audio_mode_16bit_r),
-        .psg_enable(audio_psg_enable_r),
-        .volume(audio_volume_r),
+        .volume(audio_pcm_volume_r),
 
         // Audio FIFO interface
         .fifo_reset(audio_fifo_reset_r),

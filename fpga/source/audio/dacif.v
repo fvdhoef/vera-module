@@ -4,8 +4,6 @@ module dacif(
     input  wire        rst,
     input  wire        clk,
 
-    input  wire        sample_rate,     // 0:lrclk=clk/512, 1:lrclk=clk/768
-
     // Sample input
     output wire        next_sample,
     input  wire [23:0] left_data,       // 2's complement signed left data
@@ -17,9 +15,8 @@ module dacif(
     output wire        i2s_data);
 
     // Generate LRCK
-    reg  [8:0] div_r;
-    // wire [8:0] div_max = sample_rate ? 9'd383 : 9'd255;
-    wire [8:0] div_max = 9'd63;
+    reg  [7:0] div_r;
+    wire [7:0] div_max = 8'd255;
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin

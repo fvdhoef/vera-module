@@ -29,7 +29,9 @@ module video_modulator(
     wire signed [4:0] g_s = color_burst ? 9 : {1'b0, g};
     wire signed [4:0] b_s = color_burst ? 0 : {1'b0, b};
 
-    reg signed [15:0] y_s, i_s, q_s;
+    reg signed [11:0] y_s;
+    reg signed [11:0] i_s;
+    reg signed [11:0] q_s;
 
     always @(posedge clk) begin
         y_s <= (sync_n_in == 0) ? 'd0 : 'd544;
@@ -69,7 +71,7 @@ module video_modulator(
     wire signed [7:0] q8_s = q_s[11:4];
 
     reg         [7:0] lum;
-    reg signed [14:0] chroma_s;
+    reg signed [13:0] chroma_s;
 
     always @(posedge clk) begin
         if (y_s < 0)

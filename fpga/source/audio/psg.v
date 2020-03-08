@@ -9,7 +9,6 @@ module psg(
     input  wire  [7:0] attr_wrdata,
     input  wire        attr_write,
 
-    input  wire        enable,
     input  wire        next_sample,
 
     // Audio output
@@ -19,27 +18,29 @@ module psg(
     //////////////////////////////////////////////////////////////////////////
     // Audio attribute RAM
     //////////////////////////////////////////////////////////////////////////
+    reg   [2:0] cur_channel_byte_r;
     reg   [3:0] cur_channel_r;
-    wire [31:0] cur_channel_attr;
+    wire  [7:0] attr_rddata;
 
-    audio_attr_ram audio_attr_ram(
-        .wr_clk_i(clk),
-        .rd_clk_i(clk),
-        .wr_clk_en_i(1'b1),
-        .rd_en_i(1'b1),
-        .rd_clk_en_i(1'b1),
-        .wr_en_i(attr_write),
-        .wr_data_i(attr_wrdata),
-        .wr_addr_i(attr_addr),
-        .rd_addr_i(cur_channel_r),
-        .rd_data_o(cur_channel_attr));
+    dpram #(.ADDR_WIDTH(6), .DATA_WIDTH(8)) audio_attr_ram(
+        .rd_clk(clk),
+        .rd_addr({cur_channel_r, cur_channel_byte_r[1:0]}),
+        .rd_data(attr_rddata),
 
-    wire [15:0] cur_freq       = cur_channel_attr[15:0];
-    wire  [5:0] cur_volume     = cur_channel_attr[21:16];
-    wire        cur_left_en    = cur_channel_attr[22];
-    wire        cur_right_en   = cur_channel_attr[23];
-    wire  [5:0] cur_pulsewidth = cur_channel_attr[29:24];
-    wire  [1:0] cur_waveform   = cur_channel_attr[31:30];
+        .wr_clk(clk),
+        .wr_addr(attr_addr),
+        .wr_data(attr_wrdata),
+        .wr_en(attr_write));
+
+
+    reg  [31:0] cur_channel_attr_r;
+
+    wire [15:0] cur_freq       = cur_channel_attr_r[15:0];
+    wire  [5:0] cur_volume     = cur_channel_attr_r[21:16];
+    wire        cur_left_en    = cur_channel_attr_r[22];
+    wire        cur_right_en   = cur_channel_attr_r[23];
+    wire  [5:0] cur_pulsewidth = cur_channel_attr_r[29:24];
+    wire  [1:0] cur_waveform   = cur_channel_attr_r[31:30];
 
     // Logarithmic volume conversion (3dB per step)
     reg [5:0] cur_volume_log;
@@ -47,7 +48,7 @@ module psg(
         6'd0:  cur_volume_log = 6'd0;
         6'd1:  cur_volume_log = 6'd1;
         6'd2:  cur_volume_log = 6'd1;
-        6'd3:  cur_volume_log = 6'd2;
+        6'd3:  cur_volume_log = 6'd1;
         6'd4:  cur_volume_log = 6'd2;
         6'd5:  cur_volume_log = 6'd2;
         6'd6:  cur_volume_log = 6'd2;
@@ -60,53 +61,53 @@ module psg(
         6'd13: cur_volume_log = 6'd3;
         6'd14: cur_volume_log = 6'd3;
         6'd15: cur_volume_log = 6'd3;
-        6'd16: cur_volume_log = 6'd3;
+        6'd16: cur_volume_log = 6'd4;
         6'd17: cur_volume_log = 6'd4;
         6'd18: cur_volume_log = 6'd4;
         6'd19: cur_volume_log = 6'd4;
-        6'd20: cur_volume_log = 6'd4;
+        6'd20: cur_volume_log = 6'd5;
         6'd21: cur_volume_log = 6'd5;
         6'd22: cur_volume_log = 6'd5;
-        6'd23: cur_volume_log = 6'd5;
+        6'd23: cur_volume_log = 6'd6;
         6'd24: cur_volume_log = 6'd6;
-        6'd25: cur_volume_log = 6'd6;
-        6'd26: cur_volume_log = 6'd6;
+        6'd25: cur_volume_log = 6'd7;
+        6'd26: cur_volume_log = 6'd7;
         6'd27: cur_volume_log = 6'd7;
-        6'd28: cur_volume_log = 6'd7;
+        6'd28: cur_volume_log = 6'd8;
         6'd29: cur_volume_log = 6'd8;
-        6'd30: cur_volume_log = 6'd8;
+        6'd30: cur_volume_log = 6'd9;
         6'd31: cur_volume_log = 6'd9;
-        6'd32: cur_volume_log = 6'd9;
-        6'd33: cur_volume_log = 6'd10;
+        6'd32: cur_volume_log = 6'd10;
+        6'd33: cur_volume_log = 6'd11;
         6'd34: cur_volume_log = 6'd11;
-        6'd35: cur_volume_log = 6'd11;
-        6'd36: cur_volume_log = 6'd12;
-        6'd37: cur_volume_log = 6'd13;
+        6'd35: cur_volume_log = 6'd12;
+        6'd36: cur_volume_log = 6'd13;
+        6'd37: cur_volume_log = 6'd14;
         6'd38: cur_volume_log = 6'd14;
-        6'd39: cur_volume_log = 6'd14;
-        6'd40: cur_volume_log = 6'd15;
-        6'd41: cur_volume_log = 6'd16;
-        6'd42: cur_volume_log = 6'd17;
+        6'd39: cur_volume_log = 6'd15;
+        6'd40: cur_volume_log = 6'd16;
+        6'd41: cur_volume_log = 6'd17;
+        6'd42: cur_volume_log = 6'd18;
         6'd43: cur_volume_log = 6'd19;
-        6'd44: cur_volume_log = 6'd20;
-        6'd45: cur_volume_log = 6'd21;
-        6'd46: cur_volume_log = 6'd22;
-        6'd47: cur_volume_log = 6'd24;
-        6'd48: cur_volume_log = 6'd25;
-        6'd49: cur_volume_log = 6'd27;
+        6'd44: cur_volume_log = 6'd21;
+        6'd45: cur_volume_log = 6'd22;
+        6'd46: cur_volume_log = 6'd23;
+        6'd47: cur_volume_log = 6'd25;
+        6'd48: cur_volume_log = 6'd26;
+        6'd49: cur_volume_log = 6'd28;
         6'd50: cur_volume_log = 6'd29;
-        6'd51: cur_volume_log = 6'd30;
-        6'd52: cur_volume_log = 6'd32;
-        6'd53: cur_volume_log = 6'd34;
+        6'd51: cur_volume_log = 6'd31;
+        6'd52: cur_volume_log = 6'd33;
+        6'd53: cur_volume_log = 6'd35;
         6'd54: cur_volume_log = 6'd37;
         6'd55: cur_volume_log = 6'd39;
         6'd56: cur_volume_log = 6'd42;
         6'd57: cur_volume_log = 6'd44;
         6'd58: cur_volume_log = 6'd47;
         6'd59: cur_volume_log = 6'd50;
-        6'd60: cur_volume_log = 6'd53;
-        6'd61: cur_volume_log = 6'd57;
-        6'd62: cur_volume_log = 6'd60;
+        6'd60: cur_volume_log = 6'd52;
+        6'd61: cur_volume_log = 6'd56;
+        6'd62: cur_volume_log = 6'd59;
         6'd63: cur_volume_log = 6'd63;
     endcase
 
@@ -197,6 +198,9 @@ module psg(
             working_data_wridx_r <= 0;
             working_data_wren_r  <= 0;
 
+            cur_channel_byte_r <= 0;
+            cur_channel_attr_r <= 0;
+
         end else begin
             working_data_wren_r <= 0;
 
@@ -206,15 +210,21 @@ module psg(
                     right_sample_r <= right_accum_r;
 
                     if (next_sample) begin
-                        state_r       <= FETCH_CH;
-                        cur_channel_r <= 0;
-                        left_accum_r  <= 0;
-                        right_accum_r <= 0;
+                        state_r            <= FETCH_CH;
+                        cur_channel_r      <= 0;
+                        cur_channel_byte_r <= 0;
+                        left_accum_r       <= 0;
+                        right_accum_r      <= 0;
                     end
                 end
 
                 FETCH_CH: begin
-                    state_r <= CALC_CH;
+                    if (cur_channel_byte_r == 'd4) begin
+                        state_r <= CALC_CH;
+                    end
+
+                    cur_channel_attr_r <= {attr_rddata, cur_channel_attr_r[31:8]};
+                    cur_channel_byte_r <= cur_channel_byte_r + 1;
                 end
 
                 CALC_CH: begin
@@ -227,16 +237,17 @@ module psg(
                     if (cur_channel_r == 'd15) begin
                         state_r <= IDLE;
                     end else begin
-                        state_r <= FETCH_CH;
+                        state_r            <= FETCH_CH;
                     end
 
+                    cur_channel_byte_r <= 0;
                     cur_channel_r <= cur_channel_r + 1;
                 end
             endcase
         end
     end
 
-    assign left_audio  = enable ? left_sample_r : 0;
-    assign right_audio = enable ? right_sample_r : 0;
+    assign left_audio  = left_sample_r;
+    assign right_audio = right_sample_r;
 
 endmodule

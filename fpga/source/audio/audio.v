@@ -10,13 +10,10 @@ module audio(
     input  wire        attr_write,
 
     // Register interface
-    input  wire        pcm_enable,
-    input  wire        sample_rate,
-    input  wire        sample_duplicate,
+    input  wire  [7:0] sample_rate,
     input  wire        mode_stereo,
     input  wire        mode_16bit,
-    input  wire        psg_enable,
-    input  wire  [7:0] volume,
+    input  wire  [3:0] volume,
 
     // Audio FIFO interface
     input  wire        fifo_reset,
@@ -34,6 +31,9 @@ module audio(
     wire [15:0] psg_left;
     wire [15:0] psg_right;
 
+    wire [15:0] pcm_left;
+    wire [15:0] pcm_right;
+
     //////////////////////////////////////////////////////////////////////////
     // Programmable Sound Generator
     //////////////////////////////////////////////////////////////////////////
@@ -46,7 +46,6 @@ module audio(
         .attr_wrdata(attr_wrdata),
         .attr_write(attr_write),
 
-        .enable(psg_enable),
         .next_sample(next_sample),
 
         // Audio output
@@ -54,39 +53,48 @@ module audio(
         .right_audio(psg_right));
 
     //////////////////////////////////////////////////////////////////////////
-    // Audio FIFO
+    // PCM playback
     //////////////////////////////////////////////////////////////////////////
-    // wire       audio_fifo_reset = rst || fifo_reset;
+    pcm pcm(
+        .rst(rst),
+        .clk(clk),
 
-    // wire [7:0] fifo_rddata;
-    // wire       fifo_read;
-    // wire       fifo_empty;
+        .next_sample(next_sample),
 
-    // audio_fifo audio_fifo(
-    //     .clk(clk),
-    //     .rst(audio_fifo_reset),
+        // Register interface
+        .sample_rate(sample_rate),
+        .mode_stereo(mode_stereo),
+        .mode_16bit(mode_16bit),
+        .volume(volume),
 
-    //     .wrdata(fifo_wrdata),
-    //     .wr_en(fifo_write),
+        // Audio FIFO interface
+        .fifo_reset(fifo_reset),
+        .fifo_wrdata(fifo_wrdata),
+        .fifo_write(fifo_write),
+        .fifo_full(fifo_full),
+        .fifo_almost_empty(fifo_almost_empty),
 
-    //     .rddata(fifo_rddata),
-    //     .rd_en(fifo_read),
-        
-    //     .empty(fifo_empty),
-    //     .almost_empty(fifo_almost_empty),
-    //     .full(fifo_full));
+        // Audio output
+        .left_audio(pcm_left),
+        .right_audio(pcm_right));
 
     //////////////////////////////////////////////////////////////////////////
     // I2S DAC interface
     //////////////////////////////////////////////////////////////////////////
-    wire [23:0] left_data = {psg_left, 8'b0};
-    wire [23:0] right_data = {psg_right, 8'b0};
+    wire [16:0] psg_l = {psg_left[15], psg_left};
+    wire [16:0] psg_r = {psg_right[15], psg_right};
+    wire [16:0] pcm_l = {pcm_left[15], pcm_left};
+    wire [16:0] pcm_r = {pcm_right[15], pcm_right};
+
+    wire [16:0] mix_l = psg_l;  // + pcm_l;
+    wire [16:0] mix_r = psg_r;  // + pcm_r;
+
+    wire [23:0] left_data = {mix_l, 7'b0};
+    wire [23:0] right_data = {mix_r, 7'b0};
 
     dacif dacif(
         .rst(rst),
         .clk(clk),
-
-        .sample_rate(sample_rate),
 
         // Sample input
         .next_sample(next_sample),

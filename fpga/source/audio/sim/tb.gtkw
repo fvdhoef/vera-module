@@ -1,22 +1,22 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Fri Mar  6 13:23:24 2020
+[*] Sun Mar  8 09:57:30 2020
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/audio/sim/tb.vcd"
-[dumpfile_mtime] "Fri Mar  6 13:22:53 2020"
-[dumpfile_size] 13837415
+[dumpfile_mtime] "Sun Mar  8 09:55:58 2020"
+[dumpfile_size] 10892774
 [savefile] "/c/Work/vera-module/fpga/source/audio/sim/tb.gtkw"
 [timestart] 0
-[size] 1920 1019
-[pos] 222 103
-*-30.606045 1184000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[size] 2560 1387
+[pos] 0 23
+*-28.606045 839820000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.audio.
 [treeopen] tb.audio.psg.
 [sst_width] 261
 [signals_width] 289
 [sst_expanded] 1
-[sst_vpaned_height] 407
+[sst_vpaned_height] 583
 @28
 tb.audio.clk
 tb.audio.rst
@@ -63,7 +63,10 @@ tb.audio.psg.signed_signal[5:0]
 tb.audio.psg.right_audio[15:0]
 @20000
 -
-@20001
 -
+@22
+tb.audio.left_data[23:0]
+@23
+tb.audio.right_data[23:0]
 [pattern_trace] 1
 [pattern_trace] 0

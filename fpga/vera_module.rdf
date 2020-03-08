@@ -66,7 +66,10 @@
         <Source name="source/audio/psg.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
-        <Source name="source/generated/audio_attr_ram/audio_attr_ram.ipx" type="IPX_Module" type_short="IPX">
+        <Source name="source/audio/audio_fifo.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="source/audio/pcm.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
         <Source name="source/vera_module.ldc" type="LSE Design Constraints File" type_short="LDC">
