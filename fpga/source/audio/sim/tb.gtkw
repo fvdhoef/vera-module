@@ -1,20 +1,21 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Sun Mar  8 09:57:30 2020
+[*] Sun Mar  8 12:40:10 2020
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/audio/sim/tb.vcd"
-[dumpfile_mtime] "Sun Mar  8 09:55:58 2020"
-[dumpfile_size] 10892774
+[dumpfile_mtime] "Sun Mar  8 12:39:17 2020"
+[dumpfile_size] 20699755
 [savefile] "/c/Work/vera-module/fpga/source/audio/sim/tb.gtkw"
-[timestart] 0
+[timestart] 2239700000
 [size] 2560 1387
-[pos] 0 23
-*-28.606045 839820000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] -9 -23
+*-24.924294 2247300000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.audio.
+[treeopen] tb.audio.pcm.
 [treeopen] tb.audio.psg.
 [sst_width] 261
-[signals_width] 289
+[signals_width] 284
 [sst_expanded] 1
 [sst_vpaned_height] 583
 @28
@@ -38,16 +39,11 @@ tb.audio.next_sample
 -
 -
 -
-@22
-tb.audio.psg.audio_attr_ram.wr_data_i[7:0]
-@28
-tb.audio.psg.audio_attr_ram.wr_en_i
 @200
 -
 @24
 tb.audio.psg.state_r[1:0]
 @22
-tb.audio.psg.cur_channel_attr[31:0]
 tb.audio.psg.cur_working_data[25:0]
 @24
 tb.audio.psg.cur_phase[19:0]
@@ -66,7 +62,37 @@ tb.audio.psg.right_audio[15:0]
 -
 @22
 tb.audio.left_data[23:0]
-@23
 tb.audio.right_data[23:0]
+@200
+-
+@28
+tb.audio.pcm.audio_fifo.almost_empty
+tb.audio.pcm.fifo_empty
+tb.audio.pcm.fifo_full
+@24
+tb.audio.pcm.audio_fifo.fifo_count[12:0]
+@8022
+tb.audio.pcm.audio_fifo.wrdata[7:0]
+@28
+tb.audio.pcm.audio_fifo.wr_en
+@200
+-
+@22
+tb.audio.pcm.sr_accum_r[7:0]
+@28
+tb.audio.pcm.new_sample
+@200
+-
+@28
+tb.audio.pcm.fifo_read
+@22
+tb.audio.pcm.fifo_rddata[7:0]
+@200
+-
+@24
+tb.audio.pcm.state_r[2:0]
+@8420
+tb.audio.pcm.left_audio[15:0]
+tb.audio.pcm.right_audio[15:0]
 [pattern_trace] 1
 [pattern_trace] 0

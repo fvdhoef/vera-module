@@ -1,5 +1,6 @@
 `timescale 1 ns / 1 ps
-// `default_nettype none
+`default_nettype none
+
 module tb();
 
     initial begin
@@ -8,7 +9,7 @@ module tb();
     end
 
     initial begin
-        #5000000 $finish;
+        #10000000 $finish;
     end
 
     // Generate 25MHz sysclk
@@ -29,9 +30,9 @@ module tb();
 
     reg [3:0] volume = 0;
 
-    reg       fifo_reset;
-    reg [7:0] fifo_wrdata;
-    reg       fifo_write;
+    reg       fifo_reset = 0;
+    reg [7:0] fifo_wrdata = 0;
+    reg       fifo_write = 0;
 
 
     audio audio(
@@ -76,17 +77,57 @@ module tb();
         end
     endtask
 
+    task fwrite;
+        input [7:0] data;
+
+        begin
+            @(negedge clk)
+            fifo_wrdata = data;
+            fifo_write = 1;
+
+            @(negedge clk)
+            fifo_write  = 0;
+        end
+    endtask
+
+    task fwrite16;
+        input [15:0] data;
+
+        begin
+            @(negedge clk)
+            fifo_wrdata = data[7:0];
+            fifo_write = 1;
+
+            @(negedge clk)
+            fifo_wrdata = data[15:8];
+            fifo_write = 1;
+
+            @(negedge clk)
+            fifo_write  = 0;
+        end
+    endtask
+
     initial begin : TB
         integer i;
 
         #200;
 
-        for (i=0; i<16; i=i+1) begin
-            awrite(6'h00 + i*4, 8'h9D);
-            awrite(6'h01 + i*4, 8'hFF);
-            awrite(6'h02 + i*4, 8'hBF);
-            awrite(6'h03 + i*4, 8'h40);
+        // for (i=0; i<16; i=i+1) begin
+        //     awrite(6'h00 + i*4, 8'h9D);
+        //     awrite(6'h01 + i*4, 8'hFF);
+        //     awrite(6'h02 + i*4, 8'hBF);
+        //     awrite(6'h03 + i*4, 8'h40);
+        // end
+
+        for (i=0; i<600; i=i+1) begin
+            fwrite16(i);
         end
+
+        mode_stereo = 1;
+        mode_16bit = 1;
+        sample_rate = 'd128;
+        volume = 'd15;
+
 
 
         // awrite(7'h04, 8'h9D);

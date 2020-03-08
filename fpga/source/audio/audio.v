@@ -86,8 +86,8 @@ module audio(
     wire [16:0] pcm_l = {pcm_left[15], pcm_left};
     wire [16:0] pcm_r = {pcm_right[15], pcm_right};
 
-    wire [16:0] mix_l = psg_l;  // + pcm_l;
-    wire [16:0] mix_r = psg_r;  // + pcm_r;
+    wire [16:0] mix_l = psg_l + pcm_l;
+    wire [16:0] mix_r = psg_r + pcm_r;
 
     wire [23:0] left_data = {mix_l, 7'b0};
     wire [23:0] right_data = {mix_r, 7'b0};

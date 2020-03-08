@@ -14,7 +14,7 @@ This document describes the **V**ersatile **E**mbedded **R**etro **A**dapter or 
   - Embedded video RAM of 128kB.
   - Palette with 256 colors selected from a total range of 4096 colors.
 - 16-channel Programmable Sound Generator with multiple waveforms (Pulse, Sawtooth, Triangle, Noise)
-- High quality PCM audio playback from an 8kB FIFO buffer featuring up to 48kHz 16-bit stereo sound.
+- High quality PCM audio playback from an 4kB FIFO buffer featuring up to 48kHz 16-bit stereo sound.
 - SPI controller for SecureDigital storage.
 
 
@@ -713,7 +713,7 @@ Just like the other waveform types, the frequency of the noise waveform can be c
 
 ## PCM audio
 
-For PCM playback, VERA contains a 8kB FIFO buffer. This buffer needs to be filled in a timely fashion by the CPU. To facilitate this an **AFLOW** (Audio FIFO low) interrupt can be generated when the FIFO is less than 1/4 filled.
+For PCM playback, VERA contains a 4kB FIFO buffer. This buffer needs to be filled in a timely fashion by the CPU. To facilitate this an **AFLOW** (Audio FIFO low) interrupt can be generated when the FIFO is less than 1/4 filled.
 
 ### Audio registers
 

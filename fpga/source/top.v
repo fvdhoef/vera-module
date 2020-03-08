@@ -723,6 +723,8 @@ module top(
     //////////////////////////////////////////////////////////////////////////
     // Renderers
     //////////////////////////////////////////////////////////////////////////
+    wire        next_line;
+
     wire  [9:0] lb_rdidx;
     wire  [7:0] l0_lb_rddata;
     wire  [7:0] l1_lb_rddata;
@@ -946,7 +948,6 @@ module top(
     wire [7:0] composer_display_data;
     wire       next_pixel;
     wire       next_frame;
-    wire       next_line;
     wire       composer_display_current_field;
 
     wire       dc_interlaced = video_output_mode_r[1];

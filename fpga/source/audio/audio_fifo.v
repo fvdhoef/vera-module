@@ -14,34 +14,34 @@ module audio_fifo(
     output wire       almost_empty,
     output wire       full);
 
-    reg [12:0] wridx = 0;
-    reg [12:0] rdidx = 0;
+    reg [11:0] wridx_r = 0;
+    reg [11:0] rdidx_r = 0;
 
-    reg [7:0] mem_r [8191:0];
+    reg [7:0] mem_r [4095:0];
 
-    wire [12:0] wridx_next = wridx + 13'd1;
-    wire [12:0] rdidx_next = rdidx + 13'd1;
-    wire [12:0] fifo_count = wridx - rdidx;
+    wire [11:0] wridx_next = wridx_r + 12'd1;
+    wire [11:0] rdidx_next = rdidx_r + 12'd1;
+    wire [11:0] fifo_count = wridx_r - rdidx_r;
 
-    assign empty = (wridx == rdidx);
-    assign full  = (wridx_next == rdidx);
-    assign almost_empty = fifo_count < 13'd512;
+    assign empty        = (wridx_r == rdidx_r);
+    assign full         = (wridx_next == rdidx_r);
+    assign almost_empty = fifo_count < 12'd1024;
 
     always @(posedge clk) begin
         if (rst) begin
-            wridx <= 0;
-            rdidx <= 0;
+            wridx_r <= 0;
+            rdidx_r <= 0;
             rddata <= 0;
 
         end else begin
             if (wr_en && !full) begin
-                mem_r[wridx] <= wrdata;
-                wridx <= wridx_next;
+                mem_r[wridx_r] <= wrdata;
+                wridx_r <= wridx_next;
             end
 
-            rddata <= mem_r[rdidx];
             if (rd_en && !empty) begin
-                rdidx <= rdidx_next;
+                rddata <= mem_r[rdidx_r];
+                rdidx_r <= rdidx_next;
             end
         end
     end
