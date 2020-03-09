@@ -50,6 +50,8 @@ module top(
     reg [16:0] vram_addr_1_r,                 vram_addr_1_next;
     reg  [3:0] vram_addr_incr_0_r,            vram_addr_incr_0_next;
     reg  [3:0] vram_addr_incr_1_r,            vram_addr_incr_1_next;
+    reg        vram_addr_decr_0_r,            vram_addr_decr_0_next;
+    reg        vram_addr_decr_1_r,            vram_addr_decr_1_next;
     reg        vram_addr_select_r,            vram_addr_select_next;
     reg        dc_select_r,                   dc_select_next;
     reg        fpga_reconfigure_r,            fpga_reconfigure_next;
@@ -129,7 +131,7 @@ module top(
     always @* case (extbus_a)
         5'h00: rddata = vram_addr_select_r ? vram_addr_1_r[7:0] : vram_addr_0_r[7:0];
         5'h01: rddata = vram_addr_select_r ? vram_addr_1_r[15:8] : vram_addr_0_r[15:8];
-        5'h02: rddata = vram_addr_select_r ? {vram_addr_incr_1_r, 3'b0, vram_addr_1_r[16]} : {vram_addr_incr_0_r, 3'b0, vram_addr_0_r[16]};
+        5'h02: rddata = vram_addr_select_r ? {vram_addr_incr_1_r, vram_addr_decr_1_r, 2'b0, vram_addr_1_r[16]} : {vram_addr_incr_0_r, vram_addr_decr_0_r, 2'b0, vram_addr_0_r[16]};
         5'h03: rddata = vram_rddata;
         5'h04: rddata = 8'h00;
         5'h05: rddata = {6'b0, dc_select_r, vram_addr_select_r};
@@ -273,14 +275,19 @@ module top(
 
     reg        fetch_ahead_r,  fetch_ahead_next;
 
-    wire [16:0] vram_addr = (access_addr == 5'h03) ? vram_addr_0_r : vram_addr_1_r;
+    wire [16:0] vram_addr             = (access_addr == 5'h03) ? vram_addr_0_r : vram_addr_1_r;
+    wire        vram_addr_decr        = (access_addr == 5'h03) ? vram_addr_decr_0_r : vram_addr_decr_1_r;
     wire [16:0] vram_addr_incremented = vram_addr + increment;
+    wire [16:0] vram_addr_decremented = vram_addr - increment;
+    wire [16:0] vram_addr_new         = vram_addr_decr ? vram_addr_decremented : vram_addr_incremented;
 
     always @* begin
         vram_addr_0_next                 = vram_addr_0_r;
         vram_addr_1_next                 = vram_addr_1_r;
         vram_addr_incr_0_next            = vram_addr_incr_0_r;
         vram_addr_incr_1_next            = vram_addr_incr_1_r;
+        vram_addr_decr_0_next            = vram_addr_decr_0_r;
+        vram_addr_decr_1_next            = vram_addr_decr_1_r;
         vram_addr_select_next            = vram_addr_select_r;
         dc_select_next                   = dc_select_r;
         fpga_reconfigure_next            = fpga_reconfigure_r;
@@ -369,9 +376,11 @@ module top(
                 5'h02: begin
                     if (vram_addr_select_r) begin
                         vram_addr_incr_1_next           = write_data[7:4];
+                        vram_addr_decr_1_next           = write_data[3];
                         vram_addr_1_next[16]            = write_data[0];
                     end else begin
                         vram_addr_incr_0_next           = write_data[7:4];
+                        vram_addr_decr_0_next           = write_data[3];
                         vram_addr_0_next[16]            = write_data[0];
                         fetch_ahead_next = 1;
                     end
@@ -524,15 +533,17 @@ module top(
                     ib_addr_next = vram_addr_0_r;
                     fetch_ahead_next = 1;
                 end else begin
-                    ib_addr_next = vram_addr_incremented;
+                    ib_addr_next = vram_addr_new;
                 end
-                vram_addr_0_next = vram_addr_incremented;
+                vram_addr_0_next = vram_addr_new;
 
             end else if (access_addr == 5'h04 && do_write) begin
                 ib_addr_next      = vram_addr_1_r;
                 ib_wrdata_next    = write_data;
                 ib_write_next     = do_write;
                 ib_do_access_next = 1;
+
+                vram_addr_1_next = vram_addr_new;
             end
         end
     end
@@ -543,6 +554,8 @@ module top(
             vram_addr_1_r                 <= 0;
             vram_addr_incr_0_r            <= 0;
             vram_addr_incr_1_r            <= 0;
+            vram_addr_decr_0_r            <= 0;
+            vram_addr_decr_1_r            <= 0;
             vram_addr_select_r            <= 0;
             dc_select_r                   <= 0;
             fpga_reconfigure_r            <= 0;
@@ -610,6 +623,8 @@ module top(
             vram_addr_1_r                 <= vram_addr_1_next;
             vram_addr_incr_0_r            <= vram_addr_incr_0_next;
             vram_addr_incr_1_r            <= vram_addr_incr_1_next;
+            vram_addr_decr_0_r            <= vram_addr_decr_0_next;
+            vram_addr_decr_1_r            <= vram_addr_decr_1_next;
             vram_addr_select_r            <= vram_addr_select_next;
             dc_select_r                   <= dc_select_next;
             fpga_reconfigure_r            <= fpga_reconfigure_next;

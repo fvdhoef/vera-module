@@ -6,7 +6,7 @@ encoding utf-8
 Sheet 1 1
 Title "VERA module"
 Date "2020-02-14"
-Rev "2"
+Rev "3"
 Comp "(C) 2020 Frank van den Hoef"
 Comment1 ""
 Comment2 ""
@@ -3154,7 +3154,7 @@ U 1 1 5E4B2D01
 P 4250 10350
 F 0 "LOGO1" H 4335 10396 50  0000 L CNN
 F 1 "X16 logo" H 4335 10305 50  0000 L CNN
-F 2 "vera-module:x16logo" H 4250 10350 50  0001 C CNN
+F 2 "vera-module:x16plogo" H 4250 10350 50  0001 C CNN
 F 3 "~" H 4250 10350 50  0001 C CNN
 	1    4250 10350
 	1    0    0    -1  
