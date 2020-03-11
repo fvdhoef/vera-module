@@ -54,7 +54,7 @@ module vram_if(
     reg if3_ack_next;
 
     assign ram_wrdata = {4{if0_wrdata}};
-    assign ram_write  = if0_write;
+    assign ram_write  = if0_strobe && if0_write;
 
     always @* case (if0_addr[1:0])
         2'b00: ram_wrbytesel = 4'b0001;
