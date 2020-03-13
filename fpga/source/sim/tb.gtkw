@@ -1,21 +1,21 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Sat Feb 29 19:22:49 2020
+[*] Thu Mar 12 12:01:43 2020
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Sat Feb 29 19:21:48 2020"
-[dumpfile_size] 3441445
+[dumpfile_mtime] "Thu Mar 12 12:00:48 2020"
+[dumpfile_size] 753473
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
-[timestart] 4026000
-[size] 1920 1013
-[pos] -10 -30
-*-20.223043 6062500 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[timestart] 8038000
+[size] 2560 1387
+[pos] 0 23
+*-20.223043 12337500 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [sst_width] 261
 [signals_width] 332
 [sst_expanded] 1
-[sst_vpaned_height] 478
+[sst_vpaned_height] 689
 @200
 -External bus
 @28
@@ -27,9 +27,7 @@ tb.top.extbus_a[4:0]
 tb.top.extbus_d[7:0]
 @28
 tb.top.extbus_cs_n
-@29
 tb.top.extbus_wr_n
-@28
 tb.top.extbus_rd_n
 tb.top.extbus_irq_n
 @200
@@ -38,13 +36,22 @@ tb.top.extbus_irq_n
 tb.top.bus_read
 tb.top.bus_write
 tb.top.end_of_cycle
+(0)tb.top.bus_write_r[1:0]
+@200
+-
+@22
+tb.top.rdaddr_r[4:0]
+tb.top.wraddr_r[4:0]
+@28
+tb.top.is_write_r
+@22
+tb.top.access_addr[4:0]
 @200
 -
 @28
 tb.top.do_read
 tb.top.do_write
 @22
-tb.top.access_addr[4:0]
 tb.top.write_data[7:0]
 @28
 tb.top.fetch_ahead_next
@@ -59,7 +66,8 @@ tb.top.do_write
 tb.top.write_data[7:0]
 tb.top.vram_addr_0_r[16:0]
 tb.top.vram_addr_incr_0_r[3:0]
-tb.top.increment[15:0]
+tb.top.vram_addr_1_r[16:0]
+tb.top.vram_addr_incr_1_r[3:0]
 @200
 -
 @22
@@ -68,5 +76,20 @@ tb.top.ib_wrdata_r[7:0]
 @28
 tb.top.ib_do_access_r
 tb.top.ib_write_r
+@22
+tb.top.vram_rddata[7:0]
+@28
+tb.top.save_result_r
+tb.top.save_result_port_r
+@22
+tb.top.vram_addr_new[16:0]
+@200
+-
+@23
+tb.top.vram_addr_0_r[16:0]
+@22
+tb.top.vram_data0_r[7:0]
+tb.top.vram_addr_1_r[16:0]
+tb.top.vram_data1_r[7:0]
 [pattern_trace] 1
 [pattern_trace] 0

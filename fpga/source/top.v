@@ -53,6 +53,8 @@ module top(
     reg        vram_addr_decr_0_r,            vram_addr_decr_0_next;
     reg        vram_addr_decr_1_r,            vram_addr_decr_1_next;
     reg        vram_addr_select_r,            vram_addr_select_next;
+    reg  [7:0] vram_data0_r,                  vram_data0_next;
+    reg  [7:0] vram_data1_r,                  vram_data1_next;
     reg        dc_select_r,                   dc_select_next;
     reg        fpga_reconfigure_r,            fpga_reconfigure_next;
     reg        irq_enable_vsync_r,            irq_enable_vsync_next;
@@ -132,8 +134,8 @@ module top(
         5'h00: rddata = vram_addr_select_r ? vram_addr_1_r[7:0] : vram_addr_0_r[7:0];
         5'h01: rddata = vram_addr_select_r ? vram_addr_1_r[15:8] : vram_addr_0_r[15:8];
         5'h02: rddata = vram_addr_select_r ? {vram_addr_incr_1_r, vram_addr_decr_1_r, 2'b0, vram_addr_1_r[16]} : {vram_addr_incr_0_r, vram_addr_decr_0_r, 2'b0, vram_addr_0_r[16]};
-        5'h03: rddata = vram_rddata;
-        5'h04: rddata = 8'h00;
+        5'h03: rddata = vram_data0_r;
+        5'h04: rddata = vram_data1_r;
         5'h05: rddata = {6'b0, dc_select_r, vram_addr_select_r};
 
         5'h06: rddata = {irq_line_r[8], 3'b0, irq_enable_audio_fifo_low_r, irq_enable_sprite_collision_r, irq_enable_line_r, irq_enable_vsync_r};
@@ -200,7 +202,7 @@ module top(
     wire [3:0] irq_enable = {irq_enable_audio_fifo_low_r, irq_enable_sprite_collision_r, irq_enable_line_r, irq_enable_vsync_r};
     wire [3:0] irq_status = {audio_fifo_low,              irq_status_sprite_collision_r, irq_status_line_r, irq_status_vsync_r};
 
-    assign extbus_irq_n = (irq_status & irq_enable) == 0;
+    assign extbus_irq_n = (irq_status & irq_enable) != 0;
 
     // Capture address / write-data at end of write cycle
     reg [4:0] rdaddr_r;
@@ -214,36 +216,17 @@ module top(
         rdaddr_r <= extbus_a;
     end
 
-    // Synchronize chipselect and write signal
-    reg [2:0] chipselect_r;
-    reg [1:0] bus_write_r;
+    // Synchronize read and write signals
+    reg [2:0] bus_read_r;
+    reg [2:0] bus_write_r;
     always @(posedge clk) begin
-        chipselect_r <= {chipselect_r[1:0], !extbus_cs_n};
-        bus_write_r <= {bus_write_r[0], bus_write};
+        bus_read_r  <= {bus_read_r[1:0], bus_read};
+        bus_write_r <= {bus_write_r[1:0], bus_write};
     end
 
-    wire end_of_cycle = chipselect_r[2:1] == 2'b10;
-
-    // Keep track if this is a write cycle
-    reg is_write_r = 0;
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
-            is_write_r <= 0;
-        end else begin
-            if (chipselect_r[2:1] == 2'b01) begin
-                is_write_r <= 0;
-            end
-            if (chipselect_r[1]) begin
-                if (bus_write_r[1]) begin
-                    is_write_r <= 1;
-                end
-            end
-        end
-    end
-
-    wire       do_read     = end_of_cycle && !is_write_r;
-    wire       do_write    = end_of_cycle && is_write_r;
-    wire [4:0] access_addr = is_write_r ? wraddr_r : rdaddr_r;
+    wire do_read  = bus_read_r[2:1] == 2'b10;
+    wire do_write = bus_write_r[2:1] == 2'b10;
+    wire [4:0] access_addr = do_write ? wraddr_r : rdaddr_r;
     wire [7:0] write_data  = wrdata_r;
 
     // Decode increment value
@@ -273,7 +256,11 @@ module top(
     reg        ib_write_r,     ib_write_next;
     reg        ib_do_access_r, ib_do_access_next;
 
+    reg        save_result_r;
+    reg        save_result_port_r;
+
     reg        fetch_ahead_r,  fetch_ahead_next;
+    reg        fetch_ahead_port_r,  fetch_ahead_port_next;
 
     wire [16:0] vram_addr             = (access_addr == 5'h03) ? vram_addr_0_r : vram_addr_1_r;
     wire        vram_addr_decr        = (access_addr == 5'h03) ? vram_addr_decr_0_r : vram_addr_decr_1_r;
@@ -289,6 +276,8 @@ module top(
         vram_addr_decr_0_next            = vram_addr_decr_0_r;
         vram_addr_decr_1_next            = vram_addr_decr_1_r;
         vram_addr_select_next            = vram_addr_select_r;
+        vram_data0_next                  = vram_data0_r;
+        vram_data1_next                  = vram_data1_r;
         dc_select_next                   = dc_select_r;
         fpga_reconfigure_next            = fpga_reconfigure_r;
         irq_enable_audio_fifo_low_next   = irq_enable_audio_fifo_low_r;
@@ -345,15 +334,24 @@ module top(
         spi_select_next                  = spi_select_r;
         spi_slow_next                    = spi_slow_r;
 
-        ib_addr_next      = ib_addr_r;
-        ib_wrdata_next    = ib_wrdata_r;
-        ib_write_next     = ib_write_r;
-        ib_do_access_next = 0;
+        ib_addr_next                     = ib_addr_r;
+        ib_wrdata_next                   = ib_wrdata_r;
+        ib_write_next                    = ib_write_r;
+        ib_do_access_next                = 0;
 
-        fetch_ahead_next = 0;
+        fetch_ahead_port_next            = fetch_ahead_port_r;
+        fetch_ahead_next                 = 0;
 
-        spi_txdata = write_data;
-        spi_txstart = 0;
+        spi_txdata                       = write_data;
+        spi_txstart                      = 0;
+
+        if (save_result_r) begin
+            if (!save_result_port_r) begin
+                vram_data0_next = vram_rddata;
+            end else begin
+                vram_data1_next = vram_rddata;
+            end
+        end
 
         if (do_write) begin
             case (access_addr)
@@ -362,28 +360,34 @@ module top(
                         vram_addr_1_next[7:0] = write_data;
                     end else begin
                         vram_addr_0_next[7:0] = write_data;
-                        fetch_ahead_next = 1;
                     end
+
+                    fetch_ahead_port_next = vram_addr_select_r;
+                    fetch_ahead_next = 1;
                 end
                 5'h01: begin
                     if (vram_addr_select_r) begin
                         vram_addr_1_next[15:8] = write_data;
                     end else begin
                         vram_addr_0_next[15:8] = write_data;
-                        fetch_ahead_next = 1;
                     end
+
+                    fetch_ahead_port_next = vram_addr_select_r;
+                    fetch_ahead_next = 1;
                 end
                 5'h02: begin
                     if (vram_addr_select_r) begin
-                        vram_addr_incr_1_next           = write_data[7:4];
-                        vram_addr_decr_1_next           = write_data[3];
-                        vram_addr_1_next[16]            = write_data[0];
+                        vram_addr_incr_1_next = write_data[7:4];
+                        vram_addr_decr_1_next = write_data[3];
+                        vram_addr_1_next[16]  = write_data[0];
                     end else begin
-                        vram_addr_incr_0_next           = write_data[7:4];
-                        vram_addr_decr_0_next           = write_data[3];
-                        vram_addr_0_next[16]            = write_data[0];
-                        fetch_ahead_next = 1;
+                        vram_addr_incr_0_next = write_data[7:4];
+                        vram_addr_decr_0_next = write_data[3];
+                        vram_addr_0_next[16]  = write_data[0];
                     end
+
+                    fetch_ahead_port_next = vram_addr_select_r;
+                    fetch_ahead_next = 1;
                 end
                 5'h03: begin
                 end
@@ -518,33 +522,28 @@ module top(
         end
 
         if (fetch_ahead_r) begin
-            ib_addr_next      = vram_addr_0_r;
+            ib_addr_next      = fetch_ahead_port_r ? vram_addr_1_r : vram_addr_0_r;
             ib_write_next     = 0;
             ib_do_access_next = 1;
         end
 
-        if (end_of_cycle) begin
+        if ((do_write || do_read) && (access_addr == 5'h03 || access_addr == 5'h04)) begin
+            ib_wrdata_next = write_data;
+            ib_write_next  = do_write;
+
+            if (do_write) begin
+                ib_addr_next = access_addr == 5'h03 ? vram_addr_0_r : vram_addr_1_r;
+                ib_do_access_next = 1;
+            end
+
             if (access_addr == 5'h03) begin
-                ib_wrdata_next    = write_data;
-                ib_write_next     = do_write;
-                ib_do_access_next = 1;
-
-                if (do_write) begin
-                    ib_addr_next = vram_addr_0_r;
-                    fetch_ahead_next = 1;
-                end else begin
-                    ib_addr_next = vram_addr_new;
-                end
+                fetch_ahead_port_next = 0;
                 vram_addr_0_next = vram_addr_new;
-
-            end else if (access_addr == 5'h04 && do_write) begin
-                ib_addr_next      = vram_addr_1_r;
-                ib_wrdata_next    = write_data;
-                ib_write_next     = do_write;
-                ib_do_access_next = 1;
-
+            end else begin
+                fetch_ahead_port_next = 1;
                 vram_addr_1_next = vram_addr_new;
             end
+            fetch_ahead_next = 1;
         end
     end
 
@@ -557,6 +556,8 @@ module top(
             vram_addr_decr_0_r            <= 0;
             vram_addr_decr_1_r            <= 0;
             vram_addr_select_r            <= 0;
+            vram_data0_r                  <= 0;
+            vram_data1_r                  <= 0;
             dc_select_r                   <= 0;
             fpga_reconfigure_r            <= 0;
             irq_enable_audio_fifo_low_r   <= 0;
@@ -611,12 +612,16 @@ module top(
             spi_select_r                  <= 0;
             spi_slow_r                    <= 0;
 
-            ib_addr_r      <= 0;
-            ib_wrdata_r    <= 0;
-            ib_do_access_r <= 0;
-            ib_write_r     <= 0;
+            ib_addr_r                     <= 0;
+            ib_wrdata_r                   <= 0;
+            ib_do_access_r                <= 0;
+            ib_write_r                    <= 0;
 
-            fetch_ahead_r <= 0;
+            fetch_ahead_r                 <= 0;
+            fetch_ahead_port_r            <= 0;
+
+            save_result_r                 <= 0;
+            save_result_port_r            <= 0;
 
         end else begin
             vram_addr_0_r                 <= vram_addr_0_next;
@@ -626,6 +631,8 @@ module top(
             vram_addr_decr_0_r            <= vram_addr_decr_0_next;
             vram_addr_decr_1_r            <= vram_addr_decr_1_next;
             vram_addr_select_r            <= vram_addr_select_next;
+            vram_data0_r                  <= vram_data0_next;
+            vram_data1_r                  <= vram_data1_next;
             dc_select_r                   <= dc_select_next;
             fpga_reconfigure_r            <= fpga_reconfigure_next;
             irq_enable_audio_fifo_low_r   <= irq_enable_audio_fifo_low_next;
@@ -680,12 +687,16 @@ module top(
             spi_select_r                  <= spi_select_next;
             spi_slow_r                    <= spi_slow_next;
 
-            ib_addr_r      <= ib_addr_next;
-            ib_wrdata_r    <= ib_wrdata_next;
-            ib_do_access_r <= ib_do_access_next;
-            ib_write_r     <= ib_write_next;
+            ib_addr_r                     <= ib_addr_next;
+            ib_wrdata_r                   <= ib_wrdata_next;
+            ib_do_access_r                <= ib_do_access_next;
+            ib_write_r                    <= ib_write_next;
 
-            fetch_ahead_r <= fetch_ahead_next;
+            fetch_ahead_r                 <= fetch_ahead_next;
+            fetch_ahead_port_r            <= fetch_ahead_port_next;
+
+            save_result_r                 <= ib_do_access_r && !ib_write_r;
+            save_result_port_r            <= fetch_ahead_port_r;
         end
     end
 

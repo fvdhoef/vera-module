@@ -24,7 +24,7 @@ module tb();
     reg extbus_rw_n = 1;
     reg [15:0] extbus_a = 0;
 
-    wire extbus_cs_n = !((extbus_a & 'hFFF0) == 'h1000);
+    wire extbus_cs_n = !((extbus_a & 'hFFF0) == 'h9F20);
 
 
     reg [7:0] extbus_d_wr = 0;
@@ -54,9 +54,9 @@ module tb();
         begin
             @(negedge phi2)
             #10; // tAH = 10ns
-            extbus_rw_n = 1'bX;
-            extbus_a = 16'bX;
-            extbus_d_wr = 8'bX;
+            // extbus_rw_n = 1'bX;
+            // extbus_a = 16'bX;
+            // extbus_d_wr = 8'bX;
             #20;
             extbus_a = addr; // address
             extbus_rw_n = 1'b0; // write
@@ -70,7 +70,7 @@ module tb();
             #10;
             extbus_a = 16'b0;
             extbus_rw_n = 1'b1;
-            extbus_d_wr = 8'bX;
+            // extbus_d_wr = 8'bX;
 
             @(negedge phi2);
             @(negedge phi2);
@@ -85,9 +85,9 @@ module tb();
         begin
             @(negedge phi2)
             #10; // tAH = 10ns
-            extbus_rw_n = 1'bX;
-            extbus_a = 16'bX;
-            extbus_d_wr = 8'bX;
+            // extbus_rw_n = 1'bX;
+            // extbus_a = 16'bX;
+            // extbus_d_wr = 8'bX;
             #20;
             extbus_a = addr;    // address
             extbus_rw_n = 1'b1; // read
@@ -108,22 +108,49 @@ module tb();
 
     initial begin
         #6000
-        extbus_write(16'h1000, 8'h00);
-        extbus_write(16'h1001, 8'h40);
-        extbus_write(16'h1002, 8'h10);
 
-        extbus_write(16'h1003, 8'hA0);
-        extbus_write(16'h1003, 8'hA1);
-        extbus_write(16'h1003, 8'hA2);
-        extbus_write(16'h1003, 8'hA3);
+        extbus_write(16'h9F25, 8'h01);
 
-        extbus_write(16'h1000, 8'h00);
-        extbus_write(16'h1001, 8'h40);
+        extbus_write(16'h9F20, 8'h00);
+        extbus_write(16'h9F21, 8'h40);
+        extbus_write(16'h9F22, 8'h10);
 
-        extbus_read(16'h1003);
-        extbus_read(16'h1003);
-        extbus_read(16'h1003);
-        extbus_read(16'h1003);
+        extbus_write(16'h9F24, 8'hA1);
+        extbus_write(16'h9F24, 8'hA2);
+        extbus_write(16'h9F24, 8'hA3);
+        extbus_write(16'h9F24, 8'hA4);
+
+        extbus_write(16'h9F20, 8'h00);
+        extbus_write(16'h9F21, 8'h40);
+        extbus_write(16'h9F22, 8'h10);
+
+        extbus_read(16'h9F24);
+        extbus_read(16'h9F24);
+        extbus_read(16'h9F24);
+        extbus_read(16'h9F24);
+
+
+
+
+
+
+
+        // extbus_write(16'h1000, 8'h00);
+        // extbus_write(16'h1001, 8'h40);
+        // extbus_write(16'h1002, 8'h10);
+
+        // extbus_write(16'h1003, 8'hA0);
+        // extbus_write(16'h1003, 8'hA1);
+        // extbus_write(16'h1003, 8'hA2);
+        // extbus_write(16'h1003, 8'hA3);
+
+        // extbus_write(16'h1000, 8'h00);
+        // extbus_write(16'h1001, 8'h40);
+
+        // extbus_read(16'h1003);
+        // extbus_read(16'h1003);
+        // extbus_read(16'h1003);
+        // extbus_read(16'h1003);
 
         // extbus_write(16'h1002, 8'h10);
         // extbus_read(16'h1003);
