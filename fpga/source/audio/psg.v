@@ -129,21 +129,21 @@ module psg(
     //////////////////////////////////////////////////////////////////////////
     // Working data RAM
     //////////////////////////////////////////////////////////////////////////
-    wire [25:0] cur_working_data;
+    wire [22:0] cur_working_data;
 
-    wire  [5:0] cur_noise = cur_working_data[25:20];
-    wire [19:0] cur_phase = cur_working_data[19:0];
+    wire  [5:0] cur_noise = cur_working_data[22:17];
+    wire [16:0] cur_phase = cur_working_data[16:0];
 
-    wire [19:0] new_phase = cur_phase + cur_freq;
+    wire [16:0] new_phase = cur_phase + cur_freq;
 
-    wire        do_noise_sample = cur_phase[19] && !new_phase[19];
+    wire        do_noise_sample = cur_phase[16] && !new_phase[16];
     wire  [5:0] new_noise = do_noise_sample ? noise_value_r : cur_noise;
 
     reg   [3:0] working_data_wridx_r;
-    wire [25:0] working_data_wrdata = {new_noise, new_phase};
+    wire [22:0] working_data_wrdata = {new_noise, new_phase};
     reg         working_data_wren_r;
 
-    dpram #(.ADDR_WIDTH(4), .DATA_WIDTH(26)) working_data_ram(
+    dpram #(.ADDR_WIDTH(4), .DATA_WIDTH(23)) working_data_ram(
         .rd_clk(clk),
         .rd_addr(cur_channel_r),
         .rd_data(cur_working_data),
@@ -156,9 +156,9 @@ module psg(
     //////////////////////////////////////////////////////////////////////////
     // Signal generation
     //////////////////////////////////////////////////////////////////////////
-    wire [5:0] signal_pw       = (cur_phase[19:13] > {1'b0, cur_pulsewidth}) ? 0 : 63;
-    wire [5:0] signal_saw      = cur_phase[19:14];
-    wire [5:0] signal_triangle = cur_phase[19] ? ~cur_phase[18:13] : cur_phase[18:13];
+    wire [5:0] signal_pw       = (cur_phase[16:10] > {1'b0, cur_pulsewidth}) ? 0 : 63;
+    wire [5:0] signal_saw      = cur_phase[16:11];
+    wire [5:0] signal_triangle = cur_phase[16] ? ~cur_phase[15:10] : cur_phase[15:10];
     wire [5:0] signal_noise    = cur_noise;
 
     reg [5:0] signal;

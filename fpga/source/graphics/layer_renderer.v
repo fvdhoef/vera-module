@@ -36,21 +36,19 @@ module layer_renderer(
     // Line renderer
     //////////////////////////////////////////////////////////////////////////
 
-    wire tilemode_1bpp = !bitmap_mode && color_depth == 2'b00;
-
     wire [2:0] mode = {bitmap_mode, color_depth};
 
     // Decode pixels per word - 1 from mode
-    reg [3:0] pixels_per_word_minus1;
+    reg [4:0] pixels_per_word_minus1;
     always @* case (mode)
-        3'd0: pixels_per_word_minus1 = tile_width ? 4'd15 : 4'd7;  // 1bpp tile mode
-        3'd1: pixels_per_word_minus1 = tile_width ? 4'd15 : 4'd7;  // 2bpp tile mode
-        3'd2: pixels_per_word_minus1 = 4'd7;                       // 4bpp tile mode
-        3'd3: pixels_per_word_minus1 = 4'd3;                       // 8bpp tile mode
-        3'd4: pixels_per_word_minus1 = 4'd15;                      // 1bpp bitmap mode  FIXME!
-        3'd5: pixels_per_word_minus1 = 4'd15;                      // 2bpp bitmap mode
-        3'd6: pixels_per_word_minus1 = 4'd7;                       // 4bpp bitmap mode
-        3'd7: pixels_per_word_minus1 = 4'd3;                       // 8bpp bitmap mode
+        3'd0: pixels_per_word_minus1 = tile_width ? 5'd15 : 5'd7;  // 1bpp tile mode
+        3'd1: pixels_per_word_minus1 = tile_width ? 5'd15 : 5'd7;  // 2bpp tile mode
+        3'd2: pixels_per_word_minus1 = 5'd7;                       // 4bpp tile mode
+        3'd3: pixels_per_word_minus1 = 5'd3;                       // 8bpp tile mode
+        3'd4: pixels_per_word_minus1 = 5'd31;                      // 1bpp bitmap mode
+        3'd5: pixels_per_word_minus1 = 5'd15;                      // 2bpp bitmap mode
+        3'd6: pixels_per_word_minus1 = 5'd7;                       // 4bpp bitmap mode
+        3'd7: pixels_per_word_minus1 = 5'd3;                       // 8bpp bitmap mode
     endcase
 
     // Decode lines per word - 1 from mode
@@ -315,32 +313,52 @@ module layer_renderer(
     //////////////////////////////////////////////////////////////////////////
     // Pixel renderer
     //////////////////////////////////////////////////////////////////////////
-    reg [3:0] xcnt_r, xcnt_next;
+    reg [4:0] xcnt_r, xcnt_next;
 
     wire [3:0] hflipped_xcnt = render_mapdata_r[2] ? ~xcnt_r[3:0] : xcnt_r[3:0];
 
     // Select current pixel for 1bpp modes
     reg cur_pixel_data_1bpp;
-    always @* case (xcnt_r[3:0])
+    always @* case (xcnt_r)
         // Byte 0
-        4'd0:  cur_pixel_data_1bpp = render_data_r[7];
-        4'd1:  cur_pixel_data_1bpp = render_data_r[6];
-        4'd2:  cur_pixel_data_1bpp = render_data_r[5];
-        4'd3:  cur_pixel_data_1bpp = render_data_r[4];
-        4'd4:  cur_pixel_data_1bpp = render_data_r[3];
-        4'd5:  cur_pixel_data_1bpp = render_data_r[2];
-        4'd6:  cur_pixel_data_1bpp = render_data_r[1];
-        4'd7:  cur_pixel_data_1bpp = render_data_r[0];
+        5'd0:  cur_pixel_data_1bpp = render_data_r[7];
+        5'd1:  cur_pixel_data_1bpp = render_data_r[6];
+        5'd2:  cur_pixel_data_1bpp = render_data_r[5];
+        5'd3:  cur_pixel_data_1bpp = render_data_r[4];
+        5'd4:  cur_pixel_data_1bpp = render_data_r[3];
+        5'd5:  cur_pixel_data_1bpp = render_data_r[2];
+        5'd6:  cur_pixel_data_1bpp = render_data_r[1];
+        5'd7:  cur_pixel_data_1bpp = render_data_r[0];
 
         // Byte 1
-        4'd8:  cur_pixel_data_1bpp = render_data_r[15];
-        4'd9:  cur_pixel_data_1bpp = render_data_r[14];
-        4'd10: cur_pixel_data_1bpp = render_data_r[13];
-        4'd11: cur_pixel_data_1bpp = render_data_r[12];
-        4'd12: cur_pixel_data_1bpp = render_data_r[11];
-        4'd13: cur_pixel_data_1bpp = render_data_r[10];
-        4'd14: cur_pixel_data_1bpp = render_data_r[9];
-        4'd15: cur_pixel_data_1bpp = render_data_r[8];
+        5'd8:  cur_pixel_data_1bpp = render_data_r[15];
+        5'd9:  cur_pixel_data_1bpp = render_data_r[14];
+        5'd10: cur_pixel_data_1bpp = render_data_r[13];
+        5'd11: cur_pixel_data_1bpp = render_data_r[12];
+        5'd12: cur_pixel_data_1bpp = render_data_r[11];
+        5'd13: cur_pixel_data_1bpp = render_data_r[10];
+        5'd14: cur_pixel_data_1bpp = render_data_r[9];
+        5'd15: cur_pixel_data_1bpp = render_data_r[8];
+
+        // Byte 2
+        5'd16: cur_pixel_data_1bpp = render_data_r[23];
+        5'd17: cur_pixel_data_1bpp = render_data_r[22];
+        5'd18: cur_pixel_data_1bpp = render_data_r[21];
+        5'd19: cur_pixel_data_1bpp = render_data_r[20];
+        5'd20: cur_pixel_data_1bpp = render_data_r[19];
+        5'd21: cur_pixel_data_1bpp = render_data_r[18];
+        5'd22: cur_pixel_data_1bpp = render_data_r[17];
+        5'd23: cur_pixel_data_1bpp = render_data_r[16];
+
+        // Byte 3
+        5'd24: cur_pixel_data_1bpp = render_data_r[31];
+        5'd25: cur_pixel_data_1bpp = render_data_r[30];
+        5'd26: cur_pixel_data_1bpp = render_data_r[29];
+        5'd27: cur_pixel_data_1bpp = render_data_r[28];
+        5'd28: cur_pixel_data_1bpp = render_data_r[27];
+        5'd29: cur_pixel_data_1bpp = render_data_r[26];
+        5'd30: cur_pixel_data_1bpp = render_data_r[25];
+        5'd31: cur_pixel_data_1bpp = render_data_r[24];
     endcase
 
     // Select current pixel for 2bpp modes
@@ -412,12 +430,17 @@ module layer_renderer(
     always @* case (color_depth)
         // 1bpp
         2'd0: begin
-            if (!attr_mode) begin
-                // 16 color fg/bg mode
-                tmp_pixel_color = cur_pixel_data_1bpp ? {4'b0, render_mapdata_r[3:0]} : {4'b0, render_mapdata_r[7:4]};
+            if (bitmap_mode) begin
+                tmp_pixel_color = {7'b0, cur_pixel_data_1bpp};
+
             end else begin
-                // 256 color fg mode, fixed bg color 0
-                tmp_pixel_color = cur_pixel_data_1bpp ? render_mapdata_r[7:0] : 8'd0;
+                if (!attr_mode) begin
+                    // 16 color fg/bg mode
+                    tmp_pixel_color = cur_pixel_data_1bpp ? {4'b0, render_mapdata_r[3:0]} : {4'b0, render_mapdata_r[7:4]};
+                end else begin
+                    // 256 color fg mode, fixed bg color 0
+                    tmp_pixel_color = cur_pixel_data_1bpp ? render_mapdata_r[7:0] : 8'd0;
+                end
             end
         end
 
