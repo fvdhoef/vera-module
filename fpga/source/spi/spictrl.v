@@ -25,6 +25,17 @@ module spictrl(
     assign spi_mosi = tx_shift_r[7];
     assign rxdata = rx_shift_r;
 
+    reg [4:0] div_cnt_r;
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            div_cnt_r <= 0;
+        end else begin
+            div_cnt_r <= div_cnt_r + 1;
+        end
+    end
+
+    wire clk_pulse = slow ? (div_cnt_r == 'd31) : 1'b1;
+
     reg clk_r;
     assign spi_sck = clk_r;
 
@@ -37,12 +48,14 @@ module spictrl(
 
         end else begin
             if (busy) begin
-                clk_r <= !clk_r;
-                if (clk_r) begin
-                    tx_shift_r <= {tx_shift_r[6:0], 1'b0};
-                    bitcnt_r <= bitcnt_r - 4'd1;
-                end else begin
-                    rx_shift_r <= {rx_shift_r[6:0], spi_miso};
+                if (clk_pulse) begin
+                    clk_r <= !clk_r;
+                    if (clk_r) begin
+                        tx_shift_r <= {tx_shift_r[6:0], 1'b0};
+                        bitcnt_r <= bitcnt_r - 4'd1;
+                    end else begin
+                        rx_shift_r <= {rx_shift_r[6:0], spi_miso};
+                    end
                 end
 
             end else begin

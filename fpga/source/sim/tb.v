@@ -109,27 +109,29 @@ module tb();
     initial begin
         #6000
 
-        extbus_write(16'h9F25, 8'h01);
+        // extbus_write(16'h9F25, 8'h01);
 
-        extbus_write(16'h9F20, 8'h00);
-        extbus_write(16'h9F21, 8'h40);
-        extbus_write(16'h9F22, 8'h10);
+        // extbus_write(16'h9F20, 8'h00);
+        // extbus_write(16'h9F21, 8'h40);
+        // extbus_write(16'h9F22, 8'h10);
 
-        extbus_write(16'h9F24, 8'hA1);
-        extbus_write(16'h9F24, 8'hA2);
-        extbus_write(16'h9F24, 8'hA3);
-        extbus_write(16'h9F24, 8'hA4);
+        // extbus_write(16'h9F24, 8'hA1);
+        // extbus_write(16'h9F24, 8'hA2);
+        // extbus_write(16'h9F24, 8'hA3);
+        // extbus_write(16'h9F24, 8'hA4);
 
-        extbus_write(16'h9F20, 8'h00);
-        extbus_write(16'h9F21, 8'h40);
-        extbus_write(16'h9F22, 8'h10);
+        // extbus_write(16'h9F20, 8'h00);
+        // extbus_write(16'h9F21, 8'h40);
+        // extbus_write(16'h9F22, 8'h10);
 
-        extbus_read(16'h9F24);
-        extbus_read(16'h9F24);
-        extbus_read(16'h9F24);
-        extbus_read(16'h9F24);
+        // extbus_read(16'h9F24);
+        // extbus_read(16'h9F24);
+        // extbus_read(16'h9F24);
+        // extbus_read(16'h9F24);
 
 
+        extbus_write(16'h9F2D, 8'h04);
+        extbus_write(16'h9F2F, 8'h01);
 
 
 

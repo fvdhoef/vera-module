@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Thu Mar 12 12:01:43 2020
+[*] Fri Mar 13 11:27:28 2020
 [*]
 [dumpfile] "/c/Work/vera-module/fpga/source/sim/tb.vcd"
-[dumpfile_mtime] "Thu Mar 12 12:00:48 2020"
-[dumpfile_size] 753473
+[dumpfile_mtime] "Fri Mar 13 11:25:33 2020"
+[dumpfile_size] 713655
 [savefile] "/c/Work/vera-module/fpga/source/sim/tb.gtkw"
-[timestart] 8038000
+[timestart] 4521000
 [size] 2560 1387
 [pos] 0 23
-*-20.223043 12337500 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-20.223043 7460000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.top.
 [sst_width] 261
@@ -35,16 +35,11 @@ tb.top.extbus_irq_n
 @28
 tb.top.bus_read
 tb.top.bus_write
-tb.top.end_of_cycle
-(0)tb.top.bus_write_r[1:0]
 @200
 -
 @22
 tb.top.rdaddr_r[4:0]
 tb.top.wraddr_r[4:0]
-@28
-tb.top.is_write_r
-@22
 tb.top.access_addr[4:0]
 @200
 -
@@ -85,11 +80,19 @@ tb.top.save_result_port_r
 tb.top.vram_addr_new[16:0]
 @200
 -
-@23
-tb.top.vram_addr_0_r[16:0]
 @22
+tb.top.vram_addr_0_r[16:0]
 tb.top.vram_data0_r[7:0]
 tb.top.vram_addr_1_r[16:0]
 tb.top.vram_data1_r[7:0]
+@200
+-
+@28
+tb.top.l0_renderer.bitmap_mode
+tb.top.l0_renderer.render_busy_r
+@23
+tb.top.l0_renderer.bus_addr[14:0]
+@22
+tb.top.l0_renderer.pixels_per_word_minus1[3:0]
 [pattern_trace] 1
 [pattern_trace] 0

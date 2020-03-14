@@ -1,0 +1,43 @@
+[*]
+[*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
+[*] Sat Mar 14 12:26:58 2020
+[*]
+[dumpfile] "/c/Work/vera-module/fpga/source/spi/sim/tb.vcd"
+[dumpfile_mtime] "Sat Mar 14 12:26:47 2020"
+[dumpfile_size] 26935
+[savefile] "/c/Work/vera-module/fpga/source/spi/sim/tb.gtkw"
+[timestart] 0
+[size] 2223 1169
+[pos] 225 140
+*-19.858435 1173000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb.
+[sst_width] 261
+[signals_width] 332
+[sst_expanded] 1
+[sst_vpaned_height] 566
+@28
+tb.spictrl.rst
+tb.spictrl.clk
+@22
+tb.spictrl.txdata[7:0]
+@28
+tb.spictrl.txstart
+@22
+tb.spictrl.rxdata[7:0]
+@28
+tb.spictrl.busy
+tb.spictrl.slow
+tb.spictrl.spi_sck
+tb.spictrl.spi_mosi
+tb.spictrl.spi_miso
+@200
+-
+-
+-
+-
+-
+-
+@29
+tb.spictrl.clk_pulse
+[pattern_trace] 1
+[pattern_trace] 0
