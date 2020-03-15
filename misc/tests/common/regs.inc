@@ -1,18 +1,29 @@
-; x16test.a65
+;-----------------------------------------------------------------------------
+; regs.inc
+;-----------------------------------------------------------------------------
 
+;-----------------------------------------------------------------------------
+; VIA1
+;-----------------------------------------------------------------------------
 VIA1_BASE = $9F60
 VIA1_ORB  = (VIA1_BASE + $0)
 VIA1_ORA  = (VIA1_BASE + $1)
 VIA1_DDRB = (VIA1_BASE + $2)
 VIA1_DDRA = (VIA1_BASE + $3)
 
+;-----------------------------------------------------------------------------
+; VIA2
+;-----------------------------------------------------------------------------
 VIA2_BASE = $9F70
 VIA2_ORB  = (VIA2_BASE + $0)
 VIA2_ORA  = (VIA2_BASE + $1)
 VIA2_DDRB = (VIA2_BASE + $2)
 VIA2_DDRA = (VIA2_BASE + $3)
 
-VERA_BASE = $9F20
+;-----------------------------------------------------------------------------
+; VERA
+;-----------------------------------------------------------------------------
+VERA_BASE         = $9F20
 
 VERA_ADDR_L   	  = (VERA_BASE + $00)
 VERA_ADDR_M   	  = (VERA_BASE + $01)
@@ -58,94 +69,11 @@ VERA_AUDIO_DATA   = (VERA_BASE + $1D)
 VERA_SPI_DATA     = (VERA_BASE + $1E)
 VERA_SPI_CTRL     = (VERA_BASE + $1F)
 
-PTR = $10
+VERA_PSG_BASE     = $1F9C0
+VERA_PALETTE_BASE = $1FA00
+VERA_SPRITES_BASE = $1FC00
 
-
-	* = $07FF
-	.byte $01, $08, $0C, $08, $0A, $00, $9E, $20
-	.byte $32, $30, $36, $34, $00, $00, $00, $00
-	.byte $00
-	* = $0810
-
-	; Init palette
-	stz VERA_ADDR_L
-	lda #$FA
-	sta VERA_ADDR_M
-	lda #$11
-	sta VERA_ADDR_H
-
-	stz VERA_DATA0	; Idx 0: black
-	stz VERA_DATA0
-	lda #$FF
-	sta VERA_DATA0	; Idx 1: white
-	lda #$0F
-	sta VERA_DATA0
-
-	; Layer 0, 1bpp bitmap mode
-	lda #$04
-	sta VERA_L0_CONFIG
-	stz VERA_L0_MAPBASE
-	lda #$01
-	sta VERA_L0_TILEBASE
-	stz VERA_L0_HSCROLL_L
-	stz VERA_L0_HSCROLL_H
-	stz VERA_L0_VSCROLL_L
-	stz VERA_L0_VSCROLL_H
-
-	; Enable layer 0 + VGA output
-	lda #$11
-	sta VERA_DC_VIDEO
-
-
-	lda #<image
-	sta PTR
-	lda #>image
-	sta PTR+1
-
-	stz VERA_ADDR_L
-	stz VERA_ADDR_M
-	lda #$10
-	sta VERA_ADDR_H
-
-	ldx #0
-	ldy #150
-again:
-	lda (PTR)
-	sta VERA_DATA0
-	inc PTR
-	bne noinc
-	inc PTR+1
-noinc:
-	dex
-	bne again
-	dey
-	bne again
-
-
-
-
-; 	ldy #10
-; 	ldx #0
-; fill:	
-; 	lda #$7E
-; 	sta VERA_DATA0
-; 	lda #$3C
-; 	sta VERA_DATA0
-; 	lda #$18
-; 	sta VERA_DATA0
-; 	lda #$08
-; 	sta VERA_DATA0
-
-; 	inx
-; 	bne fill
-; 	dey
-; 	bne fill
-
-loop:	jmp loop
-
-
-ptr:	.byte 0,0
-
-
-image:
-	.bin 0,38400,"img.raw"
+;-----------------------------------------------------------------------------
+; KERNAL
+;-----------------------------------------------------------------------------
+CINV = $0314

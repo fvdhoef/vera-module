@@ -1,0 +1,36 @@
+#
+# Common Makefile rules
+#
+COMMON_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
+
+S_SRCS += $(COMMON_DIR)/lib.s
+
+OBJ_DIR ?= obj
+S_OBJS  := $(addprefix $(OBJ_DIR)/, $(S_SRCS:.s=.o))
+
+AS = ca65
+LD = ld65
+EMU ?= /c/Work/x16/x16-emulator/x16emu
+
+
+.PHONY: all run clean
+
+all: $(OUT)
+
+$(OUT): $(OBJ_DIR) $(S_OBJS)
+	@echo Linking $@
+	@$(LD) -C $(COMMON_DIR)/x16.cfg -o $(OUT) $(S_OBJS)
+
+$(OBJ_DIR):
+	@mkdir -p $(dir $(S_OBJS))
+
+$(S_OBJS): $(OBJ_DIR)/%.o: %.s
+	@echo Assembling $<
+	@$(AS) --cpu 65C02 -I$(COMMON_DIR) -o $@ $<
+
+run: all
+	$(EMU) -prg $(OUT) -run
+
+clean:
+	@echo Cleaning...
+	@rm -rf $(OUT) $(OBJ_DIR)
