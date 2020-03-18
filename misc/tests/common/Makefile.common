@@ -12,7 +12,6 @@ AS = ca65
 LD = ld65
 EMU ?= /c/Work/x16/x16-emulator/x16emu
 
-
 .PHONY: all run clean
 
 all: $(OUT)
@@ -26,10 +25,10 @@ $(OBJ_DIR):
 
 $(S_OBJS): $(OBJ_DIR)/%.o: %.s
 	@echo Assembling $<
-	@$(AS) --cpu 65C02 -I$(COMMON_DIR) -o $@ $<
+	@$(AS) --cpu 65C02 -I$(COMMON_DIR) -l $@.lst -o $@ $<
 
 run: all
-	$(EMU) -prg $(OUT) -run
+	$(EMU) $(EMU_PARAMS) -prg $(OUT) -run
 
 clean:
 	@echo Cleaning...

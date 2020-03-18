@@ -5,20 +5,50 @@
 ;-----------------------------------------------------------------------------
 ; VIA1
 ;-----------------------------------------------------------------------------
-VIA1_BASE = $9F60
-VIA1_ORB  = (VIA1_BASE + $0)
-VIA1_ORA  = (VIA1_BASE + $1)
-VIA1_DDRB = (VIA1_BASE + $2)
-VIA1_DDRA = (VIA1_BASE + $3)
+VIA1_BASE  = $9F60
+VIA1_ORB   = (VIA1_BASE + $0)
+VIA1_ORA   = (VIA1_BASE + $1)
+VIA1_IRB   = (VIA1_BASE + $0)
+VIA1_IRA   = (VIA1_BASE + $1)
+VIA1_DDRB  = (VIA1_BASE + $2)
+VIA1_DDRA  = (VIA1_BASE + $3)
+VIA1_T1CL  = (VIA1_BASE + $4)
+VIA1_T1CH  = (VIA1_BASE + $5)
+VIA1_T1LL  = (VIA1_BASE + $6)
+VIA1_T1LH  = (VIA1_BASE + $7)
+VIA1_T2CL  = (VIA1_BASE + $8)
+VIA1_T2CH  = (VIA1_BASE + $9)
+VIA1_SR    = (VIA1_BASE + $A)
+VIA1_ACR   = (VIA1_BASE + $B)
+VIA1_PCR   = (VIA1_BASE + $C)
+VIA1_IFR   = (VIA1_BASE + $D)
+VIA1_IER   = (VIA1_BASE + $E)
+VIA1_ORANH = (VIA1_BASE + $F)
+VIA1_IRANH = (VIA1_BASE + $F)
 
 ;-----------------------------------------------------------------------------
 ; VIA2
 ;-----------------------------------------------------------------------------
-VIA2_BASE = $9F70
-VIA2_ORB  = (VIA2_BASE + $0)
-VIA2_ORA  = (VIA2_BASE + $1)
-VIA2_DDRB = (VIA2_BASE + $2)
-VIA2_DDRA = (VIA2_BASE + $3)
+VIA2_BASE  = $9F70
+VIA2_ORB   = (VIA2_BASE + $0)
+VIA2_ORA   = (VIA2_BASE + $1)
+VIA2_IRB   = (VIA2_BASE + $0)
+VIA2_IRA   = (VIA2_BASE + $1)
+VIA2_DDRB  = (VIA2_BASE + $2)
+VIA2_DDRA  = (VIA2_BASE + $3)
+VIA2_T1CL  = (VIA2_BASE + $4)
+VIA2_T1CH  = (VIA2_BASE + $5)
+VIA2_T1LL  = (VIA2_BASE + $6)
+VIA2_T1LH  = (VIA2_BASE + $7)
+VIA2_T2CL  = (VIA2_BASE + $8)
+VIA2_T2CH  = (VIA2_BASE + $9)
+VIA2_SR    = (VIA2_BASE + $A)
+VIA2_ACR   = (VIA2_BASE + $B)
+VIA2_PCR   = (VIA2_BASE + $C)
+VIA2_IFR   = (VIA2_BASE + $D)
+VIA2_IER   = (VIA2_BASE + $E)
+VIA2_ORANH = (VIA2_BASE + $F)
+VIA2_IRANH = (VIA2_BASE + $F)
 
 ;-----------------------------------------------------------------------------
 ; VERA
