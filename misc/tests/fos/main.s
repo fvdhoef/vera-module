@@ -1,9 +1,10 @@
 ;-----------------------------------------------------------------------------
-; psgtest.s
+; main.s
 ;-----------------------------------------------------------------------------
 
 	.include "lib.inc"
 
+	.import fat32_init, fat32_read_rootdir
 	.import sdcard_init, sdcard_read_sector, sdcard_write_sector
 	.import lba
 	.importzp bufptr
@@ -25,7 +26,7 @@ buffer: .res 512
 	.code
 	.global entry
 entry:
-	jsr sdcard_init
+	jsr fat32_init
 	bcs ok
 	lda #'0'
 	jsr $FFD2
@@ -34,45 +35,58 @@ entry:
 ok:	lda #'1'
 	jsr $FFD2
 
-	stz lba
-	stz lba+1
-	stz lba+2
-	stz lba+3
+	jsr fat32_read_rootdir
 
-again:
-	lda #<buffer
-	sta bufptr
-	lda #>buffer
-	sta bufptr+1
-	jsr sdcard_read_sector
+	rts
 
-	inc lba+3
-	bne again
-	inc lba+2
-	lda lba+2
-	cmp #8
-	bne again
+; 	jsr sdcard_init
+; 	bcs ok
+; 	lda #'0'
+; 	jsr $FFD2
+; 	rts
+
+; ok:	lda #'1'
+; 	jsr $FFD2
+
+; 	stz lba
+; 	stz lba+1
+; 	stz lba+2
+; 	stz lba+3
+
+; again:
+; 	lda #<buffer
+; 	sta bufptr
+; 	lda #>buffer
+; 	sta bufptr+1
+; 	jsr sdcard_read_sector
+
+; 	inc lba+3
+; 	bne again
+; 	inc lba+2
+; 	lda lba+2
+; 	cmp #8
+; 	bne again
 
 
-	stz lba
-	lda #1
-	sta lba+1
-	stz lba+2
-	stz lba+3
+; 	stz lba
+; 	lda #1
+; 	sta lba+1
+; 	stz lba+2
+; 	stz lba+3
 
-again:
-	lda #<buffer
-	sta bufptr
-	lda #>buffer
-	sta bufptr+1
-	jsr sdcard_write_sector
+; again:
+; 	lda #<buffer
+; 	sta bufptr
+; 	lda #>buffer
+; 	sta bufptr+1
+; 	jsr sdcard_write_sector
 
-	inc lba+3
-	bne again
-	inc lba+2
-	lda lba+2
-	cmp #8
-	bne again
+; 	inc lba+3
+; 	bne again
+; 	inc lba+2
+; 	lda lba+2
+; 	cmp #8
+; 	bne again
 
 
 

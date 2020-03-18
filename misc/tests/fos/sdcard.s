@@ -9,11 +9,11 @@ bufptr:	.word 0
 
 	.bss
 cmdbuf: .res 1
-lba:	.res 4	; This is byte 1-5 of the command buffer
+lba_be:	.res 4	; Big-endian LBA, this is byte 1-5 of the command buffer
 	.res 1
 
 	.globalzp bufptr
-	.global lba
+	.global lba_be
 
 	.code
 
@@ -219,7 +219,7 @@ error:	jsr deselect
 
 ;-----------------------------------------------------------------------------
 ; sdcard_read_sector
-; Set lba and bufptr prior to calling this function.
+; Set lba_be and bufptr prior to calling this function.
 ; result: C=0 -> error, C=1 -> success
 ;-----------------------------------------------------------------------------
 	.global sdcard_read_sector
@@ -270,7 +270,7 @@ error:	; Error
 
 ;-----------------------------------------------------------------------------
 ; sdcard_write_sector
-; Set lba and bufptr prior to calling this function.
+; Set lba_be and bufptr prior to calling this function.
 ; result: C=0 -> error, C=1 -> success
 ;-----------------------------------------------------------------------------
 	.global sdcard_write_sector
