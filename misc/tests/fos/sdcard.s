@@ -1,19 +1,26 @@
+;-----------------------------------------------------------------------------
+; sdcard.s
+;-----------------------------------------------------------------------------
 
 	.include "lib.inc"
 
 	.zeropage
 bufptr:	.word 0
-count:	.word 0
 
 	.bss
-cmdbuf: .res 6
-buffer: .res 515
+cmdbuf: .res 1
+lba:	.res 4	; This is byte 1-5 of the command buffer
+	.res 1
+
+	.globalzp bufptr
+	.global lba
 
 	.code
 
 ;-----------------------------------------------------------------------------
-; deselect
-; A:modified
+; deselect card
+;
+; clobbers: A
 ;-----------------------------------------------------------------------------
 .proc deselect
 	lda VERA_SPI_CTRL
@@ -25,8 +32,9 @@ buffer: .res 515
 .endproc
 
 ;-----------------------------------------------------------------------------
-; select
-; A:modified
+; select card
+;
+; clobbers: A
 ;-----------------------------------------------------------------------------
 .proc select
 	lda VERA_SPI_CTRL
@@ -43,7 +51,8 @@ buffer: .res 515
 
 ;-----------------------------------------------------------------------------
 ; spi_read
-; A: result
+;
+; result in A
 ;-----------------------------------------------------------------------------
 .proc spi_read
 	lda #$FF
@@ -55,8 +64,9 @@ buffer: .res 515
 .endproc
 
 ;-----------------------------------------------------------------------------
-; spi_read
-; A: byte to write
+; spi_write
+;
+; byte to write in A
 ;-----------------------------------------------------------------------------
 .proc spi_write
 	sta VERA_SPI_DATA
@@ -67,7 +77,8 @@ buffer: .res 515
 
 ;-----------------------------------------------------------------------------
 ; send_cmd - Send cmdbuf
-; A: first byte of result, Y:modified
+;
+; first byte of result in A, clobbers: Y
 ;-----------------------------------------------------------------------------
 .proc send_cmd
 	jsr deselect
@@ -139,40 +150,6 @@ buffer: .res 515
 	jsr send_cmd
 .endmacro
 
-
-;-----------------------------------------------------------------------------
-; hexbyte
-; A: byte to print
-;-----------------------------------------------------------------------------
-	.global hexbyte
-.proc hexbyte
-	phy
-	pha
-	lsr
-	lsr
-	lsr
-	lsr
-	tay
-	lda hexstr,y
-	jsr $FFD2
-	pla
-	pha
-	and #$0F
-	tay
-	lda hexstr,y
-	jsr $FFD2
-
-	lda #' '
-	jsr $FFD2
-
-	pla
-	ply
-	rts
-
-hexstr: .byte "0123456789ABCDEF"
-
-.endproc
-
 ;-----------------------------------------------------------------------------
 ; sdcard_init
 ; result: C=0 -> error, C=1 -> success
@@ -224,17 +201,119 @@ sdv2:	; Receive remaining 4 bytes of R7 response
 	jsr spi_read
 	jsr spi_read
 
-	; Success
-	jsr deselect
-
 	; Select full speed
+	jsr deselect
 	lda #0
 	sta VERA_SPI_CTRL
 
+	; Success
 	sec
 	rts
 
 error:	jsr deselect
+
+	; Error
+	clc
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; sdcard_read_sector
+; Set lba and bufptr prior to calling this function.
+; result: C=0 -> error, C=1 -> success
+;-----------------------------------------------------------------------------
+	.global sdcard_read_sector
+.proc sdcard_read_sector
+	; Send READ_SINGLE_BLOCK command
+	lda #($40 | 17)
+	sta cmdbuf
+	lda #1
+	sta cmdbuf+5
+	jsr send_cmd
+
+	; Wait for start of data packet
+	ldy #0
+:	jsr spi_read
+	cmp #$FE
+	beq :+
+	dey
+	beq error
+	bra :-
+:
+	; Read 512 bytes of sector data
+	ldx #0
+	ldy #2
+read_loop:
+	jsr spi_read
+	sta (bufptr)
+	inc bufptr
+	bne :+
+	inc bufptr+1
+:	dex
+	bne read_loop
+	dey
+	bne read_loop
+
+	; Read CRC bytes
+	jsr spi_read
+	jsr spi_read
+
+	; Success
+	jsr deselect
+	sec
+	rts
+
+error:	; Error
+	clc
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; sdcard_write_sector
+; Set lba and bufptr prior to calling this function.
+; result: C=0 -> error, C=1 -> success
+;-----------------------------------------------------------------------------
+	.global sdcard_write_sector
+.proc sdcard_write_sector
+	; Send WRITE_BLOCK command
+	lda #($40 | 24)
+	sta cmdbuf
+	lda #1
+	sta cmdbuf+5
+	jsr send_cmd
+	cmp #00
+	bne error
+
+	; Send start of data token
+	lda #$FE
+	jsr spi_write
+
+	; Send 512 bytes of sector data
+	ldx #0
+	ldy #2
+write_loop:
+	lda (bufptr)
+	jsr spi_write
+	inc bufptr
+	bne :+
+	inc bufptr+1
+:	dex
+	bne write_loop
+	dey
+	bne write_loop
+
+	; Dummy CRC
+	lda #0
+	jsr spi_write
+	jsr spi_write
+
+	; Success
+	jsr deselect
+	sec
+	rts
+
+error:	; Error
+	jsr deselect
 	clc
 	rts
 .endproc
