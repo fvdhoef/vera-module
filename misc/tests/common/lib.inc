@@ -48,6 +48,20 @@
 .endmacro
 
 ;-----------------------------------------------------------------------------
+; Increment 32bit number located in memory
+;-----------------------------------------------------------------------------
+.macro inc32 dst
+    inc dst
+    bne :+
+    inc dst+1
+    bne :+
+    inc dst+2
+    bne :+
+    inc dst+3
+:
+.endmacro
+
+;-----------------------------------------------------------------------------
 ; Subtract immediate value from 32bit number located in memory
 ;-----------------------------------------------------------------------------
 .macro sub32_val dst, src, val

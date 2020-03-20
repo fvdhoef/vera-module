@@ -9,24 +9,42 @@
 	.import lba_be
 	.importzp bufptr
 
+.struct filedesc
+current_cluster .dword
+current_lba     .dword
+dirent_lba      .dword
+dirent_offset   .word
+file_size       .dword
+file_offset     .dword
+.endstruct
+
 ;-----------------------------------------------------------------------------
 ; Variables
 ;-----------------------------------------------------------------------------
 	.zeropage
+current_fd: .word 0
 
 	.bss
 
-cluster_shift:  .byte 0
-lba_partition:  .dword 0
-fat_size:       .dword 0
-root_cluster:   .dword 0
-lba_fat:        .dword 0
-lba_data:       .dword 0
+; fd: .tag filedesc
+
+sectors_per_cluster: .byte 0
+cluster_shift:       .byte 0
+lba_partition:       .dword 0
+fat_size:            .dword 0
+root_cluster:        .dword 0
+lba_fat:             .dword 0
+lba_data:            .dword 0
 
 buffer: .res 512
 
-current_cluster: .dword 0
-lba_cluster:     .dword 0	; Sector of current cluster
+
+
+current_cluster:        .dword 0
+current_lba:            .dword 0	; Sector of current cluster
+current_cluster_sector: .byte 0
+
+
 
 	.code
 
@@ -112,13 +130,15 @@ lba_cluster:     .dword 0	; Sector of current cluster
 :
 	; Calculate shift amount based on sectors per cluster field
 	lda buffer + 13
+	sta sectors_per_cluster
 	bne :+
 	jmp error
-	stz cluster_shift
-:	lsr
+:	stz cluster_shift
+shift_loop:
+	lsr
 	beq :+
 	inc cluster_shift
-	bra :-
+	bra shift_loop
 :
 	; Fat size in sectors
 	copy_bytes fat_size, buffer+36, 4
@@ -141,25 +161,145 @@ error:	clc
 .endproc
 
 ;-----------------------------------------------------------------------------
-; calc_lba_cluster
+; calc_cluster_lba
 ;-----------------------------------------------------------------------------
-.proc calc_lba_cluster
-	; lba_cluster = lba_data + ((current_cluster - 2) << cluster_shift)
-
-	sub32_val lba_cluster, current_cluster, 2
-
+.proc calc_cluster_lba
+	; current_lba = lba_data + ((current_cluster - 2) << cluster_shift)
+	sub32_val current_lba, current_cluster, 2
 	ldy cluster_shift
 	beq shift_done
-:	asl lba_cluster+0
-	rol lba_cluster+1
-	rol lba_cluster+2
-	rol lba_cluster+3
+:	asl current_lba+0
+	rol current_lba+1
+	rol current_lba+2
+	rol current_lba+3
 	dey
 	bne :-
 shift_done:
 
-	add32 lba_cluster, lba_cluster, lba_data
+	add32 current_lba, current_lba, lba_data
+	stz current_cluster_sector
 
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; next_cluster
+;-----------------------------------------------------------------------------
+.proc next_cluster
+	; Calculate sector where cluster entry is located
+
+	; current_lba = (current_cluster / 128) + lba_fat
+	lda current_cluster+1
+	sta current_lba+0
+	lda current_cluster+2
+	sta current_lba+1
+	lda current_cluster+3
+	sta current_lba+2
+	stz current_lba+3
+	lda current_cluster+0
+	asl	; upper bit in C
+	rol current_lba+0
+	rol current_lba+1
+	rol current_lba+2
+	rol current_lba+3
+	add32 current_lba, current_lba, lba_fat
+
+	; read FAT sector
+	read_lba current_lba, buffer, error
+
+	lda current_cluster
+	asl
+	asl
+	tay
+	bcs upper_half	; In first or second 256 byte part of sector?
+
+	; Copy FAT entry into current_cluster
+	ldx #0
+:	lda buffer,y
+	sta current_cluster,x
+	iny
+	inx
+	cpx #4
+	bne :-
+
+	lda #13
+	jsr $FFD2
+
+	bra done
+
+upper_half:
+	; Copy FAT entry into current_cluster
+	ldx #0
+:	lda buffer+256,y
+	sta current_cluster,x
+	iny
+	inx
+	cpx #4
+	bne :-
+
+done:
+	; Check if this is the end of cluster chain (entry >= 0x0FFFFFF8)
+	lda current_cluster+3
+	cmp #$0F
+	bcc :+
+	lda current_cluster+2
+	cmp #$FF
+	bne :+
+	lda current_cluster+1
+	cmp #$FF
+	bne :+
+	lda current_cluster+0
+	cmp #$F8
+	bcs error
+:
+	sec
+	rts
+
+error:	clc
+	rts
+
+.endproc
+
+
+;-----------------------------------------------------------------------------
+; fat32_open_rootdir
+;-----------------------------------------------------------------------------
+	.global fat32_open_rootdir
+.proc fat32_open_rootdir
+	copy_bytes current_cluster, root_cluster, 4
+	jsr calc_cluster_lba
+	read_lba current_lba, buffer, error
+done:	sec
+	rts
+
+error:	clc
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; fat32_next_sector
+;-----------------------------------------------------------------------------
+	.global fat32_next_sector
+.proc fat32_next_sector
+	inc current_cluster_sector
+	lda current_cluster_sector
+	cmp sectors_per_cluster
+	beq end_of_cluster
+
+	inc32 current_lba
+
+read_sector:
+	read_lba current_lba, buffer, error
+done:	sec
+	rts
+
+end_of_cluster:
+	jsr next_cluster
+	bcc error
+	jsr calc_cluster_lba
+	bra read_sector
+
+error:	clc
 	rts
 .endproc
 
@@ -169,10 +309,10 @@ shift_done:
 	.global fat32_read_rootdir
 .proc fat32_read_rootdir
 	copy_bytes current_cluster, root_cluster, 4
-	jsr calc_lba_cluster
+	jsr calc_cluster_lba
+	read_lba current_lba, buffer, error
 
-	read_lba lba_cluster, buffer, error
-
+start:
 	lda #<(buffer)
 	sta bufptr
 	lda #>(buffer)
@@ -189,10 +329,12 @@ print_entry:
 	and #8
 	bne next_entry
 
-	; Skip empty entries
+	; Last entry?
 	ldy #0
 	lda (bufptr),y
-	beq done
+	beq last_entry
+
+	; Skip empty entries
 	cmp #$E5
 	beq next_entry
 
@@ -238,20 +380,21 @@ next_entry:
 	dex
 	cpx #0
 	bne print_entry
-
 done:
+	jsr fat32_next_sector
+	bcc :+
+	jmp start
+:
 
+last_entry:
 
-
-
-
-	; lda lba_cluster + 3
+	; lda current_lba + 3
 	; jsr hexbyte
-	; lda lba_cluster + 2
+	; lda current_lba + 2
 	; jsr hexbyte
-	; lda lba_cluster + 1
+	; lda current_lba + 1
 	; jsr hexbyte
-	; lda lba_cluster + 0
+	; lda current_lba + 0
 	; jsr hexbyte
 
 
