@@ -3,17 +3,19 @@
 ;-----------------------------------------------------------------------------
 
 	.include "lib.inc"
+	.include "sdcard.inc"
 
 	.zeropage
-bufptr:	.word 0
+
+sdcard_bufptr:
+	.word 0
 
 	.bss
-cmdbuf: .res 1
-lba_be:	.res 4	; Big-endian LBA, this is byte 1-5 of the command buffer
-	.res 1
 
-	.globalzp bufptr
-	.global lba_be
+cmdbuf: .res 1
+sdcard_lba_be:
+	.res 4	; Big-endian LBA, this is byte 1-5 of the command buffer
+	.res 1
 
 	.code
 
@@ -154,7 +156,6 @@ lba_be:	.res 4	; Big-endian LBA, this is byte 1-5 of the command buffer
 ; sdcard_init
 ; result: C=0 -> error, C=1 -> success
 ;-----------------------------------------------------------------------------
-	.global sdcard_init
 .proc sdcard_init
 	; Deselect card and set slow speed (< 400kHz)
 	lda #2
@@ -219,10 +220,9 @@ error:	jsr deselect
 
 ;-----------------------------------------------------------------------------
 ; sdcard_read_sector
-; Set lba_be and bufptr prior to calling this function.
+; Set sdcard_lba_be and sdcard_bufptr prior to calling this function.
 ; result: C=0 -> error, C=1 -> success
 ;-----------------------------------------------------------------------------
-	.global sdcard_read_sector
 .proc sdcard_read_sector
 	; Send READ_SINGLE_BLOCK command
 	lda #($40 | 17)
@@ -245,10 +245,10 @@ error:	jsr deselect
 	ldy #2
 read_loop:
 	jsr spi_read
-	sta (bufptr)
-	inc bufptr
+	sta (sdcard_bufptr)
+	inc sdcard_bufptr
 	bne :+
-	inc bufptr+1
+	inc sdcard_bufptr+1
 :	dex
 	bne read_loop
 	dey
@@ -270,10 +270,9 @@ error:	; Error
 
 ;-----------------------------------------------------------------------------
 ; sdcard_write_sector
-; Set lba_be and bufptr prior to calling this function.
+; Set sdcard_lba_be and sdcard_bufptr prior to calling this function.
 ; result: C=0 -> error, C=1 -> success
 ;-----------------------------------------------------------------------------
-	.global sdcard_write_sector
 .proc sdcard_write_sector
 	; Send WRITE_BLOCK command
 	lda #($40 | 24)
@@ -292,11 +291,11 @@ error:	; Error
 	ldx #0
 	ldy #2
 write_loop:
-	lda (bufptr)
+	lda (sdcard_bufptr)
 	jsr spi_write
-	inc bufptr
+	inc sdcard_bufptr
 	bne :+
-	inc bufptr+1
+	inc sdcard_bufptr+1
 :	dex
 	bne write_loop
 	dey

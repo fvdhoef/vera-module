@@ -10,7 +10,7 @@ S_OBJS  := $(addprefix $(OBJ_DIR)/, $(S_SRCS:.s=.o))
 
 AS = ca65
 LD = ld65
-EMU ?= /c/Work/x16/x16-emulator/x16emu
+EMU ?= ~/Work/x16/x16-emulator/x16emu
 
 .PHONY: all run clean
 

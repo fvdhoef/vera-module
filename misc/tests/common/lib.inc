@@ -3,7 +3,23 @@
 ;-----------------------------------------------------------------------------
 
 	.include "regs.inc"
-	.import vera_save, vera_restore
+	.global vera_save, vera_restore
+
+putchar = $FFD2
+
+.macro inc16 dst
+	inc dst
+	bne :+
+	inc dst+1
+:
+.endmacro
+
+.macro dec16 dst
+	lda dst
+	bne :+
+	dec dst+1
+:	dec dst
+.endmacro
 
 ;-----------------------------------------------------------------------------
 ; Add two 32bit numbers located in memory

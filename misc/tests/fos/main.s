@@ -3,11 +3,7 @@
 ;-----------------------------------------------------------------------------
 
 	.include "lib.inc"
-
-	.import fat32_init, fat32_read_rootdir
-	.import sdcard_init, sdcard_read_sector, sdcard_write_sector
-	.import lba
-	.importzp bufptr
+	.include "fat32.inc"
 
 ;-----------------------------------------------------------------------------
 ; Variables
@@ -26,14 +22,18 @@ buffer: .res 512
 	.code
 	.global entry
 entry:
+	; Switch to ISO mode
+	lda #15
+	jsr putchar
+
 	jsr fat32_init
 	bcs ok
 	lda #'0'
-	jsr $FFD2
+	jsr putchar
 	rts
 
 ok:	lda #'1'
-	jsr $FFD2
+	jsr putchar
 
 	jsr fat32_read_rootdir
 
@@ -42,11 +42,11 @@ ok:	lda #'1'
 ; 	jsr sdcard_init
 ; 	bcs ok
 ; 	lda #'0'
-; 	jsr $FFD2
+; 	jsr putchar
 ; 	rts
 
 ; ok:	lda #'1'
-; 	jsr $FFD2
+; 	jsr putchar
 
 ; 	stz lba
 ; 	stz lba+1
@@ -113,16 +113,16 @@ loop:	rts
 	lsr
 	tay
 	lda hexstr,y
-	jsr $FFD2
+	jsr putchar
 	pla
 	pha
 	and #$0F
 	tay
 	lda hexstr,y
-	jsr $FFD2
+	jsr putchar
 
 	lda #' '
-	jsr $FFD2
+	jsr putchar
 
 	pla
 	ply

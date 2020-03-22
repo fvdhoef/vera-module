@@ -2,12 +2,11 @@
 ; fat32.s
 ;-----------------------------------------------------------------------------
 
+	.include "fat32.inc"
 	.include "lib.inc"
+	.include "sdcard.inc"
 
-	.import hexbyte
-	.import sdcard_init, sdcard_read_sector, sdcard_write_sector
-	.import lba_be
-	.importzp bufptr
+	.global hexbyte
 
 .struct filedesc
 current_cluster .dword
@@ -23,28 +22,28 @@ file_offset     .dword
 ;-----------------------------------------------------------------------------
 	.zeropage
 current_fd: .word 0
+fat32_ptr:  .word 0
 
 	.bss
+fat32_cluster: .dword 0
+fat32_cnt: .word 0
 
-; fd: .tag filedesc
-
-sectors_per_cluster: .byte 0
-cluster_shift:       .byte 0
-lba_partition:       .dword 0
-fat_size:            .dword 0
-root_cluster:        .dword 0
-lba_fat:             .dword 0
-lba_data:            .dword 0
+; Filesystem parameters
+fat32_rootdir_cluster: .dword 0
+sectors_per_cluster:   .byte 0
+cluster_shift:         .byte 0
+lba_partition:         .dword 0
+fat_size:              .dword 0
+lba_fat:               .dword 0
+lba_data:              .dword 0
 
 buffer: .res 512
-
-
 
 current_cluster:        .dword 0
 current_lba:            .dword 0	; Sector of current cluster
 current_cluster_sector: .byte 0
 
-
+current_offset:         .dword 0
 
 	.code
 
@@ -53,17 +52,17 @@ current_cluster_sector: .byte 0
 ;-----------------------------------------------------------------------------
 .macro read_lba lba, buffer, error
 	lda lba+0
-	sta lba_be+3
+	sta sdcard_lba_be+3
 	lda lba+1
-	sta lba_be+2
+	sta sdcard_lba_be+2
 	lda lba+2
-	sta lba_be+1
+	sta sdcard_lba_be+1
 	lda lba+3
-	sta lba_be+0
+	sta sdcard_lba_be+0
 	lda #<buffer
-	sta bufptr
+	sta sdcard_bufptr
 	lda #>buffer
-	sta bufptr+1
+	sta sdcard_bufptr+1
 	jsr sdcard_read_sector
 	bcs :+
 	jmp error
@@ -73,21 +72,20 @@ current_cluster_sector: .byte 0
 ;-----------------------------------------------------------------------------
 ; fat32_init
 ;-----------------------------------------------------------------------------
-	.global fat32_init
 .proc fat32_init
 	jsr sdcard_init
 	bcs :+
 	jmp error
 :
 	; Read partition table
-	stz lba_be
-	stz lba_be+1
-	stz lba_be+2
-	stz lba_be+3
+	stz sdcard_lba_be
+	stz sdcard_lba_be+1
+	stz sdcard_lba_be+2
+	stz sdcard_lba_be+3
 	lda #<buffer
-	sta bufptr
+	sta sdcard_bufptr
 	lda #>buffer
-	sta bufptr+1
+	sta sdcard_bufptr+1
 	jsr sdcard_read_sector
 	bcs :+
 	jmp error
@@ -114,20 +112,21 @@ current_cluster_sector: .byte 0
 	; Some sanity checks
 	lda buffer + 510 ; Check signature
 	cmp #$55
-	bne @error
+	bne invalid
 	lda buffer + 511
 	cmp #$AA
-	bne @error
+	bne invalid
 	lda buffer + 16	; # of FATs should be 2
 	cmp #2
-	bne @error
+	bne invalid
 	lda buffer + 17 ; Root entry count = 0 for FAT32
-	bne @error
+	bne invalid
 	lda buffer + 18
-	bne @error
-	bra :+
-@error:	jmp error
-:
+	bne invalid
+	bra valid
+invalid:
+	jmp error
+valid:
 	; Calculate shift amount based on sectors per cluster field
 	lda buffer + 13
 	sta sectors_per_cluster
@@ -144,7 +143,7 @@ shift_loop:
 	copy_bytes fat_size, buffer+36, 4
 
 	; Root cluster
-	copy_bytes root_cluster, buffer+44, 4
+	copy_bytes fat32_rootdir_cluster, buffer+44, 4
 
 	; Calculate LBA of first FAT
 	add32_16 lba_fat, lba_partition, buffer + 14
@@ -223,7 +222,7 @@ shift_done:
 	bne :-
 
 	lda #13
-	jsr $FFD2
+	jsr putchar
 
 	bra done
 
@@ -257,16 +256,13 @@ done:
 
 error:	clc
 	rts
-
 .endproc
 
-
 ;-----------------------------------------------------------------------------
-; fat32_open_rootdir
+; fat32_open_cluster
 ;-----------------------------------------------------------------------------
-	.global fat32_open_rootdir
-.proc fat32_open_rootdir
-	copy_bytes current_cluster, root_cluster, 4
+.proc fat32_open_cluster
+	copy_bytes current_cluster, fat32_cluster, 4
 	jsr calc_cluster_lba
 	read_lba current_lba, buffer, error
 done:	sec
@@ -279,7 +275,6 @@ error:	clc
 ;-----------------------------------------------------------------------------
 ; fat32_next_sector
 ;-----------------------------------------------------------------------------
-	.global fat32_next_sector
 .proc fat32_next_sector
 	inc current_cluster_sector
 	lda current_cluster_sector
@@ -304,34 +299,62 @@ error:	clc
 .endproc
 
 ;-----------------------------------------------------------------------------
+; fat32_read
+;
+; Set destination address in fat32_ptr
+; Set amount to copy in fat32_cnt
+;-----------------------------------------------------------------------------
+.proc fat32_read
+	ldy current_offset+1
+
+	
+	ldy current_offset
+	lda buffer, y
+	sta (fat32_ptr), y
+	iny
+
+	; inc16 fat32_ptr
+	; dec16 fat32_cnt
+
+	
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; fat32_read_dirent
+;-----------------------------------------------------------------------------
+.proc fat32_read_dirent
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
 ; fat32_read_rootdir
 ;-----------------------------------------------------------------------------
-	.global fat32_read_rootdir
 .proc fat32_read_rootdir
-	copy_bytes current_cluster, root_cluster, 4
-	jsr calc_cluster_lba
-	read_lba current_lba, buffer, error
+	copy_bytes fat32_cluster, fat32_rootdir_cluster, 4
+	jsr fat32_open_cluster
+	bcc error
 
 start:
 	lda #<(buffer)
-	sta bufptr
+	sta sdcard_bufptr
 	lda #>(buffer)
-	sta bufptr+1
+	sta sdcard_bufptr+1
 
 	lda #13
-	jsr $FFD2
+	jsr putchar
 
 	ldx #16
 print_entry:
 	; Skip volume label entries
 	ldy #11
-	lda (bufptr),y
+	lda (sdcard_bufptr),y
 	and #8
 	bne next_entry
 
 	; Last entry?
 	ldy #0
-	lda (bufptr),y
+	lda (sdcard_bufptr),y
 	beq last_entry
 
 	; Skip empty entries
@@ -339,43 +362,42 @@ print_entry:
 	beq next_entry
 
 	ldy #0
-:	lda (bufptr),y
-	jsr $FFD2
+:	lda (sdcard_bufptr),y
+	jsr putchar
 	iny
 	cpy #11
 	bne :-
 
 	lda #' '
-	jsr $FFD2
-
+	jsr putchar
 
 	ldy #21
-	lda (bufptr),y
+	lda (sdcard_bufptr),y
 	jsr hexbyte
 	dey
-	lda (bufptr),y
+	lda (sdcard_bufptr),y
 	jsr hexbyte
 	ldy #26
-	lda (bufptr),y
+	lda (sdcard_bufptr),y
 	jsr hexbyte
 	dey
-	lda (bufptr),y
+	lda (sdcard_bufptr),y
 	jsr hexbyte
 
 
 	; New line
 	lda #13
-	jsr $FFD2
+	jsr putchar
 
 next_entry:
 	; Go to next entry
 	clc
-	lda bufptr
+	lda sdcard_bufptr
 	adc #32
-	sta bufptr
-	lda bufptr+1
+	sta sdcard_bufptr
+	lda sdcard_bufptr+1
 	adc #0
-	sta bufptr+1
+	sta sdcard_bufptr+1
 
 	dex
 	cpx #0
@@ -400,7 +422,7 @@ last_entry:
 
 
 	
-	; lba_data + (root_cluster - 2) << cluster_shift
+	; lba_data + (fat32_rootdir_cluster - 2) << cluster_shift
 
 	sec
 	rts
