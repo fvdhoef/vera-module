@@ -32,11 +32,82 @@ entry:
 	jsr putchar
 	rts
 
-ok:	lda #'1'
+ok:	copy_bytes fat32_cluster, fat32_rootdir_cluster, 4
+	jsr fat32_open_cluster
+	bcc error
+
+	lda #13
 	jsr putchar
 
-	jsr fat32_read_rootdir
+next_entry:
+	jsr fat32_read_dirent
+	bcc done
 
+	ldx #0
+:	lda fat32_dirent + dirent::name, x
+	beq :+
+	jsr putchar
+	inx
+	bne :-
+:
+
+	; Pad spaces
+:	cpx #13
+	beq :+
+	inx
+	lda #' '
+	jsr putchar
+	bra :-
+:
+
+	; Print size
+	ldx #3
+:	lda fat32_dirent + dirent::size, x
+	jsr hexbyte
+	dex
+	cpx #$FF
+	bne :-
+
+	lda #' '
+	jsr putchar
+	jsr putchar
+
+	; Print cluster
+	ldx #3
+:	lda fat32_dirent + dirent::cluster, x
+	jsr hexbyte
+	dex
+	cpx #$FF
+	bne :-
+
+
+
+
+	lda #13
+	jsr putchar
+
+	bra next_entry
+done:
+
+; :	jsr fat32_next_sector
+; 	bcc :+
+; 	bra :-
+; :
+
+; :	jsr fat32_get_byte
+; 	bcc :+
+; 	cmp #' '
+; 	bmi :-
+; 	cmp #'~'
+; 	bpl :-
+; 	jsr putchar
+; 	bra :-
+; :
+
+
+	; jsr fat32_read_rootdir
+
+error:
 	rts
 
 ; 	jsr sdcard_init

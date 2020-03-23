@@ -8,25 +8,18 @@
 
 	.global hexbyte
 
-.struct filedesc
-current_cluster .dword
-current_lba     .dword
-dirent_lba      .dword
-dirent_offset   .word
-file_size       .dword
-file_offset     .dword
-.endstruct
-
 ;-----------------------------------------------------------------------------
 ; Variables
 ;-----------------------------------------------------------------------------
 	.zeropage
 current_fd: .word 0
 fat32_ptr:  .word 0
+bufptr:     .dword 0
 
 	.bss
 fat32_cluster: .dword 0
-fat32_cnt: .word 0
+fat32_cnt:     .word 0
+fat32_dirent:  .tag dirent
 
 ; Filesystem parameters
 fat32_rootdir_cluster: .dword 0
@@ -37,13 +30,14 @@ fat_size:              .dword 0
 lba_fat:               .dword 0
 lba_data:              .dword 0
 
-buffer: .res 512
+sector_buffer: .res 512
+sector_buffer_end:
 
 current_cluster:        .dword 0
 current_lba:            .dword 0	; Sector of current cluster
 current_cluster_sector: .byte 0
 
-current_offset:         .dword 0
+current_offset:         .dword 0	; Offset within file
 
 	.code
 
@@ -51,22 +45,29 @@ current_offset:         .dword 0
 ; read_lba
 ;-----------------------------------------------------------------------------
 .macro read_lba lba, buffer, error
-	lda lba+0
-	sta sdcard_lba_be+3
-	lda lba+1
-	sta sdcard_lba_be+2
-	lda lba+2
-	sta sdcard_lba_be+1
-	lda lba+3
-	sta sdcard_lba_be+0
+	lda lba + 0
+	sta sdcard_lba_be + 3
+	lda lba + 1
+	sta sdcard_lba_be + 2
+	lda lba + 2
+	sta sdcard_lba_be + 1
+	lda lba + 3
+	sta sdcard_lba_be + 0
 	lda #<buffer
-	sta sdcard_bufptr
+	sta sdcard_bufptr + 0
 	lda #>buffer
-	sta sdcard_bufptr+1
+	sta sdcard_bufptr + 1
 	jsr sdcard_read_sector
 	bcs :+
 	jmp error
 :
+.endmacro
+
+.macro reset_bufptr
+	lda #<sector_buffer
+	sta bufptr + 0
+	lda #>sector_buffer
+	sta bufptr + 1
 .endmacro
 
 ;-----------------------------------------------------------------------------
@@ -78,20 +79,20 @@ current_offset:         .dword 0
 	jmp error
 :
 	; Read partition table
-	stz sdcard_lba_be
-	stz sdcard_lba_be+1
-	stz sdcard_lba_be+2
-	stz sdcard_lba_be+3
-	lda #<buffer
+	stz sdcard_lba_be + 0
+	stz sdcard_lba_be + 1
+	stz sdcard_lba_be + 2
+	stz sdcard_lba_be + 3
+	lda #<sector_buffer
 	sta sdcard_bufptr
-	lda #>buffer
-	sta sdcard_bufptr+1
+	lda #>sector_buffer
+	sta sdcard_bufptr + 1
 	jsr sdcard_read_sector
 	bcs :+
 	jmp error
 :
 	; Check partition type of first partition
-	lda buffer + $1BE + 4
+	lda sector_buffer + $1BE + 4
 	cmp #$0B
 	beq :+
 	cmp #$0C
@@ -100,35 +101,35 @@ current_offset:         .dword 0
 :
 	; Copy LBA of partition of first partition
 	ldy #0
-:	lda buffer + $1BE + 8, y
+:	lda sector_buffer + $1BE + 8, y
 	sta lba_partition, y
 	iny
 	cpy #4
 	bne :-
 
 	; Read first sector of FAT32 partition
-	read_lba lba_partition, buffer, error
+	read_lba lba_partition, sector_buffer, error
 
 	; Some sanity checks
-	lda buffer + 510 ; Check signature
+	lda sector_buffer + 510 ; Check signature
 	cmp #$55
 	bne invalid
-	lda buffer + 511
+	lda sector_buffer + 511
 	cmp #$AA
 	bne invalid
-	lda buffer + 16	; # of FATs should be 2
+	lda sector_buffer + 16	; # of FATs should be 2
 	cmp #2
 	bne invalid
-	lda buffer + 17 ; Root entry count = 0 for FAT32
+	lda sector_buffer + 17 ; Root entry count = 0 for FAT32
 	bne invalid
-	lda buffer + 18
+	lda sector_buffer + 18
 	bne invalid
 	bra valid
 invalid:
 	jmp error
 valid:
 	; Calculate shift amount based on sectors per cluster field
-	lda buffer + 13
+	lda sector_buffer + 13
 	sta sectors_per_cluster
 	bne :+
 	jmp error
@@ -140,13 +141,13 @@ shift_loop:
 	bra shift_loop
 :
 	; Fat size in sectors
-	copy_bytes fat_size, buffer+36, 4
+	copy_bytes fat_size, sector_buffer + 36, 4
 
 	; Root cluster
-	copy_bytes fat32_rootdir_cluster, buffer+44, 4
+	copy_bytes fat32_rootdir_cluster, sector_buffer + 44, 4
 
 	; Calculate LBA of first FAT
-	add32_16 lba_fat, lba_partition, buffer + 14
+	add32_16 lba_fat, lba_partition, sector_buffer + 14
 
 	; Calculate LBA of first data sector
 	add32 lba_data, lba_fat, fat_size
@@ -167,10 +168,10 @@ error:	clc
 	sub32_val current_lba, current_cluster, 2
 	ldy cluster_shift
 	beq shift_done
-:	asl current_lba+0
-	rol current_lba+1
-	rol current_lba+2
-	rol current_lba+3
+:	asl current_lba + 0
+	rol current_lba + 1
+	rol current_lba + 2
+	rol current_lba + 3
 	dey
 	bne :-
 shift_done:
@@ -188,23 +189,23 @@ shift_done:
 	; Calculate sector where cluster entry is located
 
 	; current_lba = (current_cluster / 128) + lba_fat
-	lda current_cluster+1
-	sta current_lba+0
-	lda current_cluster+2
-	sta current_lba+1
-	lda current_cluster+3
-	sta current_lba+2
-	stz current_lba+3
-	lda current_cluster+0
+	lda current_cluster + 1
+	sta current_lba + 0
+	lda current_cluster + 2
+	sta current_lba + 1
+	lda current_cluster + 3
+	sta current_lba + 2
+	stz current_lba + 3
+	lda current_cluster + 0
 	asl	; upper bit in C
-	rol current_lba+0
-	rol current_lba+1
-	rol current_lba+2
-	rol current_lba+3
+	rol current_lba + 0
+	rol current_lba + 1
+	rol current_lba + 2
+	rol current_lba + 3
 	add32 current_lba, current_lba, lba_fat
 
 	; read FAT sector
-	read_lba current_lba, buffer, error
+	read_lba current_lba, sector_buffer, error
 
 	lda current_cluster
 	asl
@@ -214,23 +215,20 @@ shift_done:
 
 	; Copy FAT entry into current_cluster
 	ldx #0
-:	lda buffer,y
-	sta current_cluster,x
+:	lda sector_buffer, y
+	sta current_cluster, x
 	iny
 	inx
 	cpx #4
 	bne :-
-
-	lda #13
-	jsr putchar
 
 	bra done
 
 upper_half:
 	; Copy FAT entry into current_cluster
 	ldx #0
-:	lda buffer+256,y
-	sta current_cluster,x
+:	lda sector_buffer + 256, y
+	sta current_cluster, x
 	iny
 	inx
 	cpx #4
@@ -238,16 +236,16 @@ upper_half:
 
 done:
 	; Check if this is the end of cluster chain (entry >= 0x0FFFFFF8)
-	lda current_cluster+3
+	lda current_cluster + 3
 	cmp #$0F
 	bcc :+
-	lda current_cluster+2
+	lda current_cluster + 2
 	cmp #$FF
 	bne :+
-	lda current_cluster+1
+	lda current_cluster + 1
 	cmp #$FF
 	bne :+
-	lda current_cluster+0
+	lda current_cluster + 0
 	cmp #$F8
 	bcs error
 :
@@ -262,9 +260,20 @@ error:	clc
 ; fat32_open_cluster
 ;-----------------------------------------------------------------------------
 .proc fat32_open_cluster
+	; Read first sector of cluster
 	copy_bytes current_cluster, fat32_cluster, 4
 	jsr calc_cluster_lba
-	read_lba current_lba, buffer, error
+	read_lba current_lba, sector_buffer, error
+
+	; Reset buffer pointer
+	reset_bufptr
+
+	; Reset current offset
+	stz current_offset + 0
+	stz current_offset + 1
+	stz current_offset + 2
+	stz current_offset + 3
+
 done:	sec
 	rts
 
@@ -284,7 +293,9 @@ error:	clc
 	inc32 current_lba
 
 read_sector:
-	read_lba current_lba, buffer, error
+	read_lba current_lba, sector_buffer, error
+	reset_bufptr
+
 done:	sec
 	rts
 
@@ -305,18 +316,62 @@ error:	clc
 ; Set amount to copy in fat32_cnt
 ;-----------------------------------------------------------------------------
 .proc fat32_read
-	ldy current_offset+1
+next:
+	; At end of buffer?
+	lda bufptr + 0
+	cmp #<sector_buffer_end
+	bne :+
+	lda bufptr + 1
+	cmp #>sector_buffer_end
+	bne :+
+	jsr fat32_next_sector
+	bcc error
+:
+	; Copy byte from source to destination pointer
+	lda (bufptr)
+	sta (fat32_ptr)
+	inc16 fat32_ptr
+	inc16 bufptr
 
-	
-	ldy current_offset
-	lda buffer, y
-	sta (fat32_ptr), y
-	iny
+	; Decrease count and check if done
+	dec16 fat32_cnt
+	lda fat32_cnt + 0
+	bne next
+	lda fat32_cnt + 1
+	bne next
 
-	; inc16 fat32_ptr
-	; dec16 fat32_cnt
+done:
+	sec
+	rts
 
-	
+error:
+	clc
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; fat32_get_byte
+;-----------------------------------------------------------------------------
+.proc fat32_get_byte
+next:
+	; At end of buffer?
+	lda bufptr + 0
+	cmp #<sector_buffer_end
+	bne :+
+	lda bufptr + 1
+	cmp #>sector_buffer_end
+	bne :+
+	jsr fat32_next_sector
+	bcs :+
+	clc	; Indicate error
+	rts
+:
+	; Get byte from buffer
+	lda (bufptr)
+	inc16 bufptr
+	inc32 current_offset
+
+	sec	; Indicate success
 	rts
 .endproc
 
@@ -324,109 +379,131 @@ error:	clc
 ; fat32_read_dirent
 ;-----------------------------------------------------------------------------
 .proc fat32_read_dirent
+read_entry:
+	; At end of buffer?
+	lda bufptr + 0
+	cmp #<sector_buffer_end
+	bne :+
+	lda bufptr + 1
+	cmp #>sector_buffer_end
+	bne :+
+	jsr fat32_next_sector
+	bcs :+
+	clc	; Indicate error
 	rts
-.endproc
+:
 
-;-----------------------------------------------------------------------------
-; fat32_read_rootdir
-;-----------------------------------------------------------------------------
-.proc fat32_read_rootdir
-	copy_bytes fat32_cluster, fat32_rootdir_cluster, 4
-	jsr fat32_open_cluster
-	bcc error
-
-start:
-	lda #<(buffer)
-	sta sdcard_bufptr
-	lda #>(buffer)
-	sta sdcard_bufptr+1
-
-	lda #13
-	jsr putchar
-
-	ldx #16
-print_entry:
 	; Skip volume label entries
 	ldy #11
-	lda (sdcard_bufptr),y
+	lda (bufptr), y
 	and #8
-	bne next_entry
-
+	beq :+
+	jmp next_entry
+:
 	; Last entry?
 	ldy #0
-	lda (sdcard_bufptr),y
-	beq last_entry
-
+	lda (bufptr), y
+	bne :+
+	jmp error
+:
 	; Skip empty entries
 	cmp #$E5
 	beq next_entry
 
+	; Copy first part of file name
 	ldy #0
-:	lda (sdcard_bufptr),y
-	jsr putchar
+:	lda (bufptr), y
+	cmp #' '
+	beq skip_spaces
+	sta fat32_dirent + dirent::name, y
 	iny
+	cpy #8
+	bne :-
+
+	; Skip any following spaces
+skip_spaces:
+	tya
+	tax
+skip_space_loop:
+	cpy #8
+	beq :+
+	lda (bufptr), y
+	iny
+	cmp #' '
+	beq skip_space_loop
+:
+
+	; If extension starts with a space, we're done
+	lda (bufptr), y
+	cmp #' '
+	beq name_done
+
+	; Add dot to output
+	lda #'.'
+	sta fat32_dirent + dirent::name, x
+	inx
+
+	; Copy extension part of file name
+:	lda (bufptr), y
+	cmp #' '
+	beq name_done
+	sta fat32_dirent + dirent::name, x
+	iny
+	inx
 	cpy #11
 	bne :-
 
-	lda #' '
-	jsr putchar
+name_done:
+	; Add zero-termination to output
+	lda #0
+	sta fat32_dirent + dirent::name, x
 
-	ldy #21
-	lda (sdcard_bufptr),y
-	jsr hexbyte
-	dey
-	lda (sdcard_bufptr),y
-	jsr hexbyte
+	; Copy file size
+	ldy #28
+	ldx #0
+:	lda (bufptr), y
+	sta fat32_dirent + dirent::size, x
+	iny
+	inx
+	cpx #4
+	bne :-
+
+	; Copy cluster
 	ldy #26
-	lda (sdcard_bufptr),y
-	jsr hexbyte
-	dey
-	lda (sdcard_bufptr),y
-	jsr hexbyte
+	lda (bufptr), y
+	sta fat32_dirent + dirent::cluster + 0
+	iny
+	lda (bufptr), y
+	sta fat32_dirent + dirent::cluster + 1
+	ldy #20
+	lda (bufptr), y
+	sta fat32_dirent + dirent::cluster + 2
+	iny
+	lda (bufptr), y
+	sta fat32_dirent + dirent::cluster + 3
 
-
-	; New line
-	lda #13
-	jsr putchar
-
-next_entry:
-	; Go to next entry
+	; Increment buffer pointer to next entry
 	clc
-	lda sdcard_bufptr
+	lda bufptr + 0
 	adc #32
-	sta sdcard_bufptr
-	lda sdcard_bufptr+1
+	sta bufptr + 0
+	lda bufptr + 1
 	adc #0
-	sta sdcard_bufptr+1
-
-	dex
-	cpx #0
-	bne print_entry
-done:
-	jsr fat32_next_sector
-	bcc :+
-	jmp start
-:
-
-last_entry:
-
-	; lda current_lba + 3
-	; jsr hexbyte
-	; lda current_lba + 2
-	; jsr hexbyte
-	; lda current_lba + 1
-	; jsr hexbyte
-	; lda current_lba + 0
-	; jsr hexbyte
-
-
-
-	
-	; lba_data + (fat32_rootdir_cluster - 2) << cluster_shift
+	sta bufptr + 1
 
 	sec
 	rts
 
-error:	clc
+next_entry:
+	clc
+	lda bufptr + 0
+	adc #32
+	sta bufptr + 0
+	lda bufptr + 1
+	adc #0
+	sta bufptr + 1
+	jmp read_entry
+
+error:
 	rts
 .endproc

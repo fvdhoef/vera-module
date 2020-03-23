@@ -3,8 +3,9 @@
 ;-----------------------------------------------------------------------------
 
 .struct dirent
-file_name .res 13
-file_size .dword
+name    .res 13
+size    .dword
+cluster .dword
 .endstruct
 
 ;-----------------------------------------------------------------------------
@@ -15,6 +16,7 @@ file_size .dword
 
 	.globalzp fat32_ptr
 	.global   fat32_cnt
+	.global   fat32_dirent
 
 ;-----------------------------------------------------------------------------
 ; Functions
@@ -24,6 +26,7 @@ file_size .dword
 	.global fat32_next_sector
 
 	.global fat32_read
+	.global fat32_get_byte
 
 	.global fat32_read_dirent
 
