@@ -12,31 +12,30 @@
 ; Variables
 ;-----------------------------------------------------------------------------
 	.zeropage
-current_fd: .word 0
-fat32_ptr:  .word 0
-bufptr:     .dword 0
+current_fd:             .word 0
+fat32_ptr:              .word 0
+bufptr:                 .dword 0
 
 	.bss
-fat32_cluster: .dword 0
-fat32_cnt:     .word 0
-fat32_dirent:  .tag dirent
+fat32_cluster:          .dword 0
+fat32_cnt:              .word 0
+fat32_dirent:           .tag dirent
 
 ; Filesystem parameters
-fat32_rootdir_cluster: .dword 0
-sectors_per_cluster:   .byte 0
-cluster_shift:         .byte 0
-lba_partition:         .dword 0
-fat_size:              .dword 0
-lba_fat:               .dword 0
-lba_data:              .dword 0
+fat32_rootdir_cluster:  .dword 0
+sectors_per_cluster:    .byte 0
+cluster_shift:          .byte 0
+lba_partition:          .dword 0
+fat_size:               .dword 0
+lba_fat:                .dword 0
+lba_data:               .dword 0
 
-sector_buffer: .res 512
+sector_buffer:          .res 512
 sector_buffer_end:
 
 current_cluster:        .dword 0
 current_lba:            .dword 0	; Sector of current cluster
 current_cluster_sector: .byte 0
-
 current_offset:         .dword 0	; Offset within file
 
 	.code
@@ -63,6 +62,9 @@ current_offset:         .dword 0	; Offset within file
 :
 .endmacro
 
+;-----------------------------------------------------------------------------
+; reset_bufptr
+;-----------------------------------------------------------------------------
 .macro reset_bufptr
 	lda #<sector_buffer
 	sta bufptr + 0
@@ -74,6 +76,7 @@ current_offset:         .dword 0	; Offset within file
 ; fat32_init
 ;-----------------------------------------------------------------------------
 .proc fat32_init
+	; Initialize SD card
 	jsr sdcard_init
 	bcs :+
 	jmp error
@@ -99,7 +102,7 @@ current_offset:         .dword 0	; Offset within file
 	beq :+
 	jmp error
 :
-	; Copy LBA of partition of first partition
+	; Get LBA of partition of first partition
 	ldy #0
 :	lda sector_buffer + $1BE + 8, y
 	sta lba_partition, y
@@ -340,12 +343,10 @@ next:
 	lda fat32_cnt + 1
 	bne next
 
-done:
-	sec
+done:	sec
 	rts
 
-error:
-	clc
+error:	clc
 	rts
 .endproc
 
@@ -392,10 +393,10 @@ read_entry:
 	clc	; Indicate error
 	rts
 :
-
 	; Skip volume label entries
 	ldy #11
 	lda (bufptr), y
+	sta fat32_dirent + dirent::attribute
 	and #8
 	beq :+
 	jmp next_entry
@@ -432,7 +433,6 @@ skip_space_loop:
 	cmp #' '
 	beq skip_space_loop
 :
-
 	; If extension starts with a space, we're done
 	lda (bufptr), y
 	cmp #' '
@@ -504,6 +504,5 @@ next_entry:
 	sta bufptr + 1
 	jmp read_entry
 
-error:
-	rts
+error:	rts
 .endproc

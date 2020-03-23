@@ -6,16 +6,12 @@
 	.include "sdcard.inc"
 
 	.zeropage
-
-sdcard_bufptr:
-	.word 0
+sdcard_bufptr:   .word 0
 
 	.bss
-
-cmdbuf: .res 1
-sdcard_lba_be:
-	.res 4	; Big-endian LBA, this is byte 1-5 of the command buffer
-	.res 1
+cmdbuf:          .res 1
+sdcard_lba_be:   .res 4	; Big-endian LBA, this is byte 1-5 of the command buffer
+	         .res 1
 
 	.code
 
@@ -109,34 +105,34 @@ sdcard_lba_be:
 ;-----------------------------------------------------------------------------
 .macro send_cmd_inline cmd, arg
 	lda #(cmd | $40)
-	sta cmdbuf+0
+	sta cmdbuf + 0
 
 .if .hibyte(.hiword(arg)) = 0
-	stz cmdbuf+1
+	stz cmdbuf + 1
 .else
 	lda #(.hibyte(.hiword(arg)))
-	sta cmdbuf+1
+	sta cmdbuf + 1
 .endif
 
 .if ^arg = 0
-	stz cmdbuf+2
+	stz cmdbuf + 2
 .else
 	lda #^arg
-	sta cmdbuf+2
+	sta cmdbuf + 2
 .endif
 
 .if >arg = 0
-	stz cmdbuf+3
+	stz cmdbuf + 3
 .else
 	lda #>arg
-	sta cmdbuf+3
+	sta cmdbuf + 3
 .endif
 
 .if <arg = 0
-	stz cmdbuf+4
+	stz cmdbuf + 4
 .else
 	lda #<arg
-	sta cmdbuf+4
+	sta cmdbuf + 4
 .endif
 
 .if cmd = 0
@@ -148,7 +144,7 @@ sdcard_lba_be:
 	lda #1
 .endif
 .endif
-	sta cmdbuf+5
+	sta cmdbuf + 5
 	jsr send_cmd
 .endmacro
 
@@ -179,7 +175,6 @@ sdcard_lba_be:
 	beq :+
 	jmp error
 :
-
 sdv2:	; Receive remaining 4 bytes of R7 response
 	jsr spi_read
 	jsr spi_read
@@ -226,9 +221,9 @@ error:	jsr deselect
 .proc sdcard_read_sector
 	; Send READ_SINGLE_BLOCK command
 	lda #($40 | 17)
-	sta cmdbuf
+	sta cmdbuf + 0
 	lda #1
-	sta cmdbuf+5
+	sta cmdbuf + 5
 	jsr send_cmd
 
 	; Wait for start of data packet
@@ -246,9 +241,9 @@ error:	jsr deselect
 read_loop:
 	jsr spi_read
 	sta (sdcard_bufptr)
-	inc sdcard_bufptr
+	inc sdcard_bufptr + 0
 	bne :+
-	inc sdcard_bufptr+1
+	inc sdcard_bufptr + 1
 :	dex
 	bne read_loop
 	dey
@@ -276,9 +271,9 @@ error:	; Error
 .proc sdcard_write_sector
 	; Send WRITE_BLOCK command
 	lda #($40 | 24)
-	sta cmdbuf
+	sta cmdbuf + 0
 	lda #1
-	sta cmdbuf+5
+	sta cmdbuf + 5
 	jsr send_cmd
 	cmp #00
 	bne error
@@ -293,9 +288,9 @@ error:	; Error
 write_loop:
 	lda (sdcard_bufptr)
 	jsr spi_write
-	inc sdcard_bufptr
+	inc sdcard_bufptr + 0
 	bne :+
-	inc sdcard_bufptr+1
+	inc sdcard_bufptr + 1
 :	dex
 	bne write_loop
 	dey

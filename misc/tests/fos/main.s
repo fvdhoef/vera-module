@@ -59,6 +59,13 @@ next_entry:
 	jsr putchar
 	bra :-
 :
+	; Print attributes
+	lda fat32_dirent + dirent::attribute
+	jsr hexbyte
+
+	lda #' '
+	jsr putchar
+	jsr putchar
 
 	; Print size
 	ldx #3
@@ -104,8 +111,6 @@ done:
 ; 	bra :-
 ; :
 
-
-	; jsr fat32_read_rootdir
 
 error:
 	rts

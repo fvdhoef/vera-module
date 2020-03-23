@@ -3,9 +3,10 @@
 ;-----------------------------------------------------------------------------
 
 .struct dirent
-name    .res 13
-size    .dword
-cluster .dword
+name      .res 13
+attribute .byte
+size      .dword
+cluster   .dword
 .endstruct
 
 ;-----------------------------------------------------------------------------
@@ -29,6 +30,3 @@ cluster .dword
 	.global fat32_get_byte
 
 	.global fat32_read_dirent
-
-	.global fat32_read_rootdir
-
