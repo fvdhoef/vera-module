@@ -3,10 +3,10 @@
 ;-----------------------------------------------------------------------------
 
 .struct dirent
-name      .res 13
-attribute .byte
-size      .dword
-cluster   .dword
+name       .res 13
+attributes .byte
+size       .dword
+cluster    .dword
 .endstruct
 
 ;-----------------------------------------------------------------------------

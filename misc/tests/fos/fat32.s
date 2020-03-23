@@ -396,7 +396,7 @@ read_entry:
 	; Skip volume label entries
 	ldy #11
 	lda (bufptr), y
-	sta fat32_dirent + dirent::attribute
+	sta fat32_dirent + dirent::attributes
 	and #8
 	beq :+
 	jmp next_entry
@@ -504,5 +504,6 @@ next_entry:
 	sta bufptr + 1
 	jmp read_entry
 
-error:	rts
+error:	clc
+	rts
 .endproc

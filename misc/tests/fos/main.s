@@ -9,19 +9,15 @@
 ; Variables
 ;-----------------------------------------------------------------------------
 	.rodata
-
 	.bss
-buffer: .res 512
-
 	.zeropage
-
 
 ;-----------------------------------------------------------------------------
 ; Entry point
 ;-----------------------------------------------------------------------------
 	.code
 	.global entry
-entry:
+.proc entry
 	; Switch to ISO mode
 	lda #15
 	jsr putchar
@@ -32,10 +28,20 @@ entry:
 	jsr putchar
 	rts
 
-ok:	copy_bytes fat32_cluster, fat32_rootdir_cluster, 4
+ok:
+.if 1
+	lda #$63
+	sta fat32_cluster + 0
+	stz fat32_cluster + 1
+	stz fat32_cluster + 2
+	stz fat32_cluster + 3
+.else
+	copy_bytes fat32_cluster, fat32_rootdir_cluster, 4
+.endif
 	jsr fat32_open_cluster
 	bcc error
 
+.if 1
 	lda #13
 	jsr putchar
 
@@ -43,6 +49,8 @@ next_entry:
 	jsr fat32_read_dirent
 	bcc done
 
+.if 1
+	; Print file name
 	ldx #0
 :	lda fat32_dirent + dirent::name, x
 	beq :+
@@ -50,7 +58,6 @@ next_entry:
 	inx
 	bne :-
 :
-
 	; Pad spaces
 :	cpx #13
 	beq :+
@@ -60,7 +67,7 @@ next_entry:
 	bra :-
 :
 	; Print attributes
-	lda fat32_dirent + dirent::attribute
+	lda fat32_dirent + dirent::attributes
 	jsr hexbyte
 
 	lda #' '
@@ -87,93 +94,39 @@ next_entry:
 	cpx #$FF
 	bne :-
 
-
-
-
 	lda #13
 	jsr putchar
+.endif
 
 	bra next_entry
 done:
+.endif
 
-; :	jsr fat32_next_sector
-; 	bcc :+
-; 	bra :-
-; :
+.if 0
+:	jsr fat32_next_sector
+	bcc :+
+	bra :-
+:
+.endif
 
-; :	jsr fat32_get_byte
-; 	bcc :+
-; 	cmp #' '
-; 	bmi :-
-; 	cmp #'~'
-; 	bpl :-
-; 	jsr putchar
-; 	bra :-
-; :
-
+.if 0
+:	jsr fat32_get_byte
+	bcc :+
+	cmp #' '
+	bmi :-
+	cmp #'~'
+	bpl :-
+	jsr putchar
+	bra :-
+:
+.endif
 
 error:
 	rts
 
-; 	jsr sdcard_init
-; 	bcs ok
-; 	lda #'0'
-; 	jsr putchar
-; 	rts
-
-; ok:	lda #'1'
-; 	jsr putchar
-
-; 	stz lba
-; 	stz lba+1
-; 	stz lba+2
-; 	stz lba+3
-
-; again:
-; 	lda #<buffer
-; 	sta bufptr
-; 	lda #>buffer
-; 	sta bufptr+1
-; 	jsr sdcard_read_sector
-
-; 	inc lba+3
-; 	bne again
-; 	inc lba+2
-; 	lda lba+2
-; 	cmp #8
-; 	bne again
-
-
-; 	stz lba
-; 	lda #1
-; 	sta lba+1
-; 	stz lba+2
-; 	stz lba+3
-
-; again:
-; 	lda #<buffer
-; 	sta bufptr
-; 	lda #>buffer
-; 	sta bufptr+1
-; 	jsr sdcard_write_sector
-
-; 	inc lba+3
-; 	bne again
-; 	inc lba+2
-; 	lda lba+2
-; 	cmp #8
-; 	bne again
-
-
-
-
-	; Wait forever
-loop:	rts
-
-
-
-
-
+	; Return
+	rts
+.endproc
 
 ;-----------------------------------------------------------------------------
 ; hexbyte
