@@ -5,4 +5,8 @@ S_SRCS += fat32.s
 
 EMU_PARAMS = -sdcard ~/Work/x16/x16-emulator/disk5.img -quality nearest -echo
 
+install: all
+	cp $(OUT) /media/frank/X16/
+	sync
+
 include common/Makefile.common

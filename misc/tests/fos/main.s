@@ -29,7 +29,7 @@
 	rts
 
 ok:
-.if 1
+.if 0
 	lda #$63
 	sta fat32_cluster + 0
 	stz fat32_cluster + 1
@@ -113,9 +113,9 @@ done:
 :	jsr fat32_get_byte
 	bcc :+
 	cmp #' '
-	bmi :-
-	cmp #'~'
-	bpl :-
+	bcs :-
+	cmp #'~'+1
+	bcc :-
 	jsr putchar
 	bra :-
 :

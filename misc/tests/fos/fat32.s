@@ -8,35 +8,41 @@
 
 	.global hexbyte
 
+.struct context
+cluster        .dword      ; Current cluster
+lba            .dword      ; Sector of current cluster
+cluster_sector .byte       ; Sector index within current cluster
+offset         .dword      ; Offset within file
+bufptr         .word       ; 
+.endstruct
+
 ;-----------------------------------------------------------------------------
 ; Variables
 ;-----------------------------------------------------------------------------
 	.zeropage
-current_fd:             .word 0
-fat32_ptr:              .word 0
-bufptr:                 .dword 0
+fat32_ptr:              .word 0       ; Used to pass a buffer pointer to read/write functions
+bufptr:                 .word 0       ; Points to current offset within sector buffer
 
 	.bss
-fat32_cluster:          .dword 0
-fat32_cnt:              .word 0
-fat32_dirent:           .tag dirent
+fat32_cluster:          .dword 0      ; Used to pass cluster to fat32_open_cluster
+fat32_cnt:              .word 0       ; Used to specifiy number of bytes to read/write
+fat32_dirent:           .tag dirent   ; Buffer containing decoded directory entry
 
 ; Filesystem parameters
-fat32_rootdir_cluster:  .dword 0
-sectors_per_cluster:    .byte 0
-cluster_shift:          .byte 0
-lba_partition:          .dword 0
-fat_size:               .dword 0
-lba_fat:                .dword 0
-lba_data:               .dword 0
+fat32_rootdir_cluster:  .dword 0      ; Cluster of root directory
+sectors_per_cluster:    .byte 0       ; Sectors per cluster
+cluster_shift:          .byte 0       ; Log2 of sectors_per_cluster
+lba_partition:          .dword 0      ; Start sector of FAT32 partition
+fat_size:               .dword 0      ; Size in sectors of each FAT table
+lba_fat:                .dword 0      ; Start sector of first FAT table
+lba_data:               .dword 0      ; Start sector of first data cluster
+
+context_idx:            .byte 0       ; Index of current context
+cur_context:            .tag context  ; Current file descriptor state
+contexts:               .res .sizeof(context) * FAT32_CONTEXTS
 
 sector_buffer:          .res 512
 sector_buffer_end:
-
-current_cluster:        .dword 0
-current_lba:            .dword 0	; Sector of current cluster
-current_cluster_sector: .byte 0
-current_offset:         .dword 0	; Offset within file
 
 	.code
 
@@ -164,23 +170,63 @@ error:	clc
 .endproc
 
 ;-----------------------------------------------------------------------------
+; fat32_set_context
+;
+; context index in A
+;-----------------------------------------------------------------------------
+.proc fat32_set_context
+	; Already selected?
+	cmp context_idx
+	beq done
+
+	; Valid context index?
+	cmp #FAT32_CONTEXTS
+	bcs error
+
+	tax
+
+	; Put zero page variables in current context
+	lda bufptr + 0
+	sta cur_context + context::bufptr + 0
+	lda bufptr + 1
+	sta cur_context + context::bufptr + 1
+
+	; Copy current context back
+	; ....
+
+	; Copy new context to current
+	; ....
+
+	; Restore zero page variables from current context
+	lda cur_context + context::bufptr + 0
+	sta bufptr + 0
+	lda cur_context + context::bufptr + 1
+	sta bufptr + 1
+
+done:	sec
+	rts
+error:	clc
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
 ; calc_cluster_lba
 ;-----------------------------------------------------------------------------
 .proc calc_cluster_lba
-	; current_lba = lba_data + ((current_cluster - 2) << cluster_shift)
-	sub32_val current_lba, current_cluster, 2
+	; lba = lba_data + ((cluster - 2) << cluster_shift)
+	sub32_val cur_context + context::lba, cur_context + context::cluster, 2
 	ldy cluster_shift
 	beq shift_done
-:	asl current_lba + 0
-	rol current_lba + 1
-	rol current_lba + 2
-	rol current_lba + 3
+:	asl cur_context + context::lba + 0
+	rol cur_context + context::lba + 1
+	rol cur_context + context::lba + 2
+	rol cur_context + context::lba + 3
 	dey
 	bne :-
 shift_done:
 
-	add32 current_lba, current_lba, lba_data
-	stz current_cluster_sector
+	add32 cur_context + context::lba, cur_context + context::lba, lba_data
+	stz cur_context + context::cluster_sector
 
 	rts
 .endproc
@@ -191,35 +237,35 @@ shift_done:
 .proc next_cluster
 	; Calculate sector where cluster entry is located
 
-	; current_lba = (current_cluster / 128) + lba_fat
-	lda current_cluster + 1
-	sta current_lba + 0
-	lda current_cluster + 2
-	sta current_lba + 1
-	lda current_cluster + 3
-	sta current_lba + 2
-	stz current_lba + 3
-	lda current_cluster + 0
+	; lba = lba_fat + (cluster / 128)
+	lda cur_context + context::cluster + 1
+	sta cur_context + context::lba + 0
+	lda cur_context + context::cluster + 2
+	sta cur_context + context::lba + 1
+	lda cur_context + context::cluster + 3
+	sta cur_context + context::lba + 2
+	stz cur_context + context::lba + 3
+	lda cur_context + context::cluster + 0
 	asl	; upper bit in C
-	rol current_lba + 0
-	rol current_lba + 1
-	rol current_lba + 2
-	rol current_lba + 3
-	add32 current_lba, current_lba, lba_fat
+	rol cur_context + context::lba + 0
+	rol cur_context + context::lba + 1
+	rol cur_context + context::lba + 2
+	rol cur_context + context::lba + 3
+	add32 cur_context + context::lba, cur_context + context::lba, lba_fat
 
 	; read FAT sector
-	read_lba current_lba, sector_buffer, error
+	read_lba cur_context + context::lba, sector_buffer, error
 
-	lda current_cluster
+	lda cur_context + context::cluster
 	asl
 	asl
 	tay
 	bcs upper_half	; In first or second 256 byte part of sector?
 
-	; Copy FAT entry into current_cluster
+	; Copy FAT entry into cur_context + context::cluster
 	ldx #0
 :	lda sector_buffer, y
-	sta current_cluster, x
+	sta cur_context + context::cluster, x
 	iny
 	inx
 	cpx #4
@@ -228,10 +274,10 @@ shift_done:
 	bra done
 
 upper_half:
-	; Copy FAT entry into current_cluster
+	; Copy FAT entry into cur_context + context::cluster
 	ldx #0
 :	lda sector_buffer + 256, y
-	sta current_cluster, x
+	sta cur_context + context::cluster, x
 	iny
 	inx
 	cpx #4
@@ -239,16 +285,16 @@ upper_half:
 
 done:
 	; Check if this is the end of cluster chain (entry >= 0x0FFFFFF8)
-	lda current_cluster + 3
+	lda cur_context + context::cluster + 3
 	cmp #$0F
 	bcc :+
-	lda current_cluster + 2
+	lda cur_context + context::cluster + 2
 	cmp #$FF
 	bne :+
-	lda current_cluster + 1
+	lda cur_context + context::cluster + 1
 	cmp #$FF
 	bne :+
-	lda current_cluster + 0
+	lda cur_context + context::cluster + 0
 	cmp #$F8
 	bcs error
 :
@@ -264,18 +310,18 @@ error:	clc
 ;-----------------------------------------------------------------------------
 .proc fat32_open_cluster
 	; Read first sector of cluster
-	copy_bytes current_cluster, fat32_cluster, 4
+	copy_bytes cur_context + context::cluster, fat32_cluster, 4
 	jsr calc_cluster_lba
-	read_lba current_lba, sector_buffer, error
+	read_lba cur_context + context::lba, sector_buffer, error
 
 	; Reset buffer pointer
 	reset_bufptr
 
 	; Reset current offset
-	stz current_offset + 0
-	stz current_offset + 1
-	stz current_offset + 2
-	stz current_offset + 3
+	stz cur_context + context::offset + 0
+	stz cur_context + context::offset + 1
+	stz cur_context + context::offset + 2
+	stz cur_context + context::offset + 3
 
 done:	sec
 	rts
@@ -288,15 +334,15 @@ error:	clc
 ; fat32_next_sector
 ;-----------------------------------------------------------------------------
 .proc fat32_next_sector
-	inc current_cluster_sector
-	lda current_cluster_sector
+	inc cur_context + context::cluster_sector
+	lda cur_context + context::cluster_sector
 	cmp sectors_per_cluster
 	beq end_of_cluster
 
-	inc32 current_lba
+	inc32 cur_context + context::lba
 
 read_sector:
-	read_lba current_lba, sector_buffer, error
+	read_lba cur_context + context::lba, sector_buffer, error
 	reset_bufptr
 
 done:	sec
@@ -370,7 +416,7 @@ next:
 	; Get byte from buffer
 	lda (bufptr)
 	inc16 bufptr
-	inc32 current_offset
+	inc32 cur_context + context::offset
 
 	sec	; Indicate success
 	rts
