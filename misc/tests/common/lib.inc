@@ -103,14 +103,21 @@ putchar = $FFD2
 ; Copy bytes
 ;-----------------------------------------------------------------------------
 .macro copy_bytes dst, src, count
-.if count <= 255
 	ldy #0
 :	lda src, y
 	sta dst, y
 	iny
 	cpy #count
 	bne :-
-.else
-    .error "Count too high"
-.endif
+.endmacro
+
+;-----------------------------------------------------------------------------
+; Clear bytes
+;-----------------------------------------------------------------------------
+.macro clear_bytes dst, count
+	ldx #0
+:	stz dst, x
+	inx
+	cpx #count
+	bne :-
 .endmacro

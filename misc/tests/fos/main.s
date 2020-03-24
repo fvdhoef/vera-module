@@ -12,44 +12,10 @@
 	.bss
 	.zeropage
 
-;-----------------------------------------------------------------------------
-; Entry point
-;-----------------------------------------------------------------------------
 	.code
-	.global entry
-.proc entry
-	; Switch to ISO mode
-	lda #15
-	jsr putchar
 
-	jsr fat32_init
-	bcs ok
-	lda #'0'
-	jsr putchar
-	rts
 
-ok:
-.if 0
-	lda #$63
-	sta fat32_cluster + 0
-	stz fat32_cluster + 1
-	stz fat32_cluster + 2
-	stz fat32_cluster + 3
-.else
-	copy_bytes fat32_cluster, fat32_rootdir_cluster, 4
-.endif
-	jsr fat32_open_cluster
-	bcc error
-
-.if 1
-	lda #13
-	jsr putchar
-
-next_entry:
-	jsr fat32_read_dirent
-	bcc done
-
-.if 1
+.proc print_dirent
 	; Print file name
 	ldx #0
 :	lda fat32_dirent + dirent::name, x
@@ -96,11 +62,69 @@ next_entry:
 
 	lda #13
 	jsr putchar
-.endif
 
-	bra next_entry
-done:
-.endif
+	rts
+.endproc
+
+
+;-----------------------------------------------------------------------------
+; Entry point
+;-----------------------------------------------------------------------------
+	.global entry
+.proc entry
+	; Switch to ISO mode
+	lda #15
+	jsr putchar
+
+	jsr fat32_init
+	bcs ok
+	lda #'0'
+	jsr putchar
+	rts
+
+ok:
+	; Context 0: root directory
+	lda #0
+	jsr fat32_set_context
+	copy_bytes fat32_cluster, fat32_rootdir_cluster, 4
+	jsr fat32_open_cluster
+	bcc error
+
+	; Context 1: sub-directory
+	lda #1
+	jsr fat32_set_context
+	lda #$63
+	sta fat32_cluster + 0
+	stz fat32_cluster + 1
+	stz fat32_cluster + 2
+	stz fat32_cluster + 3
+	jsr fat32_open_cluster
+	bcc error
+
+	lda #0
+	jsr fat32_set_context
+
+	lda #13
+	jsr putchar
+
+:	jsr fat32_read_dirent
+	bcc :+
+	jsr print_dirent
+	bra :-
+:
+
+	lda #1
+	jsr fat32_set_context
+
+	lda #13
+	jsr putchar
+
+:	jsr fat32_read_dirent
+	bcc :+
+	jsr print_dirent
+	bra :-
+:
+
 
 .if 0
 :	jsr fat32_next_sector

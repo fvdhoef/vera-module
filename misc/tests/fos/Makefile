@@ -10,3 +10,5 @@ install: all
 	sync
 
 include common/Makefile.common
+
+.DEFAULT_GOAL := all

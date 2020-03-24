@@ -9,11 +9,11 @@
 	.global hexbyte
 
 .struct context
+flags          .byte       ; Flags bit 0:in use, 1:dirty
 cluster        .dword      ; Current cluster
 lba            .dword      ; Sector of current cluster
 cluster_sector .byte       ; Sector index within current cluster
-offset         .dword      ; Offset within file
-bufptr         .word       ; 
+bufptr         .word       ; Pointer within sector_buffer
 .endstruct
 
 ;-----------------------------------------------------------------------------
@@ -37,12 +37,18 @@ fat_size:               .dword 0      ; Size in sectors of each FAT table
 lba_fat:                .dword 0      ; Start sector of first FAT table
 lba_data:               .dword 0      ; Start sector of first data cluster
 
+; Contexts
 context_idx:            .byte 0       ; Index of current context
 cur_context:            .tag context  ; Current file descriptor state
-contexts:               .res .sizeof(context) * FAT32_CONTEXTS
+contexts:               .res 16 * FAT32_CONTEXTS
+contexts_end:
 
 sector_buffer:          .res 512
 sector_buffer_end:
+
+.if .sizeof(context) > 16
+.error "Context too big"
+.endif
 
 	.code
 
@@ -82,6 +88,10 @@ sector_buffer_end:
 ; fat32_init
 ;-----------------------------------------------------------------------------
 .proc fat32_init
+	; Initialize file contexts
+	stz context_idx
+	clear_bytes cur_context, contexts_end - cur_context
+
 	; Initialize SD card
 	jsr sdcard_init
 	bcs :+
@@ -183,7 +193,8 @@ error:	clc
 	cmp #FAT32_CONTEXTS
 	bcs error
 
-	tax
+	; Save new context index
+	pha
 
 	; Put zero page variables in current context
 	lda bufptr + 0
@@ -192,16 +203,50 @@ error:	clc
 	sta cur_context + context::bufptr + 1
 
 	; Copy current context back
-	; ....
+	lda context_idx   ; X=A*16
+	asl
+	asl
+	asl
+	asl
+	tax
+
+	ldy #0
+:	lda cur_context, y
+	sta contexts, x
+	inx
+	iny
+	cpy #(.sizeof(context))
+	bne :-
 
 	; Copy new context to current
-	; ....
+	pla              ; Get new context idx
+	sta context_idx  ; X=A*16
+	asl
+	asl
+	asl
+	asl
+	tax
+
+	ldy #0
+:	lda contexts, x
+	sta cur_context, y
+	inx
+	iny
+	cpy #(.sizeof(context))
+	bne :-
 
 	; Restore zero page variables from current context
 	lda cur_context + context::bufptr + 0
 	sta bufptr + 0
 	lda cur_context + context::bufptr + 1
 	sta bufptr + 1
+
+	; Reload sector
+	lda cur_context + context::flags
+	and #1
+	beq reload_done
+	read_lba cur_context + context::lba, sector_buffer, error
+reload_done:
 
 done:	sec
 	rts
@@ -317,11 +362,9 @@ error:	clc
 	; Reset buffer pointer
 	reset_bufptr
 
-	; Reset current offset
-	stz cur_context + context::offset + 0
-	stz cur_context + context::offset + 1
-	stz cur_context + context::offset + 2
-	stz cur_context + context::offset + 3
+	; Set buffer as in-use
+	lda #1
+	sta cur_context + context::flags
 
 done:	sec
 	rts
@@ -416,7 +459,6 @@ next:
 	; Get byte from buffer
 	lda (bufptr)
 	inc16 bufptr
-	inc32 cur_context + context::offset
 
 	sec	; Indicate success
 	rts
