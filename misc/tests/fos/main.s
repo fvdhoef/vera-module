@@ -171,6 +171,7 @@ error:
 ;-----------------------------------------------------------------------------
 	.global entry
 .proc entry
+	;rts
 	; sei
 
 	; Disable display
