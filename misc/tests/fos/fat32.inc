@@ -31,5 +31,4 @@ FAT32_CONTEXTS = 3
 
 	.global fat32_read
 	.global fat32_get_byte
-
 	.global fat32_read_dirent

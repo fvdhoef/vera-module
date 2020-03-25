@@ -6,8 +6,6 @@
 	.include "lib.inc"
 	.include "sdcard.inc"
 
-	.global hexbyte
-
 .struct context
 flags          .byte       ; Flags bit 0:in use, 1:dirty
 cluster        .dword      ; Current cluster
@@ -46,6 +44,10 @@ contexts_end:
 sector_buffer:          .res 512
 sector_buffer_end:
 
+.if .sizeof(context) * FAT32_CONTEXTS > 256
+.error "FAT32_CONTEXTS too high"
+.endif
+
 .if .sizeof(context) > 16
 .error "Context too big"
 .endif
@@ -56,6 +58,7 @@ sector_buffer_end:
 ; read_lba
 ;-----------------------------------------------------------------------------
 .macro read_lba lba, buffer, error
+	; SD card driver expects LBA in big-endian
 	lda lba + 0
 	sta sdcard_lba_be + 3
 	lda lba + 1
@@ -64,10 +67,14 @@ sector_buffer_end:
 	sta sdcard_lba_be + 1
 	lda lba + 3
 	sta sdcard_lba_be + 0
+
+	; Set pointer to buffer
 	lda #<buffer
 	sta sdcard_bufptr + 0
 	lda #>buffer
 	sta sdcard_bufptr + 1
+
+	; Read the sector
 	jsr sdcard_read_sector
 	bcs :+
 	jmp error
@@ -136,7 +143,7 @@ sector_buffer_end:
 	lda sector_buffer + 511
 	cmp #$AA
 	bne invalid
-	lda sector_buffer + 16	; # of FATs should be 2
+	lda sector_buffer + 16 ; # of FATs should be 2
 	cmp #2
 	bne invalid
 	lda sector_buffer + 17 ; Root entry count = 0 for FAT32
@@ -478,7 +485,7 @@ read_entry:
 	bne :+
 	jsr fat32_next_sector
 	bcs :+
-	clc	; Indicate error
+	clc     ; Indicate error
 	rts
 :
 	; Skip volume label entries

@@ -3,6 +3,7 @@
 ;-----------------------------------------------------------------------------
 
 	.include "lib.inc"
+	.include "text_display.inc"
 	.include "fat32.inc"
 
 ;-----------------------------------------------------------------------------
@@ -13,7 +14,6 @@
 	.zeropage
 
 	.code
-
 
 .proc print_dirent
 	; Print file name
@@ -34,55 +34,80 @@
 :
 	; Print attributes
 	lda fat32_dirent + dirent::attributes
-	jsr hexbyte
-
-	lda #' '
-	jsr putchar
-	jsr putchar
+	bit #$10
+	bne dir
 
 	; Print size
-	ldx #3
-:	lda fat32_dirent + dirent::size, x
-	jsr hexbyte
-	dex
-	cpx #$FF
-	bne :-
-
+	copy_bytes val32, fat32_dirent + dirent::size, 4
 	lda #' '
+	sta padch
+	jsr print_val32
+
+	bra cluster
+
+dir:	ldy #0
+:	lda dirstr, y
+	beq :+
 	jsr putchar
+	iny
+	bra :-
+:
+cluster:
+.if 0
+	; Spacing
+	lda #' '
 	jsr putchar
 
 	; Print cluster
+	; copy_bytes val32, fat32_dirent + dirent::cluster, 4
+	; lda #0
+	; sta padch
+	; jsr print_val32
+
 	ldx #3
 :	lda fat32_dirent + dirent::cluster, x
-	jsr hexbyte
+	jsr puthex
 	dex
 	cpx #$FF
 	bne :-
+.endif
 
-	lda #13
+	; New line
+	lda #10
 	jsr putchar
 
 	rts
+
+dirstr: .byte "<DIR>     ", 0
 .endproc
 
-
 ;-----------------------------------------------------------------------------
-; Entry point
+; main
 ;-----------------------------------------------------------------------------
-	.global entry
-.proc entry
-	; Switch to ISO mode
-	lda #15
-	jsr putchar
+.proc main
+	; Init text display
+	jsr text_display_init
 
+	; Init FAT32
 	jsr fat32_init
-	bcs ok
+	bcs :+
 	lda #'0'
 	jsr putchar
 	rts
+:
 
-ok:
+	; stz SRC_PTR + 0
+	; stz SRC_PTR + 1
+	; lda #0
+	; sta LENGTH + 0
+	; lda #$10
+	; sta LENGTH + 1
+
+	; jsr hexdump
+
+	; rts
+
+blaat:
 	; Context 0: root directory
 	lda #0
 	jsr fat32_set_context
@@ -91,21 +116,18 @@ ok:
 	bcc error
 
 	; Context 1: sub-directory
-	lda #1
-	jsr fat32_set_context
-	lda #$63
-	sta fat32_cluster + 0
-	stz fat32_cluster + 1
-	stz fat32_cluster + 2
-	stz fat32_cluster + 3
-	jsr fat32_open_cluster
-	bcc error
+	; lda #1
+	; jsr fat32_set_context
+	; lda #$63
+	; sta fat32_cluster + 0
+	; stz fat32_cluster + 1
+	; stz fat32_cluster + 2
+	; stz fat32_cluster + 3
+	; jsr fat32_open_cluster
+	; bcc error
 
-	lda #0
-	jsr fat32_set_context
-
-	lda #13
-	jsr putchar
+	; lda #0
+	; jsr fat32_set_context
 
 :	jsr fat32_read_dirent
 	bcc :+
@@ -113,73 +135,50 @@ ok:
 	bra :-
 :
 
-	lda #1
-	jsr fat32_set_context
+; 	lda #1
+; 	jsr fat32_set_context
 
-	lda #13
+; 	lda #10
+; 	jsr putchar
+
+; :	jsr fat32_read_dirent
+; 	bcc :+
+; 	jsr print_dirent
+; 	bra :-
+; :
+
+
+	lda #']'
 	jsr putchar
 
-:	jsr fat32_read_dirent
-	bcc :+
-	jsr print_dirent
-	bra :-
-:
-
-
-.if 0
-:	jsr fat32_next_sector
-	bcc :+
-	bra :-
-:
-.endif
-
-.if 0
-:	jsr fat32_get_byte
-	bcc :+
-	cmp #' '
-	bcs :-
-	cmp #'~'+1
-	bcc :-
+:	jsr $FFE4
+	beq :-
 	jsr putchar
 	bra :-
-:
-.endif
 
-error:
+
+	; jmp blaat
+	; Return
 	rts
 
-	; Return
+
+error:
 	rts
 .endproc
 
 ;-----------------------------------------------------------------------------
-; hexbyte
-; A: byte to print
+; Entry point
 ;-----------------------------------------------------------------------------
-	.global hexbyte
-.proc hexbyte
-	phy
-	pha
-	lsr
-	lsr
-	lsr
-	lsr
-	tay
-	lda hexstr,y
-	jsr putchar
-	pla
-	pha
-	and #$0F
-	tay
-	lda hexstr,y
-	jsr putchar
+	.global entry
+.proc entry
+	; sei
 
-	lda #' '
-	jsr putchar
+	; Disable display
+	stz VERA_CTRL
+	lda VERA_DC_VIDEO
+	and #7
+	sta VERA_DC_VIDEO
 
-	pla
-	ply
-	rts
-
-hexstr: .byte "0123456789ABCDEF"
+	jsr main
+loop:	bra loop
 .endproc

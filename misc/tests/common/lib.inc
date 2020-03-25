@@ -5,8 +5,6 @@
 	.include "regs.inc"
 	.global vera_save, vera_restore
 
-putchar = $FFD2
-
 .macro inc16 dst
 	inc dst
 	bne :+
