@@ -8,6 +8,7 @@
 	.bss
 val32:  .dword 0
 padch:  .byte 0
+line:   .byte 0
 
 	.rodata
 font:	.incbin "font8x8.bin"
@@ -99,14 +100,15 @@ next:	lda (SRC_PTR)
 
 	; Set current position to start of last line
 	stz VERA_ADDR_L
-	lda #59
-	sta VERA_ADDR_M
+	; lda #59
+	stz VERA_ADDR_M
 	lda #$20
 	sta VERA_ADDR_H
 
 	; Reset scroll position
 	stz VERA_L0_VSCROLL_L
 	stz VERA_L0_VSCROLL_H
+	stz line
 
 	rts
 .endproc
@@ -117,10 +119,22 @@ next:	lda (SRC_PTR)
 .proc putchar
 	pha
 
+	; Remove cursor
+	lda #0
+	sta VERA_ADDR_H
+	lda #' '
+	sta VERA_DATA0
+	lda #$20
+	sta VERA_ADDR_H
+
+	pla
+	pha
 	sta $9FB6       ; Emulator output
 
 	; New line?
-	cmp #$A
+	cmp #10
+	beq newline
+	cmp #13
 	beq newline
 
 	; Print character
@@ -132,7 +146,16 @@ next:	lda (SRC_PTR)
 	beq newline
 
 	; Done
-done:   pla
+done:   
+	; Print cursor
+	lda #0
+	sta VERA_ADDR_H
+	lda #'_'
+	sta VERA_DATA0
+	lda #$20
+	sta VERA_ADDR_H
+
+	pla
 	rts
 
 newline:
@@ -154,6 +177,13 @@ erase_line:
 	dec VERA_ADDR_M
 	plx
 
+	lda line
+	cmp #59
+	beq scroll
+	inc line
+	bra done
+
+scroll:
 	; Scroll
 	clc
 	lda VERA_L0_VSCROLL_L

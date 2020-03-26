@@ -85,9 +85,21 @@ dirstr: .byte "<DIR>     ", 0
 ; main
 ;-----------------------------------------------------------------------------
 .proc main
+	; Switch to ISO mode
+	lda #15
+	jsr $FFD2
+
 	; Init text display
 	jsr text_display_init
 
+	; Print start message
+	ldy #0
+:	lda message, y
+	beq :+
+	jsr putchar
+	iny
+	bra :-
+:
 	; Init FAT32
 	jsr fat32_init
 	bcs :+
@@ -129,11 +141,11 @@ blaat:
 	; lda #0
 	; jsr fat32_set_context
 
-:	jsr fat32_read_dirent
-	bcc :+
-	jsr print_dirent
-	bra :-
-:
+; :	jsr fat32_read_dirent
+; 	bcc :+
+; 	jsr print_dirent
+; 	bra :-
+; :
 
 ; 	lda #1
 ; 	jsr fat32_set_context
@@ -148,13 +160,23 @@ blaat:
 ; :
 
 
-	lda #']'
+new_cmd:
+	lda #'>'
 	jsr putchar
 
 :	jsr $FFE4
 	beq :-
+
+	cmp #13
+	beq enter
+
 	jsr putchar
 	bra :-
+
+enter:
+	jsr putchar
+	bra new_cmd
+
 
 
 	; jmp blaat
@@ -164,6 +186,9 @@ blaat:
 
 error:
 	rts
+
+message:
+	.byte 10,"Frank's X16 OS",10,10, 0
 .endproc
 
 ;-----------------------------------------------------------------------------
