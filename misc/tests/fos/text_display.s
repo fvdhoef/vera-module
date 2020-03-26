@@ -134,8 +134,10 @@ next:	lda (SRC_PTR)
 	; New line?
 	cmp #10
 	beq newline
-	cmp #13
-	beq newline
+
+	; Backspace
+	cmp #8
+	beq backspace
 
 	; Print character
 	sta VERA_DATA0
@@ -157,6 +159,11 @@ done:
 
 	pla
 	rts
+
+backspace:
+	dec VERA_ADDR_L
+	dec VERA_ADDR_L
+	bra done
 
 newline:
 	stz VERA_ADDR_L

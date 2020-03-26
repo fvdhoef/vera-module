@@ -11,6 +11,13 @@
 ;-----------------------------------------------------------------------------
 	.rodata
 	.bss
+
+MAX_LINE_LEN = 78
+line_len:
+	.byte 0
+line_buf:
+	.res MAX_LINE_LEN + 1
+
 	.zeropage
 
 	.code
@@ -82,6 +89,89 @@ dirstr: .byte "<DIR>     ", 0
 .endproc
 
 ;-----------------------------------------------------------------------------
+; getchar
+;-----------------------------------------------------------------------------
+.proc getchar
+:	jsr $FFE4
+	beq :-
+
+	cmp #13
+	beq enter
+	cmp #20
+	beq backspace
+	rts
+
+enter:	lda #10
+	rts
+backspace:
+	lda #8
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; getline
+;-----------------------------------------------------------------------------
+.proc getline
+	stz line_len
+
+next_char:
+	jsr getchar
+
+	cmp #10
+	beq enter
+	cmp #8
+	beq backspace
+
+	ldx line_len
+	cpx #MAX_LINE_LEN
+	beq next_char
+
+	sta line_buf, x
+	inc line_len
+
+	jsr putchar
+
+	bra next_char
+
+backspace:
+	ldx line_len
+	beq next_char
+	dec line_len
+	jsr putchar
+	bra next_char
+
+enter:	jsr putchar
+
+	; Zero terminate line_buf
+	ldx line_len
+	stz line_buf, x
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; toupper
+;-----------------------------------------------------------------------------
+.proc toupper
+	ldx #$FF
+next:	inx
+	lda line_buf, x
+	beq done
+
+	; Lower case character?
+	cmp #'a'
+	bcc next
+	cmp #'z'+1
+	bcs next
+
+	; Make uppercase
+	and #$DF
+	sta line_buf, x
+	bra next
+
+done:	rts
+.endproc
+
+;-----------------------------------------------------------------------------
 ; main
 ;-----------------------------------------------------------------------------
 .proc main
@@ -100,6 +190,31 @@ dirstr: .byte "<DIR>     ", 0
 	iny
 	bra :-
 :
+	; Get command from user
+new_cmd:
+	lda #'>'
+	jsr putchar
+	jsr getline
+	jsr toupper
+
+	ldx #0
+:	lda line_buf, x
+	beq :+
+	inx
+	jsr putchar
+	bra :-
+:
+	lda #10
+	jsr putchar
+
+
+
+
+	bra new_cmd
+
+
+
+
 	; Init FAT32
 	jsr fat32_init
 	bcs :+
@@ -160,22 +275,7 @@ blaat:
 ; :
 
 
-new_cmd:
-	lda #'>'
-	jsr putchar
 
-:	jsr $FFE4
-	beq :-
-
-	cmp #13
-	beq enter
-
-	jsr putchar
-	bra :-
-
-enter:
-	jsr putchar
-	bra new_cmd
 
 
 
@@ -188,7 +288,7 @@ error:
 	rts
 
 message:
-	.byte 10,"Frank's X16 OS",10,10, 0
+	.byte 10,"** Frank's X16 OS **",10,10, 0
 .endproc
 
 ;-----------------------------------------------------------------------------
