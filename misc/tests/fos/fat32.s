@@ -602,3 +602,32 @@ next_entry:
 error:	clc
 	rts
 .endproc
+
+;-----------------------------------------------------------------------------
+; fat32_find_file
+;
+; Find file specified in zero-terminated string pointer to by fat32_ptr
+;-----------------------------------------------------------------------------
+.proc fat32_find_file
+next:	jsr fat32_read_dirent
+	bcc error
+
+	ldy #0
+:	lda fat32_dirent + dirent::name, y
+	beq match
+	cmp (fat32_ptr), y
+	bne next
+	iny
+	bra :-
+
+match:	; Search string also at end?
+	lda (fat32_ptr), y
+	bne next
+
+	sec
+	rts
+
+error:
+	clc
+	rts
+.endproc

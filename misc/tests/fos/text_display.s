@@ -129,7 +129,7 @@ next:	lda (SRC_PTR)
 
 	pla
 	pha
-	sta $9FB6       ; Emulator output
+	; sta $9FB6       ; Emulator output
 
 	; New line?
 	cmp #10

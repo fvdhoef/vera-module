@@ -26,9 +26,13 @@ FAT32_CONTEXTS = 3
 ;-----------------------------------------------------------------------------
 	.global fat32_init
 	.global fat32_set_context
+
+	; Low level
 	.global fat32_open_cluster
 	.global fat32_next_sector
 
+	; Higher level
 	.global fat32_read
 	.global fat32_get_byte
 	.global fat32_read_dirent
+	.global fat32_find_file
