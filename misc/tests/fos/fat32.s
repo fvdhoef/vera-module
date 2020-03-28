@@ -12,6 +12,8 @@ cluster        .dword      ; Current cluster
 lba            .dword      ; Sector of current cluster
 cluster_sector .byte       ; Sector index within current cluster
 bufptr         .word       ; Pointer within sector_buffer
+remaining      .dword      ; Bytes remaining in current file
+cwd_cluster    .dword      ; Cluster of current directory
 .endstruct
 
 ;-----------------------------------------------------------------------------
@@ -23,7 +25,7 @@ bufptr:                 .word 0       ; Points to current offset within sector b
 
 	.bss
 fat32_cluster:          .dword 0      ; Used to pass cluster to fat32_open_cluster
-fat32_cnt:              .word 0       ; Used to specifiy number of bytes to read/write
+fat32_size:             .word 0       ; Used to specifiy number of bytes to read/write
 fat32_dirent:           .tag dirent   ; Buffer containing decoded directory entry
 
 ; Filesystem parameters
@@ -48,7 +50,7 @@ sector_buffer_end:
 .error "FAT32_CONTEXTS too high"
 .endif
 
-.if .sizeof(context) > 16
+.if .sizeof(context) > 32
 .error "Context too big"
 .endif
 
@@ -210,7 +212,8 @@ error:	clc
 	sta cur_context + context::bufptr + 1
 
 	; Copy current context back
-	lda context_idx   ; X=A*16
+	lda context_idx   ; X=A*32
+	asl
 	asl
 	asl
 	asl
@@ -424,7 +427,7 @@ error:	clc
 ; fat32_read
 ;
 ; Set destination address in fat32_ptr
-; Set amount to copy in fat32_cnt
+; Set amount to copy in fat32_size
 ;-----------------------------------------------------------------------------
 .proc fat32_read
 next:
@@ -445,10 +448,10 @@ next:
 	inc16 bufptr
 
 	; Decrease count and check if done
-	dec16 fat32_cnt
-	lda fat32_cnt + 0
+	dec16 fat32_size
+	lda fat32_size + 0
 	bne next
-	lda fat32_cnt + 1
+	lda fat32_size + 1
 	bne next
 
 done:	sec
@@ -463,6 +466,15 @@ error:	clc
 ;-----------------------------------------------------------------------------
 .proc fat32_get_byte
 next:
+	; Bytes remaining?
+	lda cur_context + context::remaining + 0
+	ora cur_context + context::remaining + 1
+	ora cur_context + context::remaining + 2
+	ora cur_context + context::remaining + 3
+	bne :+
+	clc
+	rts
+:
 	; At end of buffer?
 	lda bufptr + 0
 	cmp #<sector_buffer_end
@@ -475,6 +487,9 @@ next:
 	clc	; Indicate error
 	rts
 :
+	; Decrement bytes remaining
+	dec32 cur_context + context::remaining
+
 	; Get byte from buffer
 	lda (bufptr)
 	inc16 bufptr
@@ -618,7 +633,7 @@ error:	clc
 ;-----------------------------------------------------------------------------
 ; fat32_find_file
 ;
-; Find file specified in zero-terminated string pointer to by fat32_ptr
+; Find file specified in zero-terminated string pointed to by fat32_ptr
 ;-----------------------------------------------------------------------------
 .proc fat32_find_file
 next:	jsr fat32_read_dirent
@@ -641,5 +656,75 @@ match:	; Search string also at end?
 
 error:
 	clc
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; fat32_open_cwd
+;
+; Open current working directory
+;-----------------------------------------------------------------------------
+.proc fat32_open_cwd
+	; Open current directory
+	copy_bytes fat32_cluster, cur_context + context::cwd_cluster, 4
+	jmp fat32_open_cluster
+.endproc
+
+;-----------------------------------------------------------------------------
+; fat32_open_file
+;
+; Open file specified in string pointed to by fat32_ptr
+;-----------------------------------------------------------------------------
+.proc fat32_open_file
+	; Open current directory
+	copy_bytes fat32_cluster, cur_context + context::cwd_cluster, 4
+	jsr fat32_open_cluster
+	bcs :+
+	rts
+:
+	; Find file
+	jsr fat32_find_file
+	bcs :+
+	rts
+:
+	; Check if this isn't a directory
+	lda fat32_dirent + dirent::attributes
+	bit #$10
+	beq :+
+	clc
+	rts
+:
+	; Open file
+	copy_bytes cur_context + context::remaining, fat32_dirent + dirent::size, 4
+	copy_bytes fat32_cluster, fat32_dirent + dirent::cluster, 4
+	jmp fat32_open_cluster
+.endproc
+
+;-----------------------------------------------------------------------------
+; fat32_chdir
+;-----------------------------------------------------------------------------
+.proc fat32_chdir
+	; Open current directory
+	copy_bytes fat32_cluster, cur_context + context::cwd_cluster, 4
+	jsr fat32_open_cluster
+	bcs :+
+	rts
+:
+	; Find file
+	jsr fat32_find_file
+	bcs :+
+	rts
+:
+	; Check if this is a directory
+	lda fat32_dirent + dirent::attributes
+	bit #$10
+	bne :+
+	clc
+	rts
+:
+	; Set as current directory
+	copy_bytes cur_context + context::cwd_cluster, fat32_dirent + dirent::cluster, 4
+
+	sec
 	rts
 .endproc

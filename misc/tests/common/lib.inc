@@ -76,6 +76,22 @@
 .endmacro
 
 ;-----------------------------------------------------------------------------
+; Decrement 32bit number located in memory
+;-----------------------------------------------------------------------------
+.macro dec32 dst
+    lda dst + 0
+    bne :+++
+    lda dst + 1
+    bne :++
+    lda dst + 2
+    bne :+
+    dec dst + 3
+:	dec dst + 2
+:	dec dst + 1
+:	dec dst + 0
+.endmacro
+
+;-----------------------------------------------------------------------------
 ; Subtract immediate value from 32bit number located in memory
 ;-----------------------------------------------------------------------------
 .macro sub32_val dst, src, val

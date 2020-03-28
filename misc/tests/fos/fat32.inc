@@ -15,10 +15,8 @@ FAT32_CONTEXTS = 3
 ;-----------------------------------------------------------------------------
 ; Variables
 ;-----------------------------------------------------------------------------
-.global   fat32_rootdir_cluster  ; Cluster number of rootdir
-.global   fat32_cluster          ; Cluster argument to fat32_open_cluster
 .globalzp fat32_ptr              ; Buffer pointer for fat32_read
-.global   fat32_cnt              ; Read count for fat32_read
+.global   fat32_size             ; Read count for fat32_read
 .global   fat32_dirent           ; Directory entry result for fat32_read_dirent
 
 ;-----------------------------------------------------------------------------
@@ -27,11 +25,11 @@ FAT32_CONTEXTS = 3
 .global fat32_init
 .global fat32_set_context
 
-; Low level
-.global fat32_open_cluster
-.global fat32_next_sector
-
 ; Higher level
+.global fat32_open_cwd
+.global fat32_open_file
+.global fat32_chdir
+
 .global fat32_read
 .global fat32_get_byte
 .global fat32_read_dirent

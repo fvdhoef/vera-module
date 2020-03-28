@@ -21,18 +21,17 @@
 
 	.rodata
 cmd_table:
-	def_cmd "CD", cmd_cd
-	def_cmd "CLS", cmd_cls
-	def_cmd "DIR", cmd_dir
-	def_cmd "HELP", cmd_help
-	def_cmd "LOAD", cmd_load
-	def_cmd "TYPE", cmd_type
+	def_cmd "CD", cmd_cd		; Change directory
+	def_cmd "CLS", cmd_cls		; Clear screen
+	def_cmd "COPY", cmd_copy	; Copy file
+	def_cmd "DEL", cmd_del		; Delete file
+	def_cmd "DIR", cmd_dir		; List directory
+	def_cmd "HELP", cmd_help	; Show available commands
+	def_cmd "HEXDUMP", cmd_hexdump	; Hexdump contents of file
+	def_cmd "LOAD", cmd_load	; Load file
+	def_cmd "MOVE", cmd_move	; Move file
+	def_cmd "TYPE", cmd_type	; Print contents of file
 	.byte 0
-
-	.bss
-current_dir_cluster:	.word 0
-
-	.zeropage
 
 	.code
 
@@ -47,8 +46,6 @@ current_dir_cluster:	.word 0
 	jsr putchar
 	rts
 :
-	copy_bytes current_dir_cluster, fat32_rootdir_cluster, 4
-
 	; Get commands from user
 next_cmd:
 	; Print prompt
@@ -142,28 +139,17 @@ str_cmd_not_found: .byte "Command not found!",10,0
 ; cmd_dir
 ;-----------------------------------------------------------------------------
 .proc cmd_dir
-	; Init FAT32
-	jsr fat32_init
+	; Open current directory
+	jsr fat32_open_cwd
 	bcs :+
-	lda #'0'
-	jsr putchar
 	rts
 :
-	; Context 0: root directory
-	lda #0
-	jsr fat32_set_context
-	copy_bytes fat32_cluster, current_dir_cluster, 4
-	jsr fat32_open_cluster
-	bcc error
-
 	; Print entries
 :	jsr fat32_read_dirent
 	bcc :+
 	jsr print_dirent
 	bra :-
 :
-
-error:
 	rts
 .endproc
 
@@ -171,23 +157,10 @@ error:
 ; cmd_cd
 ;-----------------------------------------------------------------------------
 .proc cmd_cd
+	; Transform directory name to uppercase
 	jsr first_word_to_upper
 
-	; Init FAT32
-	jsr fat32_init
-	bcs :+
-	lda #'0'
-	jsr putchar
-	rts
-:
-	; Context 0: root directory
-	lda #0
-	jsr fat32_set_context
-	copy_bytes fat32_cluster, current_dir_cluster, 4
-	jsr fat32_open_cluster
-	bcc dir_not_found
-
-	; Find file
+	; Change directory
 	clc
 	lda #<line_buf
 	adc line_start
@@ -195,24 +168,12 @@ error:
 	lda #>line_buf
 	adc #0
 	sta fat32_ptr + 1
+	jsr fat32_chdir
+	bcs ok
 
-	jsr fat32_find_file
-	bcc dir_not_found
-
-	; Check if this is a directory
-	lda fat32_dirent + dirent::attributes
-	bit #$10
-	beq dir_not_found
-
-	; Set as current directory
-	copy_bytes current_dir_cluster, fat32_dirent + dirent::cluster, 4
-
-	rts
-
-dir_not_found:
-	; Print error message
+	; Changing directory failed, print error message
 	print_str str_dir_not_found
-	rts
+ok:	rts
 
 str_dir_not_found: .byte "Directory not found!",10,0
 .endproc
@@ -221,23 +182,10 @@ str_dir_not_found: .byte "Directory not found!",10,0
 ; cmd_type
 ;-----------------------------------------------------------------------------
 .proc cmd_type
+	; Transform file name to uppercase
 	jsr first_word_to_upper
 
-	; Init FAT32
-	jsr fat32_init
-	bcs :+
-	lda #'0'
-	jsr putchar
-	rts
-:
-	; Context 0: root directory
-	lda #0
-	jsr fat32_set_context
-	copy_bytes fat32_cluster, current_dir_cluster, 4
-	jsr fat32_open_cluster
-	bcc file_not_found
-
-	; Find file
+	; Open file
 	clc
 	lda #<line_buf
 	adc line_start
@@ -245,34 +193,22 @@ str_dir_not_found: .byte "Directory not found!",10,0
 	lda #>line_buf
 	adc #0
 	sta fat32_ptr + 1
+	jsr fat32_open_file
+	bcs ok
 
-	jsr fat32_find_file
-	bcc file_not_found
-
-	; Check if this isn't a directory
-	lda fat32_dirent + dirent::attributes
-	bit #$10
-	bne file_not_found
-
-	; Open file
-	copy_bytes fat32_cluster, fat32_dirent + dirent::cluster, 4
-	jsr fat32_open_cluster
-	bcc file_not_found
-
+	; Opening file failed, print error message
+	print_str str_file_not_found
+	rts
+ok:
 	; Print contents
 :	jsr fat32_get_byte
 	bcc done
 	jsr putchar
 	bra :-
-
 done:
+	; Print new line
 	lda #10
 	jsr putchar
-	rts
-
-file_not_found:
-	; Print error message
-	print_str str_file_not_found
 	rts
 
 str_file_not_found: .byte "File not found!",10,0
@@ -326,7 +262,38 @@ done:	lda #10
 	rts
 .endproc
 
+;-----------------------------------------------------------------------------
+; cmd_cls
+;-----------------------------------------------------------------------------
 .proc cmd_cls
 	jsr clear_screen
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; cmd_copy
+;-----------------------------------------------------------------------------
+.proc cmd_copy
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; cmd_move
+;-----------------------------------------------------------------------------
+.proc cmd_move
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; cmd_del
+;-----------------------------------------------------------------------------
+.proc cmd_del
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; cmd_hexdump
+;-----------------------------------------------------------------------------
+.proc cmd_hexdump
 	rts
 .endproc
