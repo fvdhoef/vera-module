@@ -21,6 +21,7 @@ cwd_cluster    .dword      ; Cluster of current directory
 ;-----------------------------------------------------------------------------
 	.zeropage
 fat32_ptr:              .word 0       ; Used to pass a buffer pointer to read/write functions
+fat32_ptr2:             .word 0       ; Used to pass a buffer pointer to read/write functions
 bufptr:                 .word 0       ; Points to current offset within sector buffer
 
 	.bss

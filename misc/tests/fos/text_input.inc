@@ -19,3 +19,4 @@ MAX_LINE_LEN = 78
 .global to_upper
 .global skip_spaces
 .global first_word_to_upper
+.global terminate_and_skip_to_next_word

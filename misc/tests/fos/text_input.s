@@ -128,3 +128,37 @@ next:	inx
 done:
 	rts
 .endproc
+
+;-----------------------------------------------------------------------------
+; terminate_and_skip_to_next_word
+;-----------------------------------------------------------------------------
+.proc terminate_and_skip_to_next_word
+	; Find next space
+	ldx line_start
+	dex
+next:	inx
+	lda line_buf, x
+	beq no_word
+	cmp #' '
+	bne next
+
+	; Zero-terminate
+	stz line_buf, x
+	inx
+	stx line_start
+
+	; Skip spaces
+	jsr skip_spaces
+
+	; End of string?
+	ldx line_start
+	lda line_buf, x
+	beq no_word
+
+	sec
+	rts
+
+no_word:
+	clc
+	rts
+.endproc

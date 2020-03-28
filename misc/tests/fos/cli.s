@@ -30,6 +30,7 @@ cmd_table:
 	def_cmd "HEXDUMP", cmd_hexdump	; Hexdump contents of file
 	def_cmd "LOAD", cmd_load	; Load file
 	def_cmd "MOVE", cmd_move	; Move file
+	def_cmd "RENAME", cmd_rename	; Rename file
 	def_cmd "TYPE", cmd_type	; Print contents of file
 	.byte 0
 
@@ -153,14 +154,16 @@ str_cmd_not_found: .byte "Command not found!",10,0
 	rts
 .endproc
 
-;-----------------------------------------------------------------------------
-; cmd_cd
-;-----------------------------------------------------------------------------
-.proc cmd_cd
-	; Transform directory name to uppercase
-	jsr first_word_to_upper
+.proc check_no_params
+	ldx line_start
+	lda line_buf, x
+	beq ok
+	jmp syntax_error
+ok:	sec
+	rts
+.endproc
 
-	; Change directory
+.proc set_param1
 	clc
 	lda #<line_buf
 	adc line_start
@@ -168,12 +171,96 @@ str_cmd_not_found: .byte "Command not found!",10,0
 	lda #>line_buf
 	adc #0
 	sta fat32_ptr + 1
-	jsr fat32_chdir
-	bcs ok
 
-	; Changing directory failed, print error message
+	jmp terminate_and_skip_to_next_word
+.endproc
+
+.proc set_param2
+	clc
+	lda #<line_buf
+	adc line_start
+	sta fat32_ptr2 + 0
+	lda #>line_buf
+	adc #0
+	sta fat32_ptr2 + 1
+
+	jmp terminate_and_skip_to_next_word
+.endproc
+
+.proc set_single_param
+	; Check if string isn't empty
+	ldx line_start
+	lda line_buf, x
+	bne ok
+	jmp syntax_error
+ok:
+	; Transform argument to uppercase
+	jsr first_word_to_upper
+
+	; Set param 1
+	jsr set_param1
+	bcs error
+	sec
+	rts
+
+error:	jsr syntax_error
+	clc
+	rts
+.endproc
+
+.proc set_two_params
+	; Check if string isn't empty
+	ldx line_start
+	lda line_buf, x
+	bne :+
+	jmp syntax_error
+:
+	; Transform argument to uppercase
+	jsr first_word_to_upper
+
+	; Set param 1
+	jsr set_param1
+	bcc error
+
+	; Check if string isn't empty
+	ldx line_start
+	lda line_buf, x
+	bne :+
+	jmp syntax_error
+:
+	; Set param 2
+	jsr set_param2
+	bcs error
+
+	sec
+	rts
+
+error:	jsr syntax_error
+	clc
+	rts
+.endproc
+
+.proc syntax_error
+error:	print_str str_syntax_error
+	clc
+	rts
+
+str_syntax_error: .byte "Syntax error!", 10,0
+.endproc
+
+
+;-----------------------------------------------------------------------------
+; cmd_cd
+;-----------------------------------------------------------------------------
+.proc cmd_cd
+	; Change directory
+	jsr set_single_param
+	bcs :+
+	rts
+:	jsr fat32_chdir
+	bcs done
 	print_str str_dir_not_found
-ok:	rts
+done:	rts
 
 str_dir_not_found: .byte "Directory not found!",10,0
 .endproc
@@ -182,18 +269,11 @@ str_dir_not_found: .byte "Directory not found!",10,0
 ; cmd_type
 ;-----------------------------------------------------------------------------
 .proc cmd_type
-	; Transform file name to uppercase
-	jsr first_word_to_upper
-
 	; Open file
-	clc
-	lda #<line_buf
-	adc line_start
-	sta fat32_ptr + 0
-	lda #>line_buf
-	adc #0
-	sta fat32_ptr + 1
-	jsr fat32_open_file
+	jsr set_single_param
+	bcs :+
+	rts
+:	jsr fat32_open_file
 	bcs ok
 
 	; Opening file failed, print error message
@@ -227,6 +307,10 @@ str_file_not_found: .byte "File not found!",10,0
 ; cmd_help
 ;-----------------------------------------------------------------------------
 .proc cmd_help
+	jsr check_no_params
+	bcs :+
+	rts
+:
 	lda #<cmd_table
 	sta SRC_PTR + 0
 	lda #>cmd_table
@@ -266,7 +350,21 @@ done:	lda #10
 ; cmd_cls
 ;-----------------------------------------------------------------------------
 .proc cmd_cls
+	jsr check_no_params
+	bcs :+
+	rts
+:
 	jsr clear_screen
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; cmd_rename
+;-----------------------------------------------------------------------------
+.proc cmd_rename
+	jsr set_two_params
+
+
 	rts
 .endproc
 
