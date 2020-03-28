@@ -24,18 +24,13 @@
 	jsr text_display_init
 
 	; Print start message
-	ldy #0
-:	lda message, y
-	beq :+
-	jsr putchar
-	iny
-	bra :-
-:
+	print_str str_message
+
 	; Start command line interface
 	jsr cli_start
 	rts
 
-message:
+str_message:
 	.byte 10,"** Frank's X16 OS **",10,10, 0
 .endproc
 

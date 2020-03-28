@@ -81,29 +81,6 @@ enter:	jsr putchar
 .endproc
 
 ;-----------------------------------------------------------------------------
-; toupper
-;-----------------------------------------------------------------------------
-.proc toupper
-	ldx #$FF
-next:	inx
-	lda line_buf, x
-	beq done
-
-	; Lower case character?
-	cmp #'a'
-	bcc next
-	cmp #'z'+1
-	bcs next
-
-	; Make uppercase
-	and #$DF
-	sta line_buf, x
-	bra next
-
-done:	rts
-.endproc
-
-;-----------------------------------------------------------------------------
 ; skip_spaces
 ;-----------------------------------------------------------------------------
 .proc skip_spaces
@@ -115,5 +92,39 @@ done:	rts
 	beq :-
 
 	stx line_start
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; to_upper
+;-----------------------------------------------------------------------------
+.proc to_upper
+	; Lower case character?
+	cmp #'a'
+	bcc done
+	cmp #'z'+1
+	bcs done
+
+	; Make uppercase
+	and #$DF
+done:
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; first_word_to_upper
+;-----------------------------------------------------------------------------
+.proc first_word_to_upper
+	ldx line_start
+	dex
+next:	inx
+	lda line_buf, x
+	beq done
+	cmp #' '
+	beq done
+	jsr to_upper
+	sta line_buf, x
+	bra next
+done:
 	rts
 .endproc

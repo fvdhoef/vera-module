@@ -16,5 +16,6 @@ MAX_LINE_LEN = 78
 ;-----------------------------------------------------------------------------
 .global getchar
 .global getline
-.global toupper
+.global to_upper
 .global skip_spaces
+.global first_word_to_upper

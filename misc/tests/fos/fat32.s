@@ -361,8 +361,20 @@ error:	clc
 ; fat32_open_cluster
 ;-----------------------------------------------------------------------------
 .proc fat32_open_cluster
-	; Read first sector of cluster
+	; Check if cluster == 0 -> modify into root dir
+	lda fat32_cluster + 0
+	ora fat32_cluster + 1
+	ora fat32_cluster + 2
+	ora fat32_cluster + 3
+	beq rootdir
 	copy_bytes cur_context + context::cluster, fat32_cluster, 4
+	bra readsector
+
+rootdir:
+	copy_bytes cur_context + context::cluster, fat32_rootdir_cluster, 4
+
+readsector:
+	; Read first sector of cluster
 	jsr calc_cluster_lba
 	read_lba cur_context + context::lba, sector_buffer, error
 

@@ -30,6 +30,8 @@ cmd_table:
 	.byte 0
 
 	.bss
+current_dir_cluster:	.word 0
+
 	.zeropage
 
 	.code
@@ -38,6 +40,15 @@ cmd_table:
 ; cli_start
 ;-----------------------------------------------------------------------------
 .proc cli_start
+	; Init FAT32
+	jsr fat32_init
+	bcs :+
+	lda #'0'
+	jsr putchar
+	rts
+:
+	copy_bytes current_dir_cluster, fat32_rootdir_cluster, 4
+
 	; Get commands from user
 next_cmd:
 	; Print prompt
@@ -46,14 +57,11 @@ next_cmd:
 
 	; Get line from user
 	jsr getline
-
-	; Transform characters in line to upper case
-	jsr toupper
-
-	; Skip spaces (first non-space character in x and line_start)
 	jsr skip_spaces
+	jsr first_word_to_upper
 
 	; Empty line?
+	ldx line_start
 	lda line_buf, x
 	beq next_cmd
 
@@ -68,6 +76,8 @@ next_cmd:
 ; call_cmd
 ;-----------------------------------------------------------------------------
 .proc call_cmd
+	jsr skip_spaces
+
 	lda #<cmd_table
 	sta SRC_PTR + 0
 	lda #>cmd_table
@@ -106,28 +116,26 @@ match:	lda line_buf, x
 	bra nomatch
 
 match_ok:
+	stx line_start
+	jsr skip_spaces
+
+	; Get function pointer
 	ldy #1
 	lda (SRC_PTR), y
 	sta DST_PTR + 0
 	iny
 	lda (SRC_PTR), y
 	sta DST_PTR + 1
-	stx line_start
 
+	; Call handler function
 	jmp (DST_PTR)
 
 done:	
 	; Print error message
-	ldy #0
-:	lda cmd_not_found, y
-	beq :+
-	jsr putchar
-	iny
-	bra :-
-:
+	print_str str_cmd_not_found
 	rts
 
-cmd_not_found: .byte "Command not found!",10,0
+str_cmd_not_found: .byte "Command not found!",10,0
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -144,7 +152,7 @@ cmd_not_found: .byte "Command not found!",10,0
 	; Context 0: root directory
 	lda #0
 	jsr fat32_set_context
-	copy_bytes fat32_cluster, fat32_rootdir_cluster, 4
+	copy_bytes fat32_cluster, current_dir_cluster, 4
 	jsr fat32_open_cluster
 	bcc error
 
@@ -163,24 +171,8 @@ error:
 ; cmd_cd
 ;-----------------------------------------------------------------------------
 .proc cmd_cd
-	lda #'C'
-	jsr putchar
+	jsr first_word_to_upper
 
-	jsr skip_spaces
-	ldx line_start
-:	lda line_buf, x
-	beq :+
-	inx
-	jsr putchar
-	bra :-
-:
-	rts
-.endproc
-
-;-----------------------------------------------------------------------------
-; cmd_type
-;-----------------------------------------------------------------------------
-.proc cmd_type
 	; Init FAT32
 	jsr fat32_init
 	bcs :+
@@ -191,12 +183,59 @@ error:
 	; Context 0: root directory
 	lda #0
 	jsr fat32_set_context
-	copy_bytes fat32_cluster, fat32_rootdir_cluster, 4
+	copy_bytes fat32_cluster, current_dir_cluster, 4
+	jsr fat32_open_cluster
+	bcc dir_not_found
+
+	; Find file
+	clc
+	lda #<line_buf
+	adc line_start
+	sta fat32_ptr + 0
+	lda #>line_buf
+	adc #0
+	sta fat32_ptr + 1
+
+	jsr fat32_find_file
+	bcc dir_not_found
+
+	; Check if this is a directory
+	lda fat32_dirent + dirent::attributes
+	bit #$10
+	beq dir_not_found
+
+	; Set as current directory
+	copy_bytes current_dir_cluster, fat32_dirent + dirent::cluster, 4
+
+	rts
+
+dir_not_found:
+	; Print error message
+	print_str str_dir_not_found
+	rts
+
+str_dir_not_found: .byte "Directory not found!",10,0
+.endproc
+
+;-----------------------------------------------------------------------------
+; cmd_type
+;-----------------------------------------------------------------------------
+.proc cmd_type
+	jsr first_word_to_upper
+
+	; Init FAT32
+	jsr fat32_init
+	bcs :+
+	lda #'0'
+	jsr putchar
+	rts
+:
+	; Context 0: root directory
+	lda #0
+	jsr fat32_set_context
+	copy_bytes fat32_cluster, current_dir_cluster, 4
 	jsr fat32_open_cluster
 	bcc file_not_found
-
-	; Skip spaces in command parameter
-	jsr skip_spaces
 
 	; Find file
 	clc
@@ -209,6 +248,11 @@ error:
 
 	jsr fat32_find_file
 	bcc file_not_found
+
+	; Check if this isn't a directory
+	lda fat32_dirent + dirent::attributes
+	bit #$10
+	bne file_not_found
 
 	; Open file
 	copy_bytes fat32_cluster, fat32_dirent + dirent::cluster, 4
@@ -228,16 +272,10 @@ done:
 
 file_not_found:
 	; Print error message
-	ldy #0
-:	lda file_not_found_str, y
-	beq :+
-	jsr putchar
-	iny
-	bra :-
-:
+	print_str str_file_not_found
 	rts
 
-file_not_found_str: .byte "File not found!",10,0
+str_file_not_found: .byte "File not found!",10,0
 .endproc
 
 ;-----------------------------------------------------------------------------
