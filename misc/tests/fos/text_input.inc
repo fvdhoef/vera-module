@@ -1,20 +1,20 @@
 ;-----------------------------------------------------------------------------
-; text_display.inc
+; text_input.inc
 ;-----------------------------------------------------------------------------
 
 ;-----------------------------------------------------------------------------
 ; Variables
 ;-----------------------------------------------------------------------------
-.global val32
-.global padch
+MAX_LINE_LEN = 78
+
+.global line_len
+.global line_buf
+.global line_start
 
 ;-----------------------------------------------------------------------------
 ; Functions
 ;-----------------------------------------------------------------------------
-.global text_display_init
-.global clear_screen
-.global putchar
-.global putstr
-.global puthex
-.global hexdump
-.global print_val32
+.global getchar
+.global getline
+.global toupper
+.global skip_spaces
