@@ -30,6 +30,7 @@ bufptr:                 .word 0       ; Points to current offset within sector b
 fat32_cluster:          .dword 0      ; Used to pass cluster to fat32_open_cluster
 fat32_size:             .word 0       ; Used to specifiy number of bytes to read/write
 fat32_dirent:           .tag dirent   ; Buffer containing decoded directory entry
+tmp_buf:                .res 4
 
 ; Filesystem parameters
 fat32_rootdir_cluster:  .dword 0      ; Cluster of root directory
@@ -62,33 +63,43 @@ filename_buf:		.res 11       ; Used for filename conversion
 	.code
 
 ;-----------------------------------------------------------------------------
-; read_lba
+; set_sdcard_rw_params
 ;-----------------------------------------------------------------------------
-.macro read_lba lba, buffer, error
-	.local l1
-
+.proc set_sdcard_rw_params
 	; SD card driver expects LBA in big-endian
-	lda lba + 0
+	lda cur_context + context::lba + 0
 	sta sdcard_lba_be + 3
-	lda lba + 1
+	lda cur_context + context::lba + 1
 	sta sdcard_lba_be + 2
-	lda lba + 2
+	lda cur_context + context::lba + 2
 	sta sdcard_lba_be + 1
-	lda lba + 3
+	lda cur_context + context::lba + 3
 	sta sdcard_lba_be + 0
 
 	; Set pointer to buffer
-	lda #<buffer
+	lda #<sector_buffer
 	sta sdcard_bufptr + 0
-	lda #>buffer
+	lda #>sector_buffer
 	sta sdcard_bufptr + 1
 
-	; Read the sector
-	jsr sdcard_read_sector
-	bcs l1
-	jmp error
-l1:
-.endmacro
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; load_sector_buffer
+;-----------------------------------------------------------------------------
+.proc load_sector_buffer
+	jsr set_sdcard_rw_params
+	jmp sdcard_read_sector
+.endproc
+
+;-----------------------------------------------------------------------------
+; save_sector_buffer
+;-----------------------------------------------------------------------------
+.proc save_sector_buffer
+	jsr set_sdcard_rw_params
+	jmp sdcard_write_sector
+.endproc
 
 ;-----------------------------------------------------------------------------
 ; reset_bufptr
@@ -138,8 +149,11 @@ l1:
 	copy_bytes lba_partition, sector_buffer + $1BE + 8, 4
 
 	; Read first sector of FAT32 partition
-	read_lba lba_partition, sector_buffer, error
-
+	copy_bytes cur_context + context::lba, lba_partition, 4
+	jsr load_sector_buffer
+	bcs :+
+	jmp error
+:
 	; Some sanity checks
 	lda sector_buffer + 510 ; Check signature
 	cmp #$55
@@ -257,7 +271,7 @@ error:	clc
 	lda cur_context + context::flags
 	and #1
 	beq reload_done
-	read_lba cur_context + context::lba, sector_buffer, error
+	jsr load_sector_buffer
 reload_done:
 
 done:	sec
@@ -284,7 +298,6 @@ shift_done:
 
 	add32 cur_context + context::lba, cur_context + context::lba, lba_data
 	stz cur_context + context::cluster_sector
-
 	rts
 .endproc
 
@@ -311,7 +324,7 @@ shift_done:
 	add32 cur_context + context::lba, cur_context + context::lba, lba_fat
 
 	; read FAT sector
-	read_lba cur_context + context::lba, sector_buffer, error
+	jsr load_sector_buffer
 
 	lda cur_context + context::cluster
 	asl
@@ -381,7 +394,7 @@ rootdir:
 readsector:
 	; Read first sector of cluster
 	jsr calc_cluster_lba
-	read_lba cur_context + context::lba, sector_buffer, error
+	jsr load_sector_buffer
 
 	; Reset buffer pointer
 	reset_bufptr
@@ -409,7 +422,7 @@ error:	clc
 	inc32 cur_context + context::lba
 
 read_sector:
-	read_lba cur_context + context::lba, sector_buffer, error
+	jsr load_sector_buffer
 	reset_bufptr
 
 done:	sec
@@ -609,7 +622,7 @@ name_done:
 
 	; Save lba + bufptr
 	copy_bytes cur_context + context::dirent_lba,    cur_context + context::lba, 4
-	copy_bytes cur_context + context::dirent_bufptr, cur_context + context::bufptr, 2
+	copy_bytes cur_context + context::dirent_bufptr, bufptr, 2
 
 	; Increment buffer pointer to next entry
 	clc
@@ -820,9 +833,107 @@ not_ok:	clc
 .endproc
 
 ;-----------------------------------------------------------------------------
+; convert_filename
+;-----------------------------------------------------------------------------
+.proc convert_filename
+	; Disallow empty string or string starting with '.'
+	lda (fat32_ptr)
+	beq not_ok
+	cmp #'.'
+	beq not_ok
+
+	; Copy name part
+	ldy #0
+	ldx #0
+loop1:	lda (fat32_ptr), y
+	beq name_pad
+	cmp #'.'
+	beq name_pad
+	jsr validate_char
+	bcc not_ok
+	sta filename_buf, x
+	inx
+	iny
+	cpy #8
+	bne loop1
+
+	; Pad name with spaces
+name_pad:
+	lda #' '
+loop2:	cpx #8
+	beq name_pad_done
+	sta filename_buf, x
+	inx
+	bra loop2
+name_pad_done:
+
+	; Check next character
+	lda (fat32_ptr), y
+	beq ext_pad
+	cmp #'.'
+	beq ext
+	bra not_ok
+
+	; Copy extension part
+ext:	iny	; Skip '.'
+
+loop3:	lda (fat32_ptr), y
+	beq ext_pad
+	jsr validate_char
+	bcc not_ok
+	sta filename_buf, x
+	inx
+	iny
+	cpx #11
+	bne loop3
+
+	; Check for end of string
+	lda (fat32_ptr), y
+	bne not_ok
+
+	; Pad extension with spaces
+ext_pad:
+	lda #' '
+loop4:	cpx #11
+	beq ext_pad_done
+	sta filename_buf, x
+	inx
+	bra loop4
+ext_pad_done:
+
+	; Done
+	sec
+	rts
+
+not_ok:	clc
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
 ; fat32_rename
 ;-----------------------------------------------------------------------------
 .proc fat32_rename
+	; Save first argument
+	copy_bytes tmp_buf, fat32_ptr, 2
+
+	; Make sure target name doesn't exist
+	copy_bytes fat32_cluster, cur_context + context::cwd_cluster, 4
+	jsr fat32_open_cluster
+	bcs :+
+	rts
+:
+	copy_bytes fat32_ptr, fat32_ptr2, 2
+	jsr fat32_find_file
+	bcc :+
+	clc	; Error, file exists
+	rts
+:
+	; Convert target filename into directory entry format
+	copy_bytes fat32_ptr, fat32_ptr2, 2
+	jsr convert_filename
+	bcs :+
+	rts
+:
 	; Open current directory
 	copy_bytes fat32_cluster, cur_context + context::cwd_cluster, 4
 	jsr fat32_open_cluster
@@ -830,19 +941,20 @@ not_ok:	clc
 	rts
 :
 	; Find file
+	copy_bytes fat32_ptr, tmp_buf, 2
 	jsr fat32_find_file
 	bcs :+
 	rts
 :
-	; Restore bufptr to this entry
-	copy_bytes cur_context + context::bufptr, cur_context + context::dirent_bufptr, 2
+	; Copy new filename into sector buffer
+	copy_bytes bufptr, cur_context + context::dirent_bufptr, 2
+	ldy #0
+:	lda filename_buf, y
+	sta (bufptr), y
+	iny
+	cpy #11
+	bne :-
 
-	; Validate filename
-	copy_bytes fat32_ptr, fat32_ptr2, 4
-	jsr validate_filename
-	bcs :+
-	rts
-:
-	sec
-	rts
+	; Write sector buffer to disk
+	jmp save_sector_buffer
 .endproc
