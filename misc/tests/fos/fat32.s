@@ -7,13 +7,15 @@
 	.include "sdcard.inc"
 
 .struct context
-flags          .byte       ; Flags bit 0:in use, 1:dirty
-cluster        .dword      ; Current cluster
-lba            .dword      ; Sector of current cluster
-cluster_sector .byte       ; Sector index within current cluster
-bufptr         .word       ; Pointer within sector_buffer
-remaining      .dword      ; Bytes remaining in current file
-cwd_cluster    .dword      ; Cluster of current directory
+flags           .byte    ; Flags bit 0:in use, 1:dirty
+cluster         .dword   ; Current cluster
+lba             .dword   ; Sector of current cluster
+cluster_sector  .byte    ; Sector index within current cluster
+bufptr          .word    ; Pointer within sector_buffer
+remaining       .dword   ; Bytes remaining in current file
+cwd_cluster     .dword   ; Cluster of current directory
+dirent_lba      .dword   ; Sector containing directory entry for this file
+dirent_bufptr   .word    ; Offset to start of directory entry 
 .endstruct
 
 ;-----------------------------------------------------------------------------
@@ -46,6 +48,8 @@ contexts_end:
 
 sector_buffer:          .res 512
 sector_buffer_end:
+
+filename_buf:		.res 11       ; Used for filename conversion
 
 .if .sizeof(context) * FAT32_CONTEXTS > 256
 .error "FAT32_CONTEXTS too high"
@@ -532,8 +536,9 @@ read_entry:
 :
 	; Skip empty entries
 	cmp #$E5
-	beq next_entry
-
+	bne :+
+	jmp next_entry
+:
 	; Copy first part of file name
 	ldy #0
 :	lda (bufptr), y
@@ -604,6 +609,10 @@ name_done:
 	iny
 	lda (bufptr), y
 	sta fat32_dirent + dirent::cluster + 3
+
+	; Save lba + bufptr
+	copy_bytes cur_context + context::dirent_lba,    cur_context + context::lba, 4
+	copy_bytes cur_context + context::dirent_bufptr, cur_context + context::bufptr, 2
 
 	; Increment buffer pointer to next entry
 	clc
@@ -726,6 +735,117 @@ error:
 	; Set as current directory
 	copy_bytes cur_context + context::cwd_cluster, fat32_dirent + dirent::cluster, 4
 
+	sec
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; validate_char
+;-----------------------------------------------------------------------------
+.proc validate_char
+	; Allowed: 33, 35-41, 45, 48-57, 64-90, 94-96, 123, 125, 126
+	cmp #33
+	beq ok
+	cmp #35
+	bcc not_ok
+	cmp #41+1
+	bcc ok
+	cmp #45
+	beq ok
+	cmp #48
+	bcc not_ok
+	cmp #57+1
+	bcc ok
+	cmp #64
+	bcc not_ok
+	cmp #90+1
+	bcc ok
+	cmp #94
+	bcc not_ok
+	cmp #96
+	bcc ok
+	cmp #123
+	beq ok
+	cmp #125
+	beq ok
+	cmp #126
+	beq ok
+not_ok:	clc
+	rts
+ok:	sec
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; validate_filename
+;-----------------------------------------------------------------------------
+.proc validate_filename
+	; Disallow empty string or string starting with '.'
+	lda (fat32_ptr)
+	beq not_ok
+	cmp #'.'
+	beq not_ok
+
+	; Check name part
+	ldy #0
+:	lda (fat32_ptr), y
+	beq done
+	cmp #'.'
+	beq extension
+	jsr validate_char
+	bcc not_ok
+	iny
+	cpy #8
+	bne :-
+	bra done
+
+extension:
+	iny	; Skip '.'
+
+	; Check extension part
+	ldx #3
+:	lda (fat32_ptr), y
+	beq done
+	jsr validate_char
+	bcc not_ok
+	iny
+	dex
+	bne :-
+
+done:	; Check for end of string
+	lda (fat32_ptr), y
+	bne not_ok
+	sec
+	rts
+
+not_ok:	clc
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; fat32_rename
+;-----------------------------------------------------------------------------
+.proc fat32_rename
+	; Open current directory
+	copy_bytes fat32_cluster, cur_context + context::cwd_cluster, 4
+	jsr fat32_open_cluster
+	bcs :+
+	rts
+:
+	; Find file
+	jsr fat32_find_file
+	bcs :+
+	rts
+:
+	; Restore bufptr to this entry
+	copy_bytes cur_context + context::bufptr, cur_context + context::dirent_bufptr, 2
+
+	; Validate filename
+	copy_bytes fat32_ptr, fat32_ptr2, 4
+	jsr validate_filename
+	bcs :+
+	rts
+:
 	sec
 	rts
 .endproc

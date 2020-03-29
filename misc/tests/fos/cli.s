@@ -228,6 +228,9 @@ error:	jsr syntax_error
 	bne :+
 	jmp syntax_error
 :
+	; Transform argument to uppercase
+	jsr first_word_to_upper
+
 	; Set param 2
 	jsr set_param2
 	bcs error
@@ -363,9 +366,16 @@ done:	lda #10
 ;-----------------------------------------------------------------------------
 .proc cmd_rename
 	jsr set_two_params
-
-
+	bcs :+
 	rts
+:
+	jsr fat32_rename
+	bcs done
+	print_str str_error
+done:
+	rts
+
+str_error: .byte "Error!",10,0
 .endproc
 
 ;-----------------------------------------------------------------------------

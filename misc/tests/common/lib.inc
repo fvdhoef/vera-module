@@ -117,12 +117,24 @@
 ; Copy bytes
 ;-----------------------------------------------------------------------------
 .macro copy_bytes dst, src, count
+.if count = 1
+    lda src
+    sta dst
+.else
+.if count = 2
+    lda src
+    sta dst
+    lda src + 1
+    sta dst + 1
+.else
 	ldy #0
 :	lda src, y
 	sta dst, y
 	iny
 	cpy #count
 	bne :-
+.endif
+.endif
 .endmacro
 
 ;-----------------------------------------------------------------------------

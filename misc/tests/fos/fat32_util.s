@@ -6,6 +6,7 @@
 	.include "lib.inc"
 	.include "fat32.inc"
 	.include "text_display.inc"
+	.include "text_input.inc"
 
 ;-----------------------------------------------------------------------------
 ; Variables
@@ -22,6 +23,7 @@
 	ldx #0
 :	lda fat32_dirent + dirent::name, x
 	beq :+
+	jsr to_lower
 	jsr putchar
 	inx
 	bne :-
