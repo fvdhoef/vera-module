@@ -13,10 +13,12 @@
 ; Variables
 ;-----------------------------------------------------------------------------
 .macro def_cmd cmd, handler
-	.byte :+ - *
+	.local l1
+
+	.byte l1 - *
 	.word handler
 	.byte cmd, 0
-:
+l1:
 .endmacro
 
 	.rodata
@@ -244,7 +246,7 @@ error:	jsr syntax_error
 .endproc
 
 .proc syntax_error
-error:	print_str str_syntax_error
+	print_str str_syntax_error
 	clc
 	rts
 
@@ -370,9 +372,9 @@ done:	lda #10
 	rts
 :
 	jsr fat32_rename
-	bcs done
+	bcs :+
 	print_str str_error
-done:
+:
 	rts
 
 str_error: .byte "Error!",10,0

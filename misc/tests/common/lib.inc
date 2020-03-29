@@ -6,17 +6,19 @@
 	.global vera_save, vera_restore
 
 .macro inc16 dst
+    .local l1
 	inc dst
-	bne :+
+	bne l1
 	inc dst+1
-:
+l1:
 .endmacro
 
 .macro dec16 dst
+    .local l1
 	lda dst
-	bne :+
+	bne l1
 	dec dst+1
-:	dec dst
+l1:	dec dst
 .endmacro
 
 ;-----------------------------------------------------------------------------
@@ -65,30 +67,32 @@
 ; Increment 32bit number located in memory
 ;-----------------------------------------------------------------------------
 .macro inc32 dst
+    .local l1
     inc dst
-    bne :+
+    bne l1
     inc dst+1
-    bne :+
+    bne l1
     inc dst+2
-    bne :+
+    bne l1
     inc dst+3
-:
+l1:
 .endmacro
 
 ;-----------------------------------------------------------------------------
 ; Decrement 32bit number located in memory
 ;-----------------------------------------------------------------------------
 .macro dec32 dst
+    .local l1, l2, l3
     lda dst + 0
-    bne :+++
+    bne l3
     lda dst + 1
-    bne :++
+    bne l2
     lda dst + 2
-    bne :+
+    bne l1
     dec dst + 3
-:	dec dst + 2
-:	dec dst + 1
-:	dec dst + 0
+l1:	dec dst + 2
+l2:	dec dst + 1
+l3:	dec dst + 0
 .endmacro
 
 ;-----------------------------------------------------------------------------
@@ -117,6 +121,7 @@
 ; Copy bytes
 ;-----------------------------------------------------------------------------
 .macro copy_bytes dst, src, count
+    .local l1
 .if count = 1
     lda src
     sta dst
@@ -128,11 +133,11 @@
     sta dst + 1
 .else
 	ldy #0
-:	lda src, y
+l1:	lda src, y
 	sta dst, y
 	iny
 	cpy #count
-	bne :-
+	bne l1
 .endif
 .endif
 .endmacro
@@ -141,9 +146,10 @@
 ; Clear bytes
 ;-----------------------------------------------------------------------------
 .macro clear_bytes dst, count
+    .local l1
 	ldx #0
-:	stz dst, x
+l1:	stz dst, x
 	inx
 	cpx #count
-	bne :-
+	bne l1
 .endmacro

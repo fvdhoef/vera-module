@@ -65,6 +65,8 @@ filename_buf:		.res 11       ; Used for filename conversion
 ; read_lba
 ;-----------------------------------------------------------------------------
 .macro read_lba lba, buffer, error
+	.local l1
+
 	; SD card driver expects LBA in big-endian
 	lda lba + 0
 	sta sdcard_lba_be + 3
@@ -83,9 +85,9 @@ filename_buf:		.res 11       ; Used for filename conversion
 
 	; Read the sector
 	jsr sdcard_read_sector
-	bcs :+
+	bcs l1
 	jmp error
-:
+l1:
 .endmacro
 
 ;-----------------------------------------------------------------------------
@@ -133,12 +135,7 @@ filename_buf:		.res 11       ; Used for filename conversion
 	jmp error
 :
 	; Get LBA of partition of first partition
-	ldy #0
-:	lda sector_buffer + $1BE + 8, y
-	sta lba_partition, y
-	iny
-	cpy #4
-	bne :-
+	copy_bytes lba_partition, sector_buffer + $1BE + 8, 4
 
 	; Read first sector of FAT32 partition
 	read_lba lba_partition, sector_buffer, error
