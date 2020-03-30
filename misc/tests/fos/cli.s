@@ -23,17 +23,17 @@ l1:
 
 	.rodata
 cmd_table:
-	def_cmd "CD", cmd_cd		; Change directory
-	def_cmd "CLS", cmd_cls		; Clear screen
-	def_cmd "COPY", cmd_copy	; Copy file
-	def_cmd "DEL", cmd_del		; Delete file
-	def_cmd "DIR", cmd_dir		; List directory
-	def_cmd "HELP", cmd_help	; Show available commands
-	def_cmd "HEXDUMP", cmd_hexdump	; Hexdump contents of file
-	def_cmd "LOAD", cmd_load	; Load file
-	def_cmd "MOVE", cmd_move	; Move file
-	def_cmd "RENAME", cmd_rename	; Rename file
-	def_cmd "TYPE", cmd_type	; Print contents of file
+	def_cmd "CD",      cmd_cd       ; Change directory
+	def_cmd "CLS",     cmd_cls      ; Clear screen
+	def_cmd "COPY",    cmd_copy     ; Copy file
+	def_cmd "DEL",     cmd_del      ; Delete file
+	def_cmd "DIR",     cmd_dir      ; List directory
+	def_cmd "HELP",    cmd_help     ; Show available commands
+	def_cmd "HEXDUMP", cmd_hexdump  ; Hexdump contents of file
+	def_cmd "LOAD",    cmd_load     ; Load file
+	def_cmd "MOVE",    cmd_move     ; Move file
+	def_cmd "RENAME",  cmd_rename   ; Rename file
+	def_cmd "TYPE",    cmd_type     ; Print contents of file
 	.byte 0
 
 	.code
@@ -253,7 +253,6 @@ error:	jsr syntax_error
 str_syntax_error: .byte "Syntax error!", 10,0
 .endproc
 
-
 ;-----------------------------------------------------------------------------
 ; cmd_cd
 ;-----------------------------------------------------------------------------
@@ -398,7 +397,18 @@ str_error: .byte "Error!",10,0
 ; cmd_del
 ;-----------------------------------------------------------------------------
 .proc cmd_del
+	; Open file
+	jsr set_single_param
+	bcs :+
 	rts
+:
+	jsr fat32_delete
+	bcs :+
+	print_str str_error
+:
+	rts
+
+str_error: .byte "Error!",10,0
 .endproc
 
 ;-----------------------------------------------------------------------------

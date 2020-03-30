@@ -302,9 +302,14 @@ shift_done:
 .endproc
 
 ;-----------------------------------------------------------------------------
-; next_cluster
+; load_fat_sector_for_cluster
+;
+; Load sector that hold cluster entry for cur_context.cluster
+; On return bufptr points to cluster entry in sector_buffer.
+;
+; C=1 on success, C=0 on failure
 ;-----------------------------------------------------------------------------
-.proc next_cluster
+.proc load_fat_sector_for_cluster
 	; Calculate sector where cluster entry is located
 
 	; lba = lba_fat + (cluster / 128)
@@ -323,37 +328,50 @@ shift_done:
 	rol cur_context + context::lba + 3
 	add32 cur_context + context::lba, cur_context + context::lba, lba_fat
 
-	; read FAT sector
+	; Read FAT sector
 	jsr load_sector_buffer
-
+	bcs :+
+	rts	; Failure
+:
+	; bufptr = sector_buffer + (cluster & 127) * 4
 	lda cur_context + context::cluster
 	asl
 	asl
-	tay
-	bcs upper_half	; In first or second 256 byte part of sector?
+	sta bufptr + 0
+	lda #0
+	bcc :+
+	lda #1
+:	sta bufptr + 1
 
-	; Copy FAT entry into cur_context + context::cluster
-	ldx #0
-:	lda sector_buffer, y
-	sta cur_context + context::cluster, x
+	clc
+	lda bufptr + 0
+	adc #<sector_buffer
+	sta bufptr + 0
+	lda bufptr + 1
+	adc #>sector_buffer
+	sta bufptr + 1
+
+	; Success
+	sec
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; next_cluster
+;-----------------------------------------------------------------------------
+.proc next_cluster
+	; Load correct FAT sector
+	jsr load_fat_sector_for_cluster
+	bcc error
+
+	; Copy next cluster from FAT
+	ldy #0
+:	lda (bufptr), y
+	sta cur_context + context::cluster, y
 	iny
-	inx
-	cpx #4
+	cpy #4
 	bne :-
 
-	bra done
-
-upper_half:
-	; Copy FAT entry into cur_context + context::cluster
-	ldx #0
-:	lda sector_buffer + 256, y
-	sta cur_context + context::cluster, x
-	iny
-	inx
-	cpx #4
-	bne :-
-
-done:
 	; Check if this is the end of cluster chain (entry >= 0x0FFFFFF8)
 	lda cur_context + context::cluster + 3
 	cmp #$0F
@@ -372,6 +390,168 @@ done:
 	rts
 
 error:	clc
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; validate_char
+;-----------------------------------------------------------------------------
+.proc validate_char
+	; Allowed: 33, 35-41, 45, 48-57, 64-90, 94-96, 123, 125, 126
+	cmp #33
+	beq ok
+	cmp #35
+	bcc not_ok
+	cmp #41+1
+	bcc ok
+	cmp #45
+	beq ok
+	cmp #48
+	bcc not_ok
+	cmp #57+1
+	bcc ok
+	cmp #64
+	bcc not_ok
+	cmp #90+1
+	bcc ok
+	cmp #94
+	bcc not_ok
+	cmp #96
+	bcc ok
+	cmp #123
+	beq ok
+	cmp #125
+	beq ok
+	cmp #126
+	beq ok
+not_ok:	clc
+	rts
+ok:	sec
+	rts
+.endproc
+
+.if 0
+;-----------------------------------------------------------------------------
+; validate_filename
+;-----------------------------------------------------------------------------
+.proc validate_filename
+	; Disallow empty string or string starting with '.'
+	lda (fat32_ptr)
+	beq not_ok
+	cmp #'.'
+	beq not_ok
+
+	; Check name part
+	ldy #0
+:	lda (fat32_ptr), y
+	beq done
+	cmp #'.'
+	beq extension
+	jsr validate_char
+	bcc not_ok
+	iny
+	cpy #8
+	bne :-
+	bra done
+
+extension:
+	iny	; Skip '.'
+
+	; Check extension part
+	ldx #3
+:	lda (fat32_ptr), y
+	beq done
+	jsr validate_char
+	bcc not_ok
+	iny
+	dex
+	bne :-
+
+done:	; Check for end of string
+	lda (fat32_ptr), y
+	bne not_ok
+	sec
+	rts
+
+not_ok:	clc
+	rts
+.endproc
+.endif
+
+;-----------------------------------------------------------------------------
+; convert_filename
+;-----------------------------------------------------------------------------
+.proc convert_filename
+	; Disallow empty string or string starting with '.'
+	lda (fat32_ptr)
+	beq not_ok
+	cmp #'.'
+	beq not_ok
+
+	; Copy name part
+	ldy #0
+	ldx #0
+loop1:	lda (fat32_ptr), y
+	beq name_pad
+	cmp #'.'
+	beq name_pad
+	jsr validate_char
+	bcc not_ok
+	sta filename_buf, x
+	inx
+	iny
+	cpy #8
+	bne loop1
+
+	; Pad name with spaces
+name_pad:
+	lda #' '
+loop2:	cpx #8
+	beq name_pad_done
+	sta filename_buf, x
+	inx
+	bra loop2
+name_pad_done:
+
+	; Check next character
+	lda (fat32_ptr), y
+	beq ext_pad
+	cmp #'.'
+	beq ext
+	bra not_ok
+
+	; Copy extension part
+ext:	iny	; Skip '.'
+
+loop3:	lda (fat32_ptr), y
+	beq ext_pad
+	jsr validate_char
+	bcc not_ok
+	sta filename_buf, x
+	inx
+	iny
+	cpx #11
+	bne loop3
+
+	; Check for end of string
+	lda (fat32_ptr), y
+	bne not_ok
+
+	; Pad extension with spaces
+ext_pad:
+	lda #' '
+loop4:	cpx #11
+	beq ext_pad_done
+	sta filename_buf, x
+	inx
+	bra loop4
+ext_pad_done:
+
+	; Done
+	sec
+	rts
+
+not_ok:	clc
 	rts
 .endproc
 
@@ -651,11 +831,25 @@ error:	clc
 .endproc
 
 ;-----------------------------------------------------------------------------
-; fat32_find_file
+; fat32_open_cwd
 ;
-; Find file specified in zero-terminated string pointed to by fat32_ptr
+; Open current working directory
 ;-----------------------------------------------------------------------------
-.proc fat32_find_file
+.proc fat32_open_cwd
+	; Open current directory
+	copy_bytes fat32_cluster, cur_context + context::cwd_cluster, 4
+	jmp fat32_open_cluster
+.endproc
+
+;-----------------------------------------------------------------------------
+; fat32_find_dirent
+;
+; Find directory entry with name specified in string pointed to by fat32_ptr
+;-----------------------------------------------------------------------------
+.proc fat32_find_dirent
+	jsr fat32_open_cwd
+	bcc error
+
 next:	jsr fat32_read_dirent
 	bcc error
 
@@ -680,14 +874,49 @@ error:
 .endproc
 
 ;-----------------------------------------------------------------------------
-; fat32_open_cwd
+; fat32_find_file
 ;
-; Open current working directory
+; Same as fat32_find_dirent, but with file type check
 ;-----------------------------------------------------------------------------
-.proc fat32_open_cwd
-	; Open current directory
-	copy_bytes fat32_cluster, cur_context + context::cwd_cluster, 4
-	jmp fat32_open_cluster
+.proc fat32_find_file
+	; Find directory entry
+	jsr fat32_find_dirent
+	bcs :+
+	rts
+:
+	; Check if this is a file
+	lda fat32_dirent + dirent::attributes
+	bit #$10
+	beq :+
+	clc
+	rts
+:	
+	; Success
+	sec
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; fat32_find_dir
+;
+; Same as fat32_find_dirent, but with directory type check
+;-----------------------------------------------------------------------------
+.proc fat32_find_dir
+	; Find directory entry
+	jsr fat32_find_dirent
+	bcs :+
+	rts
+:
+	; Check if this is a directory
+	lda fat32_dirent + dirent::attributes
+	bit #$10
+	bne :+
+	clc
+	rts
+:
+	; Success
+	sec
+	rts
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -696,22 +925,9 @@ error:
 ; Open file specified in string pointed to by fat32_ptr
 ;-----------------------------------------------------------------------------
 .proc fat32_open_file
-	; Open current directory
-	copy_bytes fat32_cluster, cur_context + context::cwd_cluster, 4
-	jsr fat32_open_cluster
-	bcs :+
-	rts
-:
 	; Find file
 	jsr fat32_find_file
 	bcs :+
-	rts
-:
-	; Check if this isn't a directory
-	lda fat32_dirent + dirent::attributes
-	bit #$10
-	beq :+
-	clc
 	rts
 :
 	; Open file
@@ -724,188 +940,15 @@ error:
 ; fat32_chdir
 ;-----------------------------------------------------------------------------
 .proc fat32_chdir
-	; Open current directory
-	copy_bytes fat32_cluster, cur_context + context::cwd_cluster, 4
-	jsr fat32_open_cluster
+	; Find directory
+	jsr fat32_find_dir
 	bcs :+
-	rts
-:
-	; Find file
-	jsr fat32_find_file
-	bcs :+
-	rts
-:
-	; Check if this is a directory
-	lda fat32_dirent + dirent::attributes
-	bit #$10
-	bne :+
-	clc
 	rts
 :
 	; Set as current directory
 	copy_bytes cur_context + context::cwd_cluster, fat32_dirent + dirent::cluster, 4
 
 	sec
-	rts
-.endproc
-
-;-----------------------------------------------------------------------------
-; validate_char
-;-----------------------------------------------------------------------------
-.proc validate_char
-	; Allowed: 33, 35-41, 45, 48-57, 64-90, 94-96, 123, 125, 126
-	cmp #33
-	beq ok
-	cmp #35
-	bcc not_ok
-	cmp #41+1
-	bcc ok
-	cmp #45
-	beq ok
-	cmp #48
-	bcc not_ok
-	cmp #57+1
-	bcc ok
-	cmp #64
-	bcc not_ok
-	cmp #90+1
-	bcc ok
-	cmp #94
-	bcc not_ok
-	cmp #96
-	bcc ok
-	cmp #123
-	beq ok
-	cmp #125
-	beq ok
-	cmp #126
-	beq ok
-not_ok:	clc
-	rts
-ok:	sec
-	rts
-.endproc
-
-;-----------------------------------------------------------------------------
-; validate_filename
-;-----------------------------------------------------------------------------
-.proc validate_filename
-	; Disallow empty string or string starting with '.'
-	lda (fat32_ptr)
-	beq not_ok
-	cmp #'.'
-	beq not_ok
-
-	; Check name part
-	ldy #0
-:	lda (fat32_ptr), y
-	beq done
-	cmp #'.'
-	beq extension
-	jsr validate_char
-	bcc not_ok
-	iny
-	cpy #8
-	bne :-
-	bra done
-
-extension:
-	iny	; Skip '.'
-
-	; Check extension part
-	ldx #3
-:	lda (fat32_ptr), y
-	beq done
-	jsr validate_char
-	bcc not_ok
-	iny
-	dex
-	bne :-
-
-done:	; Check for end of string
-	lda (fat32_ptr), y
-	bne not_ok
-	sec
-	rts
-
-not_ok:	clc
-	rts
-.endproc
-
-;-----------------------------------------------------------------------------
-; convert_filename
-;-----------------------------------------------------------------------------
-.proc convert_filename
-	; Disallow empty string or string starting with '.'
-	lda (fat32_ptr)
-	beq not_ok
-	cmp #'.'
-	beq not_ok
-
-	; Copy name part
-	ldy #0
-	ldx #0
-loop1:	lda (fat32_ptr), y
-	beq name_pad
-	cmp #'.'
-	beq name_pad
-	jsr validate_char
-	bcc not_ok
-	sta filename_buf, x
-	inx
-	iny
-	cpy #8
-	bne loop1
-
-	; Pad name with spaces
-name_pad:
-	lda #' '
-loop2:	cpx #8
-	beq name_pad_done
-	sta filename_buf, x
-	inx
-	bra loop2
-name_pad_done:
-
-	; Check next character
-	lda (fat32_ptr), y
-	beq ext_pad
-	cmp #'.'
-	beq ext
-	bra not_ok
-
-	; Copy extension part
-ext:	iny	; Skip '.'
-
-loop3:	lda (fat32_ptr), y
-	beq ext_pad
-	jsr validate_char
-	bcc not_ok
-	sta filename_buf, x
-	inx
-	iny
-	cpx #11
-	bne loop3
-
-	; Check for end of string
-	lda (fat32_ptr), y
-	bne not_ok
-
-	; Pad extension with spaces
-ext_pad:
-	lda #' '
-loop4:	cpx #11
-	beq ext_pad_done
-	sta filename_buf, x
-	inx
-	bra loop4
-ext_pad_done:
-
-	; Done
-	sec
-	rts
-
-not_ok:	clc
 	rts
 .endproc
 
@@ -917,13 +960,8 @@ not_ok:	clc
 	copy_bytes tmp_buf, fat32_ptr, 2
 
 	; Make sure target name doesn't exist
-	copy_bytes fat32_cluster, cur_context + context::cwd_cluster, 4
-	jsr fat32_open_cluster
-	bcs :+
-	rts
-:
 	copy_bytes fat32_ptr, fat32_ptr2, 2
-	jsr fat32_find_file
+	jsr fat32_find_dirent
 	bcc :+
 	clc	; Error, file exists
 	rts
@@ -934,15 +972,9 @@ not_ok:	clc
 	bcs :+
 	rts
 :
-	; Open current directory
-	copy_bytes fat32_cluster, cur_context + context::cwd_cluster, 4
-	jsr fat32_open_cluster
-	bcs :+
-	rts
-:
-	; Find file
+	; Find file to rename
 	copy_bytes fat32_ptr, tmp_buf, 2
-	jsr fat32_find_file
+	jsr fat32_find_dirent
 	bcs :+
 	rts
 :
@@ -957,4 +989,36 @@ not_ok:	clc
 
 	; Write sector buffer to disk
 	jmp save_sector_buffer
+.endproc
+
+;-----------------------------------------------------------------------------
+; unlink_cluster_chain
+;-----------------------------------------------------------------------------
+.proc unlink_cluster_chain
+	clc
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; fat32_delete
+;-----------------------------------------------------------------------------
+.proc fat32_delete
+	; Find file
+	jsr fat32_find_file
+	bcs :+
+	rts
+:
+	; Mark file as deleted
+	copy_bytes bufptr, cur_context + context::dirent_bufptr, 2
+	lda #$E5
+	sta (bufptr)
+
+	; Write sector buffer to disk
+	jsr save_sector_buffer
+	bcs :+
+	rts
+:
+	; Unlink cluster chain
+	copy_bytes fat32_cluster, fat32_dirent + dirent::cluster, 4
+	jmp unlink_cluster_chain
 .endproc
