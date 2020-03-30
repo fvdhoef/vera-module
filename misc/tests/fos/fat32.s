@@ -86,6 +86,34 @@ filename_buf:		.res 11       ; Used for filename conversion
 .endproc
 
 ;-----------------------------------------------------------------------------
+; set_sdcard_rw_params_fat2
+;-----------------------------------------------------------------------------
+.proc set_sdcard_rw_params_fat2
+	; SD card driver expects LBA in big-endian
+	clc
+	lda cur_context + context::lba + 0
+	adc fat_size + 0
+	sta sdcard_lba_be + 3
+	lda cur_context + context::lba + 1
+	adc fat_size + 1
+	sta sdcard_lba_be + 2
+	lda cur_context + context::lba + 2
+	adc fat_size + 2
+	sta sdcard_lba_be + 1
+	lda cur_context + context::lba + 3
+	adc fat_size + 3
+	sta sdcard_lba_be + 0
+
+	; Set pointer to buffer
+	lda #<sector_buffer
+	sta sdcard_bufptr + 0
+	lda #>sector_buffer
+	sta sdcard_bufptr + 1
+
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
 ; load_sector_buffer
 ;-----------------------------------------------------------------------------
 .proc load_sector_buffer
@@ -98,6 +126,19 @@ filename_buf:		.res 11       ; Used for filename conversion
 ;-----------------------------------------------------------------------------
 .proc save_sector_buffer
 	jsr set_sdcard_rw_params
+	jmp sdcard_write_sector
+.endproc
+
+;-----------------------------------------------------------------------------
+; save_fat_sector_buffer
+;-----------------------------------------------------------------------------
+.proc save_fat_sector_buffer
+	; Write first FAT
+	jsr set_sdcard_rw_params
+	jsr sdcard_write_sector
+
+	; Write second FAT
+	jsr set_sdcard_rw_params_fat2
 	jmp sdcard_write_sector
 .endproc
 
@@ -995,6 +1036,30 @@ error:
 ; unlink_cluster_chain
 ;-----------------------------------------------------------------------------
 .proc unlink_cluster_chain
+next:	jsr next_cluster
+	php
+
+	; Set entry as free
+	lda #0
+	ldy #0
+	sta (bufptr), y
+	iny
+	sta (bufptr), y
+	iny
+	sta (bufptr), y
+	iny
+	sta (bufptr), y
+
+	jsr save_fat_sector_buffer
+	bcc error
+
+	plp
+	bcs next
+
+	sec
+	rts
+
+error:
 	clc
 	rts
 .endproc
@@ -1019,6 +1084,6 @@ error:
 	rts
 :
 	; Unlink cluster chain
-	copy_bytes fat32_cluster, fat32_dirent + dirent::cluster, 4
+	copy_bytes cur_context + context::cluster, fat32_dirent + dirent::cluster, 4
 	jmp unlink_cluster_chain
 .endproc
