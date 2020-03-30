@@ -47,7 +47,8 @@ cur_context:            .tag context  ; Current file descriptor state
 contexts:               .res 16 * FAT32_CONTEXTS
 contexts_end:
 
-sector_buffer:          .res 512
+sector_lba:             .dword 0
+sector_buffer:          .res 512      ; Sector buffer
 sector_buffer_end:
 
 filename_buf:		.res 11       ; Used for filename conversion
@@ -117,8 +118,27 @@ filename_buf:		.res 11       ; Used for filename conversion
 ; load_sector_buffer
 ;-----------------------------------------------------------------------------
 .proc load_sector_buffer
+	; Check if sector is already loaded
+	lda cur_context + context::lba + 0
+	cmp sector_lba + 0
+	bne do_load
+	lda cur_context + context::lba + 1
+	cmp sector_lba + 1
+	bne do_load
+	lda cur_context + context::lba + 2
+	cmp sector_lba + 2
+	bne do_load
+	lda cur_context + context::lba + 3
+	cmp sector_lba + 3
+	beq done
+
+do_load:
 	jsr set_sdcard_rw_params
-	jmp sdcard_read_sector
+	jsr sdcard_read_sector
+	copy_bytes sector_lba, cur_context + context::lba, 4
+
+done:	sec
+	rts
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -159,6 +179,12 @@ filename_buf:		.res 11       ; Used for filename conversion
 	; Initialize file contexts
 	stz context_idx
 	clear_bytes cur_context, contexts_end - cur_context
+
+	lda #$FF
+	sta sector_lba + 0
+	sta sector_lba + 1
+	sta sector_lba + 2
+	sta sector_lba + 3
 
 	; Initialize SD card
 	jsr sdcard_init
