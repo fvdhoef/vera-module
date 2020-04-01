@@ -145,21 +145,32 @@ done:	sec
 ; save_sector_buffer
 ;-----------------------------------------------------------------------------
 .proc save_sector_buffer
-	jsr set_sdcard_rw_params
-	jmp sdcard_write_sector
-.endproc
-
-;-----------------------------------------------------------------------------
-; save_fat_sector_buffer
-;-----------------------------------------------------------------------------
-.proc save_fat_sector_buffer
-	; Write first FAT
-	jsr set_sdcard_rw_params
-	jsr sdcard_write_sector
+	; Determine if this is FAT area write (sector_lba - lba_fat < fat_size)
+	sub32 tmp_buf, sector_lba, lba_fat
+	lda tmp_buf+2
+	ora tmp_buf+3
+	bne normal
+	sec
+	lda tmp_buf+0
+	sbc fat_size+0
+	lda tmp_buf+1
+	sbc fat_size+1
+	bcs normal
 
 	; Write second FAT
 	jsr set_sdcard_rw_params_fat2
-	jmp sdcard_write_sector
+	jsr sdcard_write_sector
+
+normal:	jsr set_sdcard_rw_params
+	jsr sdcard_write_sector
+
+	; Clear dirty bit
+	lda cur_context + context::flags
+	and #$FD
+	sta cur_context + context::flags
+
+	sec
+	rts
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -1076,7 +1087,7 @@ next:	jsr next_cluster
 	iny
 	sta (bufptr), y
 
-	jsr save_fat_sector_buffer
+	jsr save_sector_buffer
 	bcc error
 
 	plp

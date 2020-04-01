@@ -118,6 +118,28 @@ l3:	dec dst + 0
 .endmacro
 
 ;-----------------------------------------------------------------------------
+; Subtract two 32bit numbers located in memory
+;-----------------------------------------------------------------------------
+.macro sub32 dst, src_a, src_b
+	sec
+	lda src_a+0
+    sbc src_b+0
+	sta dst+0
+
+	lda src_a+1
+	sbc src_b+1
+	sta dst+1
+
+	lda src_a+2
+	sbc src_b+2
+	sta dst+2
+
+	lda src_a+3
+	sbc src_b+3
+	sta dst+3
+.endmacro
+
+;-----------------------------------------------------------------------------
 ; Copy bytes
 ;-----------------------------------------------------------------------------
 .macro copy_bytes dst, src, count
