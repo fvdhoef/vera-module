@@ -25,14 +25,14 @@ l1:
 cmd_table:
 	def_cmd "CD",      cmd_cd       ; Change directory
 	def_cmd "CLS",     cmd_cls      ; Clear screen
-	def_cmd "COPY",    cmd_copy     ; Copy file
-	def_cmd "DEL",     cmd_del      ; Delete file
+	; def_cmd "COPY",    cmd_copy     ; Copy file
+	def_cmd "DEL",     cmd_delete   ; Delete file
 	def_cmd "DIR",     cmd_dir      ; List directory
 	def_cmd "HELP",    cmd_help     ; Show available commands
-	def_cmd "HEXDUMP", cmd_hexdump  ; Hexdump contents of file
-	def_cmd "LOAD",    cmd_load     ; Load file
-	def_cmd "MOVE",    cmd_move     ; Move file
-	def_cmd "RENAME",  cmd_rename   ; Rename file
+	; def_cmd "HEXDUMP", cmd_hexdump  ; Hexdump contents of file
+	; def_cmd "LOAD",    cmd_load     ; Load file
+	; def_cmd "MOVE",    cmd_move     ; Move file
+	def_cmd "REN",     cmd_rename   ; Rename file
 	def_cmd "TYPE",    cmd_type     ; Print contents of file
 	.byte 0
 
@@ -394,9 +394,9 @@ str_error: .byte "Error!",10,0
 .endproc
 
 ;-----------------------------------------------------------------------------
-; cmd_del
+; cmd_delete
 ;-----------------------------------------------------------------------------
-.proc cmd_del
+.proc cmd_delete
 	; Open file
 	jsr set_single_param
 	bcs :+

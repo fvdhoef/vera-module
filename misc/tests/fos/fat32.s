@@ -27,7 +27,7 @@ fat32_ptr2:             .word 0       ; Used to pass a buffer pointer to read/wr
 bufptr:                 .word 0       ; Points to current offset within sector buffer
 
 	.bss
-fat32_cluster:          .dword 0      ; Used to pass cluster to fat32_open_cluster
+fat32_cluster:          .dword 0      ; Used to pass cluster to open_cluster
 fat32_size:             .word 0       ; Used to specifiy number of bytes to read/write
 fat32_dirent:           .tag dirent   ; Buffer containing decoded directory entry
 tmp_buf:                .res 4
@@ -68,13 +68,13 @@ filename_buf:		.res 11       ; Used for filename conversion
 ;-----------------------------------------------------------------------------
 .proc set_sdcard_rw_params
 	; SD card driver expects LBA in big-endian
-	lda cur_context + context::lba + 0
+	lda sector_lba + 0
 	sta sdcard_lba_be + 3
-	lda cur_context + context::lba + 1
+	lda sector_lba + 1
 	sta sdcard_lba_be + 2
-	lda cur_context + context::lba + 2
+	lda sector_lba + 2
 	sta sdcard_lba_be + 1
-	lda cur_context + context::lba + 3
+	lda sector_lba + 3
 	sta sdcard_lba_be + 0
 
 	; Set pointer to buffer
@@ -92,16 +92,16 @@ filename_buf:		.res 11       ; Used for filename conversion
 .proc set_sdcard_rw_params_fat2
 	; SD card driver expects LBA in big-endian
 	clc
-	lda cur_context + context::lba + 0
+	lda sector_lba + 0
 	adc fat_size + 0
 	sta sdcard_lba_be + 3
-	lda cur_context + context::lba + 1
+	lda sector_lba + 1
 	adc fat_size + 1
 	sta sdcard_lba_be + 2
-	lda cur_context + context::lba + 2
+	lda sector_lba + 2
 	adc fat_size + 2
 	sta sdcard_lba_be + 1
-	lda cur_context + context::lba + 3
+	lda sector_lba + 3
 	adc fat_size + 3
 	sta sdcard_lba_be + 0
 
@@ -111,6 +111,20 @@ filename_buf:		.res 11       ; Used for filename conversion
 	lda #>sector_buffer
 	sta sdcard_bufptr + 1
 
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; sync_sector_buffer
+;-----------------------------------------------------------------------------
+.proc sync_sector_buffer
+	; Write back sector buffer is dirty
+	lda cur_context + context::flags
+	bit #$02
+	beq done
+	jmp save_sector_buffer
+
+done:	sec
 	rts
 .endproc
 
@@ -133,9 +147,11 @@ filename_buf:		.res 11       ; Used for filename conversion
 	beq done
 
 do_load:
+	jsr sync_sector_buffer
+
+	copy_bytes sector_lba, cur_context + context::lba, 4
 	jsr set_sdcard_rw_params
 	jsr sdcard_read_sector
-	copy_bytes sector_lba, cur_context + context::lba, 4
 
 done:	sec
 	rts
@@ -147,14 +163,14 @@ done:	sec
 .proc save_sector_buffer
 	; Determine if this is FAT area write (sector_lba - lba_fat < fat_size)
 	sub32 tmp_buf, sector_lba, lba_fat
-	lda tmp_buf+2
-	ora tmp_buf+3
+	lda tmp_buf + 2
+	ora tmp_buf + 3
 	bne normal
 	sec
-	lda tmp_buf+0
-	sbc fat_size+0
-	lda tmp_buf+1
-	sbc fat_size+1
+	lda tmp_buf + 0
+	sbc fat_size + 0
+	lda tmp_buf + 1
+	sbc fat_size + 1
 	bcs normal
 
 	; Write second FAT
@@ -472,6 +488,40 @@ error:	clc
 .endproc
 
 ;-----------------------------------------------------------------------------
+; unlink_cluster_chain
+;-----------------------------------------------------------------------------
+.proc unlink_cluster_chain
+next:	jsr next_cluster
+	php
+
+	; Set entry as free
+	lda #0
+	ldy #0
+	sta (bufptr), y
+	iny
+	sta (bufptr), y
+	iny
+	sta (bufptr), y
+	iny
+	sta (bufptr), y
+
+	; Set sector as dirty
+	lda cur_context + context::flags
+	ora #$02
+	sta cur_context + context::flags
+
+	; bcc error
+	plp
+	bcs next
+
+	; Make sure dirty sectors are written to disk
+	jsr sync_sector_buffer
+
+	sec
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
 ; validate_char
 ;-----------------------------------------------------------------------------
 .proc validate_char
@@ -634,9 +684,9 @@ not_ok:	clc
 .endproc
 
 ;-----------------------------------------------------------------------------
-; fat32_open_cluster
+; open_cluster
 ;-----------------------------------------------------------------------------
-.proc fat32_open_cluster
+.proc open_cluster
 	; Check if cluster == 0 -> modify into root dir
 	lda fat32_cluster + 0
 	ora fat32_cluster + 1
@@ -916,7 +966,7 @@ error:	clc
 .proc fat32_open_cwd
 	; Open current directory
 	copy_bytes fat32_cluster, cur_context + context::cwd_cluster, 4
-	jmp fat32_open_cluster
+	jmp open_cluster
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -1011,7 +1061,7 @@ error:
 	; Open file
 	copy_bytes cur_context + context::remaining, fat32_dirent + dirent::size, 4
 	copy_bytes fat32_cluster, fat32_dirent + dirent::cluster, 4
-	jmp fat32_open_cluster
+	jmp open_cluster
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -1067,38 +1117,6 @@ error:
 
 	; Write sector buffer to disk
 	jmp save_sector_buffer
-.endproc
-
-;-----------------------------------------------------------------------------
-; unlink_cluster_chain
-;-----------------------------------------------------------------------------
-.proc unlink_cluster_chain
-next:	jsr next_cluster
-	php
-
-	; Set entry as free
-	lda #0
-	ldy #0
-	sta (bufptr), y
-	iny
-	sta (bufptr), y
-	iny
-	sta (bufptr), y
-	iny
-	sta (bufptr), y
-
-	jsr save_sector_buffer
-	bcc error
-
-	plp
-	bcs next
-
-	sec
-	rts
-
-error:
-	clc
-	rts
 .endproc
 
 ;-----------------------------------------------------------------------------

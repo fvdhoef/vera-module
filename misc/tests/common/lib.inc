@@ -26,18 +26,18 @@ l1:	dec dst
 ;-----------------------------------------------------------------------------
 .macro add32 dst, src0, src1
     clc
-    lda src0+0
-    adc src1+0
-    sta dst+0
-    lda src0+1
-    adc src1+1
-    sta dst+1
-    lda src0+2
-    adc src1+2
-    sta dst+2
-    lda src0+3
-    adc src1+3
-    sta dst+3
+    lda src0 + 0
+    adc src1 + 0
+    sta dst + 0
+    lda src0 + 1
+    adc src1 + 1
+    sta dst + 1
+    lda src0 + 2
+    adc src1 + 2
+    sta dst + 2
+    lda src0 + 3
+    adc src1 + 3
+    sta dst + 3
 .endmacro
 
 ;-----------------------------------------------------------------------------
@@ -46,21 +46,21 @@ l1:	dec dst
 .macro add32_16 dst, src0, src1
     clc
 
-    lda src0+0
-    adc src1+0
-    sta dst+0
+    lda src0 + 0
+    adc src1 + 0
+    sta dst + 0
 
-    lda src0+1
-    adc src1+1
-    sta dst+1
+    lda src0 + 1
+    adc src1 + 1
+    sta dst + 1
 
-    lda src0+2
+    lda src0 + 2
     adc #0
-    sta dst+2
+    sta dst + 2
 
-    lda src0+3
+    lda src0 + 3
     adc #0
-    sta dst+3
+    sta dst + 3
 .endmacro
 
 ;-----------------------------------------------------------------------------
@@ -100,21 +100,21 @@ l3:	dec dst + 0
 ;-----------------------------------------------------------------------------
 .macro sub32_val dst, src, val
 	sec
-	lda src+0
+	lda src + 0
 	sbc #<val
-	sta dst+0
+	sta dst + 0
 
-	lda src+1
+	lda src + 1
 	sbc #>val
-	sta dst+1
+	sta dst + 1
 
-	lda src+2
+	lda src + 2
 	sbc #^val
-	sta dst+2
+	sta dst + 2
 
-	lda src+3
+	lda src + 3
 	sbc #(.hibyte(.hiword(val)))
-	sta dst+3
+	sta dst + 3
 .endmacro
 
 ;-----------------------------------------------------------------------------
@@ -122,21 +122,21 @@ l3:	dec dst + 0
 ;-----------------------------------------------------------------------------
 .macro sub32 dst, src_a, src_b
 	sec
-	lda src_a+0
-    sbc src_b+0
-	sta dst+0
+	lda src_a + 0
+    sbc src_b + 0
+	sta dst + 0
 
-	lda src_a+1
-	sbc src_b+1
-	sta dst+1
+	lda src_a + 1
+	sbc src_b + 1
+	sta dst + 1
 
-	lda src_a+2
-	sbc src_b+2
-	sta dst+2
+	lda src_a + 2
+	sbc src_b + 2
+	sta dst + 2
 
-	lda src_a+3
-	sbc src_b+3
-	sta dst+3
+	lda src_a + 3
+	sbc src_b + 3
+	sta dst + 3
 .endmacro
 
 ;-----------------------------------------------------------------------------
