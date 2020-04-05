@@ -40,6 +40,7 @@ lba_partition:          .dword 0      ; Start sector of FAT32 partition
 fat_size:               .dword 0      ; Size in sectors of each FAT table
 lba_fat:                .dword 0      ; Start sector of first FAT table
 lba_data:               .dword 0      ; Start sector of first data cluster
+cluster_count:          .dword 0      ; Total number of cluster on volume
 
 ; Contexts
 context_idx:            .byte 0       ; Index of current context
@@ -51,7 +52,8 @@ sector_lba:             .dword 0
 sector_buffer:          .res 512      ; Sector buffer
 sector_buffer_end:
 
-filename_buf:		.res 11       ; Used for filename conversion
+filename_buf:           .res 11       ; Used for filename conversion
+free_cluster:           .res 4
 
 .if .sizeof(context) * FAT32_CONTEXTS > 256
 .error "FAT32_CONTEXTS too high"
@@ -291,6 +293,19 @@ shift_loop:
 	add32 lba_data, lba_fat, fat_size
 	add32 lba_data, lba_data, fat_size
 
+	; Calculate number of clusters on volume: (total_sectors - lba_data) >> cluster_shift
+	copy_bytes cluster_count, sector_buffer + 32, 4
+	sub32 cluster_count, cluster_count, lba_data
+	ldy cluster_shift
+	beq :++
+:	lsr cluster_count + 3
+	ror cluster_count + 2
+	ror cluster_count + 1
+	ror cluster_count + 0
+	dey
+	bne :-
+:
+
 	sec
 	rts
 
@@ -518,6 +533,82 @@ next:	jsr next_cluster
 	jsr sync_sector_buffer
 
 	sec
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; find_free_cluster
+;-----------------------------------------------------------------------------
+.proc find_free_cluster
+	; Start at cluster 2
+	lda #2
+	sta cur_context + context::cluster + 0
+	stz cur_context + context::cluster + 1
+	stz cur_context + context::cluster + 2
+	stz cur_context + context::cluster + 3
+	jsr load_fat_sector_for_cluster
+
+next:
+	; Check for free entry
+	ldy #3
+	lda (bufptr), y
+	and #$0F	; Ignore upper 4 bits of 32-bit entry
+	dey
+	ora (bufptr), y
+	dey
+	ora (bufptr), y
+	dey
+	ora (bufptr), y
+	bne not_free
+
+	; Return found free cluster
+	copy_bytes free_cluster, cur_context + context::cluster, 4
+	sec
+	rts
+
+not_free:
+	; bufptr += 4
+	clc
+	lda bufptr + 0
+	adc #4
+	sta bufptr + 0
+	lda bufptr + 1
+	adc #0
+	sta bufptr + 1
+
+	; cluster += 1
+	inc32 cur_context + context::cluster
+
+	; Check if at end of FAT table
+	lda cur_context + context::cluster + 0
+	cmp cluster_count + 0
+	bne :+
+	lda cur_context + context::cluster + 1
+	cmp cluster_count + 1
+	bne :+
+	lda cur_context + context::cluster + 2
+	cmp cluster_count + 2
+	bne :+
+	lda cur_context + context::cluster + 3
+	cmp cluster_count + 3
+	beq no_free_cluster
+:
+	; At end of sector buffer?
+	lda bufptr + 0
+	cmp #<sector_buffer_end
+	bne next
+	lda bufptr + 1
+	cmp #>sector_buffer_end
+	bne next
+	
+	; Load next FAT sector
+	inc32 cur_context + context::lba
+	jsr load_sector_buffer
+	reset_bufptr
+	jmp next
+
+no_free_cluster:
+	clc
 	rts
 .endproc
 
@@ -1141,4 +1232,184 @@ error:
 	; Unlink cluster chain
 	copy_bytes cur_context + context::cluster, fat32_dirent + dirent::cluster, 4
 	jmp unlink_cluster_chain
+.endproc
+
+;-----------------------------------------------------------------------------
+; fat32_create
+;-----------------------------------------------------------------------------
+; .proc fat32_create
+; 	; Find file
+; 	jsr fat32_find_file
+; 	bcs exists
+
+; 	; Find free directory entry
+; 	jsr fat32_open_cwd
+; 	bcc error
+
+; next:	jsr fat32_read_dirent
+; 	bcc error
+
+; 	ldy #0
+; :	lda fat32_dirent + dirent::name, y
+; 	beq match
+; 	cmp (fat32_ptr), y
+; 	bne next
+; 	iny
+; 	bra :-
+
+; match:	; Search string also at end?
+; 	lda (fat32_ptr), y
+; 	bne next
+
+; 	sec
+; 	rts
+
+
+
+
+; exists:
+
+; 	rts
+
+; .endproc
+
+
+
+.include "text_display.inc"
+
+.proc fat32_test
+	lda cluster_shift
+	jsr puthex
+
+	lda #' '
+	jsr putchar
+
+	lda cluster_count + 3
+	jsr puthex
+	lda cluster_count + 2
+	jsr puthex
+	lda cluster_count + 1
+	jsr puthex
+	lda cluster_count + 0
+	jsr puthex
+
+	lda #' '
+	jsr putchar
+
+
+
+	jsr find_free_cluster
+	bcc error
+
+	lda free_cluster + 3
+	jsr puthex
+	lda free_cluster + 2
+	jsr puthex
+	lda free_cluster + 1
+	jsr puthex
+	lda free_cluster + 0
+	jsr puthex
+
+	rts
+
+error:
+	lda #'E'
+	jsr putchar
+	rts
+
+
+; 	dex
+; 	bne next
+
+; 	lda #10
+; 	jsr putchar
+
+
+	; lda cur_context + context::cluster + 3
+	; jsr puthex
+	; lda cur_context + context::cluster + 2
+	; jsr puthex
+	; lda cur_context + context::cluster + 1
+	; jsr puthex
+	; lda cur_context + context::cluster + 0
+	jsr puthex
+
+	lda #' '
+	jsr putchar
+
+
+
+	; inc32 sector_lba
+	; jsr set_sdcard_rw_params
+	; jsr sdcard_read_sector
+
+
+; 	; Load sector
+; 	copy_bytes cur_context + context::lba, lba_fat, 4
+; 	jsr load_sector_buffer
+; 	bcs :+
+; 	rts
+; :
+
+; 	reset_bufptr
+
+; 	stz cur_context + context::cluster + 0
+; 	stz cur_context + context::cluster + 1
+; 	stz cur_context + context::cluster + 2
+; 	stz cur_context + context::cluster + 3
+
+; 	ldx #128
+; next:
+; 	; Check for free entry
+; 	ldy #3
+; 	lda (bufptr), y
+; 	and #$0F	; Ignore upper 4 bits of 32-bit entry
+; 	dey
+; 	ora (bufptr), y
+; 	dey
+; 	ora (bufptr), y
+; 	dey
+; 	ora (bufptr), y
+; 	; bne not_free
+
+; 	; lda cur_context + context::cluster + 3
+; 	; jsr puthex
+; 	; lda cur_context + context::cluster + 2
+; 	; jsr puthex
+; 	; lda cur_context + context::cluster + 1
+; 	; jsr puthex
+; 	; lda cur_context + context::cluster + 0
+; 	jsr puthex
+
+; 	lda #' '
+; 	jsr putchar
+
+
+; not_free:
+; 	clc
+; 	lda bufptr + 0
+; 	adc #4
+; 	sta bufptr + 0
+; 	lda bufptr + 1
+; 	adc #0
+; 	sta bufptr + 1
+
+; 	inc32 cur_context + context::cluster
+
+; 	dex
+; 	bne next
+
+; 	lda #10
+; 	jsr putchar
+
+
+	lda #<sector_buffer
+	sta SRC_PTR+0
+	lda #>sector_buffer
+	sta SRC_PTR+1
+	stz LENGTH+0
+	lda #2
+	sta LENGTH + 1
+	jsr hexdump
+	rts
 .endproc

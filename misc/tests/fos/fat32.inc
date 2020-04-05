@@ -38,3 +38,5 @@ FAT32_CONTEXTS = 3
 .global fat32_find_dirent
 .global fat32_rename
 .global fat32_delete
+
+.global fat32_test

@@ -34,6 +34,7 @@ cmd_table:
 	; def_cmd "MOVE",    cmd_move     ; Move file
 	def_cmd "REN",     cmd_rename   ; Rename file
 	def_cmd "TYPE",    cmd_type     ; Print contents of file
+	def_cmd "TEST",    cmd_test
 	.byte 0
 
 	.code
@@ -415,5 +416,13 @@ str_error: .byte "Error!",10,0
 ; cmd_hexdump
 ;-----------------------------------------------------------------------------
 .proc cmd_hexdump
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; cmd_test
+;-----------------------------------------------------------------------------
+.proc cmd_test
+	jsr fat32_test
 	rts
 .endproc
