@@ -506,6 +506,15 @@ error:	clc
 ; unlink_cluster_chain
 ;-----------------------------------------------------------------------------
 .proc unlink_cluster_chain
+	; Don't unlink cluster 0
+	lda cur_context + context::cluster + 0
+	ora cur_context + context::cluster + 1
+	ora cur_context + context::cluster + 2
+	ora cur_context + context::cluster + 3
+	bne next
+	sec
+	rts
+
 next:	jsr next_cluster
 	php
 
@@ -1234,174 +1243,83 @@ error:
 	jmp unlink_cluster_chain
 .endproc
 
+.include "text_display.inc"
+
 ;-----------------------------------------------------------------------------
 ; fat32_create
 ;-----------------------------------------------------------------------------
-; .proc fat32_create
-; 	; Find file
-; 	jsr fat32_find_file
-; 	bcs exists
+.proc fat32_create
+	; Save argument for re-use
+	copy_bytes tmp_buf, fat32_ptr, 2
 
-; 	; Find free directory entry
-; 	jsr fat32_open_cwd
-; 	bcc error
-
-; next:	jsr fat32_read_dirent
-; 	bcc error
-
-; 	ldy #0
-; :	lda fat32_dirent + dirent::name, y
-; 	beq match
-; 	cmp (fat32_ptr), y
-; 	bne next
-; 	iny
-; 	bra :-
-
-; match:	; Search string also at end?
-; 	lda (fat32_ptr), y
-; 	bne next
-
-; 	sec
-; 	rts
-
-
-
-
-; exists:
-
-; 	rts
-
-; .endproc
-
-
-
-.include "text_display.inc"
-
-.proc fat32_test
-	lda cluster_shift
-	jsr puthex
-
-	lda #' '
-	jsr putchar
-
-	lda cluster_count + 3
-	jsr puthex
-	lda cluster_count + 2
-	jsr puthex
-	lda cluster_count + 1
-	jsr puthex
-	lda cluster_count + 0
-	jsr puthex
-
-	lda #' '
-	jsr putchar
-
-
-
-	jsr find_free_cluster
-	bcc error
-
-	lda free_cluster + 3
-	jsr puthex
-	lda free_cluster + 2
-	jsr puthex
-	lda free_cluster + 1
-	jsr puthex
-	lda free_cluster + 0
-	jsr puthex
-
+	; Check if file already exists
+	jsr fat32_find_file
+	bcc :+
+	clc	; File already exists
 	rts
-
-error:
-	lda #'E'
-	jsr putchar
+:
+	; Convert file name
+	copy_bytes fat32_ptr, tmp_buf, 2
+	jsr convert_filename
+	bcs :+
 	rts
+:
+	; Find free directory entry
+	jsr fat32_open_cwd
+	bcs :+
+	rts
+:
+next_entry:
+	; At end of buffer?
+	lda bufptr + 0
+	cmp #<sector_buffer_end
+	bne :+
+	lda bufptr + 1
+	cmp #>sector_buffer_end
+	bne :+
+	jsr fat32_next_sector
+	bcs :+
+	clc     ; Indicate error,  TODO: allocate new cluster for directory
+	rts
+:
+	; Is this entry free?
+	lda (bufptr)
+	beq free_entry
+	cmp #$E5
+	beq free_entry
 
+	; Increment buffer pointer to next entry
+	clc
+	lda bufptr + 0
+	adc #32
+	sta bufptr + 0
+	lda bufptr + 1
+	adc #0
+	sta bufptr + 1
+	bra next_entry
 
-; 	dex
-; 	bne next
+	; Free directory entry found
+free_entry:
+	; Copy filename in new entry
+	ldy #0
+:	lda filename_buf, y
+	sta (bufptr), y
+	iny
+	cpy #11
+	bne :-
 
-; 	lda #10
-; 	jsr putchar
+	; Zero fill rest of entry
+	lda #0
+:	sta (bufptr), y
+	iny
+	cpy #32
+	bne :-
 
-
-	; lda cur_context + context::cluster + 3
-	; jsr puthex
-	; lda cur_context + context::cluster + 2
-	; jsr puthex
-	; lda cur_context + context::cluster + 1
-	; jsr puthex
-	; lda cur_context + context::cluster + 0
-	jsr puthex
-
-	lda #' '
-	jsr putchar
-
-
-
-	; inc32 sector_lba
-	; jsr set_sdcard_rw_params
-	; jsr sdcard_read_sector
-
-
-; 	; Load sector
-; 	copy_bytes cur_context + context::lba, lba_fat, 4
-; 	jsr load_sector_buffer
-; 	bcs :+
-; 	rts
-; :
-
-; 	reset_bufptr
-
-; 	stz cur_context + context::cluster + 0
-; 	stz cur_context + context::cluster + 1
-; 	stz cur_context + context::cluster + 2
-; 	stz cur_context + context::cluster + 3
-
-; 	ldx #128
-; next:
-; 	; Check for free entry
-; 	ldy #3
-; 	lda (bufptr), y
-; 	and #$0F	; Ignore upper 4 bits of 32-bit entry
-; 	dey
-; 	ora (bufptr), y
-; 	dey
-; 	ora (bufptr), y
-; 	dey
-; 	ora (bufptr), y
-; 	; bne not_free
-
-; 	; lda cur_context + context::cluster + 3
-; 	; jsr puthex
-; 	; lda cur_context + context::cluster + 2
-; 	; jsr puthex
-; 	; lda cur_context + context::cluster + 1
-; 	; jsr puthex
-; 	; lda cur_context + context::cluster + 0
-; 	jsr puthex
-
-; 	lda #' '
-; 	jsr putchar
-
-
-; not_free:
-; 	clc
-; 	lda bufptr + 0
-; 	adc #4
-; 	sta bufptr + 0
-; 	lda bufptr + 1
-; 	adc #0
-; 	sta bufptr + 1
-
-; 	inc32 cur_context + context::cluster
-
-; 	dex
-; 	bne next
-
-; 	lda #10
-; 	jsr putchar
-
+	; Write sector buffer to disk
+	jsr save_sector_buffer
+	bcs :+
+	rts
+:
 
 	lda #<sector_buffer
 	sta SRC_PTR+0
@@ -1411,5 +1329,19 @@ error:
 	lda #2
 	sta LENGTH + 1
 	jsr hexdump
+
+	sec
 	rts
+.endproc
+
+.proc fat32_test
+	lda #<name
+	sta fat32_ptr+0
+	lda #>name
+	sta fat32_ptr+1
+
+	jsr fat32_create
+	rts
+
+name: .byte "FILE.TST",0
 .endproc
