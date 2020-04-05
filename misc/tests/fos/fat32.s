@@ -483,8 +483,9 @@ shift_done:
 
 	; Check if this is the end of cluster chain (entry >= 0x0FFFFFF8)
 	lda cur_context + context::cluster + 3
+	and #$0F	; Ignore upper 4 bits
 	cmp #$0F
-	bcc :+
+	bne :+
 	lda cur_context + context::cluster + 2
 	cmp #$FF
 	bne :+
@@ -619,6 +620,33 @@ not_free:
 no_free_cluster:
 	clc
 	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; allocate_cluster
+;-----------------------------------------------------------------------------
+.proc allocate_cluster
+	; Find free entry
+	jsr find_free_cluster
+	bcs :+
+	rts
+:
+	; Set cluster as end-of-chain
+	ldy #0
+	lda #$FF
+	sta (bufptr), y
+	iny
+	sta (bufptr), y
+	iny
+	sta (bufptr), y
+	iny
+	lda (bufptr), y
+	ora #$0F	; Preserve upper 4 bits
+	sta (bufptr), y
+
+	; Save FAT sector
+	jmp save_sector_buffer
+	; rts
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -1320,16 +1348,6 @@ free_entry:
 	bcs :+
 	rts
 :
-
-	lda #<sector_buffer
-	sta SRC_PTR+0
-	lda #>sector_buffer
-	sta SRC_PTR+1
-	stz LENGTH+0
-	lda #2
-	sta LENGTH + 1
-	jsr hexdump
-
 	sec
 	rts
 .endproc

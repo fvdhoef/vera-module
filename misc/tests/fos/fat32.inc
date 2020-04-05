@@ -29,6 +29,7 @@ FAT32_CONTEXTS = 3
 ; Higher level
 .global fat32_open_cwd
 .global fat32_open_file
+.global fat32_create
 .global fat32_chdir
 
 .global fat32_read
