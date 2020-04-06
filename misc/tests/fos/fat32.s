@@ -12,7 +12,8 @@ cluster         .dword   ; Current cluster
 lba             .dword   ; Sector of current cluster
 cluster_sector  .byte    ; Sector index within current cluster
 bufptr          .word    ; Pointer within sector_buffer
-remaining       .dword   ; Bytes remaining in current file
+file_size       .dword   ; Size of current file
+file_offset	.dword   ; Offset in current file
 cwd_cluster     .dword   ; Cluster of current directory
 dirent_lba      .dword   ; Sector containing directory entry for this file
 dirent_bufptr   .word    ; Offset to start of directory entry 
@@ -80,10 +81,7 @@ free_cluster:           .res 4
 	sta sdcard_lba_be + 0
 
 	; Set pointer to buffer
-	lda #<sector_buffer
-	sta sdcard_bufptr + 0
-	lda #>sector_buffer
-	sta sdcard_bufptr + 1
+	set16_val sdcard_bufptr, sector_buffer
 
 	rts
 .endproc
@@ -108,10 +106,7 @@ free_cluster:           .res 4
 	sta sdcard_lba_be + 0
 
 	; Set pointer to buffer
-	lda #<sector_buffer
-	sta sdcard_bufptr + 0
-	lda #>sector_buffer
-	sta sdcard_bufptr + 1
+	set16_val sdcard_bufptr, sector_buffer
 
 	rts
 .endproc
@@ -135,23 +130,13 @@ done:	sec
 ;-----------------------------------------------------------------------------
 .proc load_sector_buffer
 	; Check if sector is already loaded
-	lda cur_context + context::lba + 0
-	cmp sector_lba + 0
-	bne do_load
-	lda cur_context + context::lba + 1
-	cmp sector_lba + 1
-	bne do_load
-	lda cur_context + context::lba + 2
-	cmp sector_lba + 2
-	bne do_load
-	lda cur_context + context::lba + 3
-	cmp sector_lba + 3
-	beq done
+	cmp32 cur_context + context::lba, sector_lba, do_load
+	sec
+	rts
 
 do_load:
 	jsr sync_sector_buffer
-
-	copy_bytes sector_lba, cur_context + context::lba, 4
+	set32 sector_lba, cur_context + context::lba
 	jsr set_sdcard_rw_params
 	jsr sdcard_read_sector
 
@@ -192,16 +177,6 @@ normal:	jsr set_sdcard_rw_params
 .endproc
 
 ;-----------------------------------------------------------------------------
-; reset_bufptr
-;-----------------------------------------------------------------------------
-.macro reset_bufptr
-	lda #<sector_buffer
-	sta bufptr + 0
-	lda #>sector_buffer
-	sta bufptr + 1
-.endmacro
-
-;-----------------------------------------------------------------------------
 ; fat32_init
 ;-----------------------------------------------------------------------------
 .proc fat32_init
@@ -209,11 +184,7 @@ normal:	jsr set_sdcard_rw_params
 	stz context_idx
 	clear_bytes cur_context, contexts_end - cur_context
 
-	lda #$FF
-	sta sector_lba + 0
-	sta sector_lba + 1
-	sta sector_lba + 2
-	sta sector_lba + 3
+	set32_val sector_lba, $FFFFFFFF
 
 	; Initialize SD card
 	jsr sdcard_init
@@ -221,14 +192,8 @@ normal:	jsr set_sdcard_rw_params
 	jmp error
 :
 	; Read partition table
-	stz sdcard_lba_be + 0
-	stz sdcard_lba_be + 1
-	stz sdcard_lba_be + 2
-	stz sdcard_lba_be + 3
-	lda #<sector_buffer
-	sta sdcard_bufptr
-	lda #>sector_buffer
-	sta sdcard_bufptr + 1
+	set32_val sdcard_lba_be, 0
+	set16_val sdcard_bufptr, sector_buffer
 	jsr sdcard_read_sector
 	bcs :+
 	jmp error
@@ -242,10 +207,10 @@ normal:	jsr set_sdcard_rw_params
 	jmp error
 :
 	; Get LBA of partition of first partition
-	copy_bytes lba_partition, sector_buffer + $1BE + 8, 4
+	set32 lba_partition, sector_buffer + $1BE + 8
 
 	; Read first sector of FAT32 partition
-	copy_bytes cur_context + context::lba, lba_partition, 4
+	set32 cur_context + context::lba, lba_partition
 	jsr load_sector_buffer
 	bcs :+
 	jmp error
@@ -281,10 +246,10 @@ shift_loop:
 	bra shift_loop
 :
 	; Fat size in sectors
-	copy_bytes fat_size, sector_buffer + 36, 4
+	set32 fat_size, sector_buffer + 36
 
 	; Root cluster
-	copy_bytes fat32_rootdir_cluster, sector_buffer + 44, 4
+	set32 fat32_rootdir_cluster, sector_buffer + 44
 
 	; Calculate LBA of first FAT
 	add32_16 lba_fat, lba_partition, sector_buffer + 14
@@ -294,7 +259,7 @@ shift_loop:
 	add32 lba_data, lba_data, fat_size
 
 	; Calculate number of clusters on volume: (total_sectors - lba_data) >> cluster_shift
-	copy_bytes cluster_count, sector_buffer + 32, 4
+	set32 cluster_count, sector_buffer + 32
 	sub32 cluster_count, cluster_count, lba_data
 	ldy cluster_shift
 	beq :++
@@ -331,10 +296,7 @@ error:	clc
 	pha
 
 	; Put zero page variables in current context
-	lda bufptr + 0
-	sta cur_context + context::bufptr + 0
-	lda bufptr + 1
-	sta cur_context + context::bufptr + 1
+	set16 cur_context + context::bufptr, bufptr
 
 	; Copy current context back
 	lda context_idx   ; X=A*32
@@ -371,10 +333,7 @@ error:	clc
 	bne :-
 
 	; Restore zero page variables from current context
-	lda cur_context + context::bufptr + 0
-	sta bufptr + 0
-	lda cur_context + context::bufptr + 1
-	sta bufptr + 1
+	set16 bufptr, cur_context + context::bufptr
 
 	; Reload sector
 	lda cur_context + context::flags
@@ -451,14 +410,7 @@ shift_done:
 	bcc :+
 	lda #1
 :	sta bufptr + 1
-
-	clc
-	lda bufptr + 0
-	adc #<sector_buffer
-	sta bufptr + 0
-	lda bufptr + 1
-	adc #>sector_buffer
-	sta bufptr + 1
+	add16_val bufptr, bufptr, sector_buffer
 
 	; Success
 	sec
@@ -551,11 +503,7 @@ next:	jsr next_cluster
 ;-----------------------------------------------------------------------------
 .proc find_free_cluster
 	; Start at cluster 2
-	lda #2
-	sta cur_context + context::cluster + 0
-	stz cur_context + context::cluster + 1
-	stz cur_context + context::cluster + 2
-	stz cur_context + context::cluster + 3
+	set32_val cur_context + context::cluster, 2
 	jsr load_fat_sector_for_cluster
 
 next:
@@ -572,54 +520,28 @@ next:
 	bne not_free
 
 	; Return found free cluster
-	copy_bytes free_cluster, cur_context + context::cluster, 4
+	set32 free_cluster, cur_context + context::cluster
 	sec
 	rts
 
 not_free:
 	; bufptr += 4
-	clc
-	lda bufptr + 0
-	adc #4
-	sta bufptr + 0
-	lda bufptr + 1
-	adc #0
-	sta bufptr + 1
+	add16_val bufptr, bufptr, 4
 
 	; cluster += 1
 	inc32 cur_context + context::cluster
 
 	; Check if at end of FAT table
-	lda cur_context + context::cluster + 0
-	cmp cluster_count + 0
-	bne :+
-	lda cur_context + context::cluster + 1
-	cmp cluster_count + 1
-	bne :+
-	lda cur_context + context::cluster + 2
-	cmp cluster_count + 2
-	bne :+
-	lda cur_context + context::cluster + 3
-	cmp cluster_count + 3
-	beq no_free_cluster
-:
-	; At end of sector buffer?
-	lda bufptr + 0
-	cmp #<sector_buffer_end
-	bne next
-	lda bufptr + 1
-	cmp #>sector_buffer_end
-	bne next
-	
-	; Load next FAT sector
-	inc32 cur_context + context::lba
-	jsr load_sector_buffer
-	reset_bufptr
-	jmp next
-
-no_free_cluster:
+	cmp32 cur_context + context::cluster, cluster_count, :+
 	clc
 	rts
+:
+	; Load next FAT sector if at end of buffer
+	cmp16_val bufptr, sector_buffer_end, next
+	inc32 cur_context + context::lba
+	jsr load_sector_buffer
+	set16_val bufptr, sector_buffer
+	jmp next
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -646,7 +568,6 @@ no_free_cluster:
 
 	; Save FAT sector
 	jmp save_sector_buffer
-	; rts
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -821,11 +742,11 @@ not_ok:	clc
 	ora fat32_cluster + 2
 	ora fat32_cluster + 3
 	beq rootdir
-	copy_bytes cur_context + context::cluster, fat32_cluster, 4
+	set32 cur_context + context::cluster, fat32_cluster
 	bra readsector
 
 rootdir:
-	copy_bytes cur_context + context::cluster, fat32_rootdir_cluster, 4
+	set32 cur_context + context::cluster, fat32_rootdir_cluster
 
 readsector:
 	; Read first sector of cluster
@@ -833,7 +754,7 @@ readsector:
 	jsr load_sector_buffer
 
 	; Reset buffer pointer
-	reset_bufptr
+	set16_val bufptr, sector_buffer
 
 	; Set buffer as in-use
 	lda #1
@@ -859,7 +780,7 @@ error:	clc
 
 read_sector:
 	jsr load_sector_buffer
-	reset_bufptr
+	set16_val bufptr, sector_buffer
 
 done:	sec
 	rts
@@ -882,13 +803,8 @@ error:	clc
 ;-----------------------------------------------------------------------------
 .proc fat32_read
 next:
-	; At end of buffer?
-	lda bufptr + 0
-	cmp #<sector_buffer_end
-	bne :+
-	lda bufptr + 1
-	cmp #>sector_buffer_end
-	bne :+
+	; Load next sector if at end of buffer
+	cmp16_val bufptr, sector_buffer_end, :+
 	jsr fat32_next_sector
 	bcc error
 :
@@ -918,28 +834,19 @@ error:	clc
 .proc fat32_get_byte
 next:
 	; Bytes remaining?
-	lda cur_context + context::remaining + 0
-	ora cur_context + context::remaining + 1
-	ora cur_context + context::remaining + 2
-	ora cur_context + context::remaining + 3
-	bne :+
+	cmp32 cur_context + context::file_offset, cur_context + context::file_size, :+
 	clc
 	rts
 :
 	; At end of buffer?
-	lda bufptr + 0
-	cmp #<sector_buffer_end
-	bne :+
-	lda bufptr + 1
-	cmp #>sector_buffer_end
-	bne :+
+	cmp16_val bufptr, sector_buffer_end, :+
 	jsr fat32_next_sector
 	bcs :+
 	clc	; Indicate error
 	rts
 :
 	; Decrement bytes remaining
-	dec32 cur_context + context::remaining
+	inc32 cur_context + context::file_offset
 
 	; Get byte from buffer
 	lda (bufptr)
@@ -954,13 +861,8 @@ next:
 ;-----------------------------------------------------------------------------
 .proc fat32_read_dirent
 read_entry:
-	; At end of buffer?
-	lda bufptr + 0
-	cmp #<sector_buffer_end
-	bne :+
-	lda bufptr + 1
-	cmp #>sector_buffer_end
-	bne :+
+	; Load next sector if at end of buffer
+	cmp16_val bufptr, sector_buffer_end, :+
 	jsr fat32_next_sector
 	bcs :+
 	clc     ; Indicate error
@@ -1057,29 +959,17 @@ name_done:
 	sta fat32_dirent + dirent::cluster + 3
 
 	; Save lba + bufptr
-	copy_bytes cur_context + context::dirent_lba,    cur_context + context::lba, 4
-	copy_bytes cur_context + context::dirent_bufptr, bufptr, 2
+	set32 cur_context + context::dirent_lba,    cur_context + context::lba
+	set16 cur_context + context::dirent_bufptr, bufptr
 
 	; Increment buffer pointer to next entry
-	clc
-	lda bufptr + 0
-	adc #32
-	sta bufptr + 0
-	lda bufptr + 1
-	adc #0
-	sta bufptr + 1
+	add16_val bufptr, bufptr, 32
 
 	sec
 	rts
 
 next_entry:
-	clc
-	lda bufptr + 0
-	adc #32
-	sta bufptr + 0
-	lda bufptr + 1
-	adc #0
-	sta bufptr + 1
+	add16_val bufptr, bufptr, 32
 	jmp read_entry
 
 error:	clc
@@ -1093,7 +983,7 @@ error:	clc
 ;-----------------------------------------------------------------------------
 .proc fat32_open_cwd
 	; Open current directory
-	copy_bytes fat32_cluster, cur_context + context::cwd_cluster, 4
+	set32 fat32_cluster, cur_context + context::cwd_cluster
 	jmp open_cluster
 .endproc
 
@@ -1187,8 +1077,9 @@ error:
 	rts
 :
 	; Open file
-	copy_bytes cur_context + context::remaining, fat32_dirent + dirent::size, 4
-	copy_bytes fat32_cluster, fat32_dirent + dirent::cluster, 4
+	set32_val cur_context + context::file_offset, 0
+	set32 cur_context + context::file_size, fat32_dirent + dirent::size
+	set32 fat32_cluster, fat32_dirent + dirent::cluster
 	jmp open_cluster
 .endproc
 
@@ -1202,7 +1093,7 @@ error:
 	rts
 :
 	; Set as current directory
-	copy_bytes cur_context + context::cwd_cluster, fat32_dirent + dirent::cluster, 4
+	set32 cur_context + context::cwd_cluster, fat32_dirent + dirent::cluster
 
 	sec
 	rts
@@ -1213,29 +1104,29 @@ error:
 ;-----------------------------------------------------------------------------
 .proc fat32_rename
 	; Save first argument
-	copy_bytes tmp_buf, fat32_ptr, 2
+	set16 tmp_buf, fat32_ptr
 
 	; Make sure target name doesn't exist
-	copy_bytes fat32_ptr, fat32_ptr2, 2
+	set16 fat32_ptr, fat32_ptr2
 	jsr fat32_find_dirent
 	bcc :+
 	clc	; Error, file exists
 	rts
 :
 	; Convert target filename into directory entry format
-	copy_bytes fat32_ptr, fat32_ptr2, 2
+	set16 fat32_ptr, fat32_ptr2
 	jsr convert_filename
 	bcs :+
 	rts
 :
 	; Find file to rename
-	copy_bytes fat32_ptr, tmp_buf, 2
+	set16 fat32_ptr, tmp_buf
 	jsr fat32_find_dirent
 	bcs :+
 	rts
 :
 	; Copy new filename into sector buffer
-	copy_bytes bufptr, cur_context + context::dirent_bufptr, 2
+	set16 bufptr, cur_context + context::dirent_bufptr
 	ldy #0
 :	lda filename_buf, y
 	sta (bufptr), y
@@ -1257,7 +1148,7 @@ error:
 	rts
 :
 	; Mark file as deleted
-	copy_bytes bufptr, cur_context + context::dirent_bufptr, 2
+	set16 bufptr, cur_context + context::dirent_bufptr
 	lda #$E5
 	sta (bufptr)
 
@@ -1267,7 +1158,7 @@ error:
 	rts
 :
 	; Unlink cluster chain
-	copy_bytes cur_context + context::cluster, fat32_dirent + dirent::cluster, 4
+	set32 cur_context + context::cluster, fat32_dirent + dirent::cluster
 	jmp unlink_cluster_chain
 .endproc
 
@@ -1278,7 +1169,7 @@ error:
 ;-----------------------------------------------------------------------------
 .proc fat32_create
 	; Save argument for re-use
-	copy_bytes tmp_buf, fat32_ptr, 2
+	set16 tmp_buf, fat32_ptr
 
 	; Check if file already exists
 	jsr fat32_find_file
@@ -1287,7 +1178,7 @@ error:
 	rts
 :
 	; Convert file name
-	copy_bytes fat32_ptr, tmp_buf, 2
+	set16 fat32_ptr, tmp_buf
 	jsr convert_filename
 	bcs :+
 	rts
@@ -1298,13 +1189,8 @@ error:
 	rts
 :
 next_entry:
-	; At end of buffer?
-	lda bufptr + 0
-	cmp #<sector_buffer_end
-	bne :+
-	lda bufptr + 1
-	cmp #>sector_buffer_end
-	bne :+
+	; Load next sector if at end of buffer
+	cmp16_val bufptr, sector_buffer_end, :+
 	jsr fat32_next_sector
 	bcs :+
 	clc     ; Indicate error,  TODO: allocate new cluster for directory
@@ -1317,13 +1203,7 @@ next_entry:
 	beq free_entry
 
 	; Increment buffer pointer to next entry
-	clc
-	lda bufptr + 0
-	adc #32
-	sta bufptr + 0
-	lda bufptr + 1
-	adc #0
-	sta bufptr + 1
+	add16_val bufptr, bufptr, 32
 	bra next_entry
 
 	; Free directory entry found
@@ -1343,6 +1223,10 @@ free_entry:
 	cpy #32
 	bne :-
 
+	; Save lba + bufptr
+	set32 cur_context + context::dirent_lba,    cur_context + context::lba
+	set16 cur_context + context::dirent_bufptr, bufptr
+
 	; Write sector buffer to disk
 	jsr save_sector_buffer
 	bcs :+
@@ -1353,11 +1237,29 @@ free_entry:
 .endproc
 
 .proc fat32_test
-	lda #<name
-	sta fat32_ptr+0
-	lda #>name
-	sta fat32_ptr+1
+	; jsr allocate_cluster
 
+	; lda free_cluster+3
+	; jsr puthex
+	; lda free_cluster+2
+	; jsr puthex
+	; lda free_cluster+1
+	; jsr puthex
+	; lda free_cluster+0
+	; jsr puthex
+	; lda #10
+	; jsr putchar
+
+	; lda #<sector_buffer
+	; sta SRC_PTR+0
+	; lda #>sector_buffer
+	; sta SRC_PTR+1
+	; stz LENGTH+0
+	; lda #2
+	; sta LENGTH + 1
+	; jsr hexdump
+
+	set16_val fat32_ptr, name
 	jsr fat32_create
 	rts
 
