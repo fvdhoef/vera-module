@@ -7,7 +7,7 @@
 	.include "sdcard.inc"
 
 .struct context
-flags           .byte    ; Flags bit 0:in use, 1:dirty
+flags           .byte    ; Flags bit 0:in use, 1:dirty, 2:dirent needs update
 cluster         .dword   ; Current cluster
 lba             .dword   ; Sector of current cluster
 cluster_sector  .byte    ; Sector index within current cluster
@@ -23,6 +23,7 @@ dirent_bufptr   .word    ; Offset to start of directory entry
 ; Variables
 ;-----------------------------------------------------------------------------
 	.zeropage
+wrbyte:
 fat32_ptr:              .word 0       ; Used to pass a buffer pointer to read/write functions
 fat32_ptr2:             .word 0       ; Used to pass a buffer pointer to read/write functions
 bufptr:                 .word 0       ; Points to current offset within sector buffer
@@ -46,7 +47,7 @@ cluster_count:          .dword 0      ; Total number of cluster on volume
 ; Contexts
 context_idx:            .byte 0       ; Index of current context
 cur_context:            .tag context  ; Current file descriptor state
-contexts:               .res 16 * FAT32_CONTEXTS
+contexts:               .res 32 * FAT32_CONTEXTS
 contexts_end:
 
 sector_lba:             .dword 0
@@ -823,9 +824,9 @@ error:	clc
 .endproc
 
 ;-----------------------------------------------------------------------------
-; fat32_get_byte
+; fat32_read_byte
 ;-----------------------------------------------------------------------------
-.proc fat32_get_byte
+.proc fat32_read_byte
 next:
 	; Bytes remaining?
 	cmp32 cur_context + context::file_offset, cur_context + context::file_size, :+
@@ -848,6 +849,79 @@ next:
 
 	sec	; Indicate success
 	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; fat32_write_byte
+;-----------------------------------------------------------------------------
+.proc fat32_write_byte
+	; Save byte to be written
+	sta wrbyte
+
+	; Is this the first cluster?
+	lda cur_context + context::file_offset + 0
+	ora cur_context + context::file_offset + 1
+	ora cur_context + context::file_offset + 2
+	ora cur_context + context::file_offset + 3
+	beq allocate_first_cluster
+
+write_byte:
+	; Write byte
+	lda wrbyte
+	sta (bufptr)
+	inc16 bufptr
+
+	; Set sector as dirty, dirent needs update
+	lda cur_context + context::flags
+	ora #($02 | $04)
+	sta cur_context + context::flags
+
+	inc32 cur_context + context::file_offset
+	inc32 cur_context + context::file_size
+
+	sec	; Indicate success
+	rts
+
+allocate_first_cluster:
+	; Allocate cluster
+	jsr allocate_cluster
+	bcs :+
+	rts
+:
+	; Load sector of directory entry
+	set32 cur_context + context::lba, cur_context + context::dirent_lba
+	jsr load_sector_buffer
+	bcs :+
+	rts
+:
+	set16 bufptr, cur_context + context::dirent_bufptr
+
+	; Write cluster number to directory entry
+	ldy #26
+	lda free_cluster + 0
+	sta (bufptr), y
+	iny
+	lda free_cluster + 1
+	sta (bufptr), y
+	ldy #20
+	lda free_cluster + 2
+	sta (bufptr), y
+	iny
+	lda free_cluster + 3
+	sta (bufptr), y
+
+	; Write directory sector
+	jsr save_sector_buffer
+	bcs :+
+	rts
+:
+	; Load in cluster
+	set32 fat32_cluster, free_cluster
+	jsr open_cluster
+	bcs :+
+	rts
+:
+	jmp write_byte
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -982,11 +1056,11 @@ error:	clc
 .endproc
 
 ;-----------------------------------------------------------------------------
-; fat32_find_dirent
+; find_dirent
 ;
 ; Find directory entry with name specified in string pointed to by fat32_ptr
 ;-----------------------------------------------------------------------------
-.proc fat32_find_dirent
+.proc find_dirent
 	jsr fat32_open_cwd
 	bcc error
 
@@ -1014,13 +1088,13 @@ error:
 .endproc
 
 ;-----------------------------------------------------------------------------
-; fat32_find_file
+; find_file
 ;
-; Same as fat32_find_dirent, but with file type check
+; Same as find_dirent, but with file type check
 ;-----------------------------------------------------------------------------
-.proc fat32_find_file
+.proc find_file
 	; Find directory entry
-	jsr fat32_find_dirent
+	jsr find_dirent
 	bcs :+
 	rts
 :
@@ -1037,13 +1111,13 @@ error:
 .endproc
 
 ;-----------------------------------------------------------------------------
-; fat32_find_dir
+; find_dir
 ;
-; Same as fat32_find_dirent, but with directory type check
+; Same as find_dirent, but with directory type check
 ;-----------------------------------------------------------------------------
-.proc fat32_find_dir
+.proc find_dir
 	; Find directory entry
-	jsr fat32_find_dirent
+	jsr find_dirent
 	bcs :+
 	rts
 :
@@ -1066,7 +1140,7 @@ error:
 ;-----------------------------------------------------------------------------
 .proc fat32_open_file
 	; Find file
-	jsr fat32_find_file
+	jsr find_file
 	bcs :+
 	rts
 :
@@ -1078,11 +1152,63 @@ error:
 .endproc
 
 ;-----------------------------------------------------------------------------
+; fat32_close
+;
+; Close current file
+;-----------------------------------------------------------------------------
+.proc fat32_close
+	; Write current sector if dirty
+	jsr sync_sector_buffer
+	bcs :+
+	rts
+:
+	; Update directory entry with new size if needed
+	lda cur_context + context::flags
+	bit #$04
+	beq done
+	and #$FB	; Clear bit
+	sta cur_context + context::flags
+
+	; Load sector of directory entry
+	set32 cur_context + context::lba, cur_context + context::dirent_lba
+	jsr load_sector_buffer
+	bcs :+
+	rts
+:
+	set16 bufptr, cur_context + context::dirent_bufptr
+
+	; Write size to directory entry
+	ldy #28
+	lda cur_context + context::file_size + 0
+	sta (bufptr), y
+	iny
+	lda cur_context + context::file_size + 1
+	sta (bufptr), y
+	iny
+	lda cur_context + context::file_size + 2
+	sta (bufptr), y
+	iny
+	lda cur_context + context::file_size + 3
+	sta (bufptr), y
+
+	; Write directory sector
+	jsr save_sector_buffer
+	bcs :+
+	rts
+:
+	; Clear context
+	clear_bytes cur_context, .sizeof(context)
+
+done:	sec
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
 ; fat32_chdir
 ;-----------------------------------------------------------------------------
 .proc fat32_chdir
 	; Find directory
-	jsr fat32_find_dir
+	jsr find_dir
 	bcs :+
 	rts
 :
@@ -1102,7 +1228,7 @@ error:
 
 	; Make sure target name doesn't exist
 	set16 fat32_ptr, fat32_ptr2
-	jsr fat32_find_dirent
+	jsr find_dirent
 	bcc :+
 	clc	; Error, file exists
 	rts
@@ -1115,7 +1241,7 @@ error:
 :
 	; Find file to rename
 	set16 fat32_ptr, tmp_buf
-	jsr fat32_find_dirent
+	jsr find_dirent
 	bcs :+
 	rts
 :
@@ -1137,7 +1263,7 @@ error:
 ;-----------------------------------------------------------------------------
 .proc fat32_delete
 	; Find file
-	jsr fat32_find_file
+	jsr find_file
 	bcs :+
 	rts
 :
@@ -1166,7 +1292,7 @@ error:
 	set16 tmp_buf, fat32_ptr
 
 	; Check if file already exists
-	jsr fat32_find_file
+	jsr find_file
 	bcc :+
 	clc	; File already exists
 	rts
@@ -1255,6 +1381,23 @@ free_entry:
 
 	set16_val fat32_ptr, name
 	jsr fat32_create
+	bcs :+
+	rts
+:
+	lda #'H'
+	jsr fat32_write_byte
+	lda #'e'
+	jsr fat32_write_byte
+	lda #'l'
+	jsr fat32_write_byte
+	lda #'l'
+	jsr fat32_write_byte
+	lda #'o'
+	jsr fat32_write_byte
+	lda #'!'
+	jsr fat32_write_byte
+	jsr fat32_close
+
 	rts
 
 name: .byte "FILE.TST",0

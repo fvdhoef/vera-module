@@ -286,7 +286,7 @@ str_dir_not_found: .byte "Directory not found!",10,0
 	rts
 ok:
 	; Print contents
-:	jsr fat32_get_byte
+:	jsr fat32_read_byte
 	bcc done
 	jsr putchar
 	bra :-
