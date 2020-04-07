@@ -189,14 +189,14 @@ normal:	jsr set_sdcard_rw_params
 	; Initialize SD card
 	jsr sdcard_init
 	bcs :+
-	jmp error
+	rts
 :
 	; Read partition table
 	set32_val sdcard_lba_be, 0
 	set16_val sdcard_bufptr, sector_buffer
 	jsr sdcard_read_sector
 	bcs :+
-	jmp error
+	rts
 :
 	; Check partition type of first partition
 	lda sector_buffer + $1BE + 4
@@ -204,7 +204,8 @@ normal:	jsr set_sdcard_rw_params
 	beq :+
 	cmp #$0C
 	beq :+
-	jmp error
+	clc
+	rts
 :
 	; Get LBA of partition of first partition
 	set32 lba_partition, sector_buffer + $1BE + 8
@@ -213,7 +214,7 @@ normal:	jsr set_sdcard_rw_params
 	set32 cur_context + context::lba, lba_partition
 	jsr load_sector_buffer
 	bcs :+
-	jmp error
+	rts
 :
 	; Some sanity checks
 	lda sector_buffer + 510 ; Check signature
@@ -231,13 +232,15 @@ normal:	jsr set_sdcard_rw_params
 	bne invalid
 	bra valid
 invalid:
-	jmp error
+	clc
+	rts
 valid:
 	; Calculate shift amount based on sectors per cluster field
 	lda sector_buffer + 13
 	sta sectors_per_cluster
 	bne :+
-	jmp error
+	clc
+	rts
 :	stz cluster_shift
 shift_loop:
 	lsr
@@ -263,18 +266,12 @@ shift_loop:
 	sub32 cluster_count, cluster_count, lba_data
 	ldy cluster_shift
 	beq :++
-:	lsr cluster_count + 3
-	ror cluster_count + 2
-	ror cluster_count + 1
-	ror cluster_count + 0
+:	shr32 cluster_count
 	dey
 	bne :-
 :
-
+	; Success
 	sec
-	rts
-
-error:	clc
 	rts
 .endproc
 
@@ -356,10 +353,7 @@ error:	clc
 	sub32_val cur_context + context::lba, cur_context + context::cluster, 2
 	ldy cluster_shift
 	beq shift_done
-:	asl cur_context + context::lba + 0
-	rol cur_context + context::lba + 1
-	rol cur_context + context::lba + 2
-	rol cur_context + context::lba + 3
+:	shl32 cur_context + context::lba
 	dey
 	bne :-
 shift_done:
