@@ -35,7 +35,7 @@ FAT32_CONTEXTS = 6
 .global fat32_delete            ; Delete file with name in fat32_ptr
 
 ; File operations
-.global fat32_open_file         ; Open file with name in fat32_ptr
+.global fat32_open              ; Open file with name in fat32_ptr
 .global fat32_create            ; Create file with name in fat32_ptr (delete existing file)
 .global fat32_close             ; Close file
 .global fat32_read_byte         ; Read byte, result in A

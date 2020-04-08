@@ -357,7 +357,7 @@ str_dir_not_found: .byte "Directory not found!",10,0
 	jsr set_single_param
 	bcs :+
 	rts
-:	jsr fat32_open_file
+:	jsr fat32_open
 	bcs ok
 
 	; Opening file failed, print error message
