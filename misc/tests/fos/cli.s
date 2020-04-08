@@ -504,6 +504,34 @@ str_error: .byte "Error!",10,0
 ; cmd_test
 ;-----------------------------------------------------------------------------
 .proc cmd_test
-	jsr fat32_test
+	lda #'T'
+	jsr putchar
+
+
+	set16_val fat32_ptr, name
+	jsr fat32_create
+	bcs :+
 	rts
+:
+
+	lda #'!'
+	jsr putchar
+
+	lda #'H'
+	jsr fat32_write_byte
+	lda #'e'
+	jsr fat32_write_byte
+	lda #'l'
+	jsr fat32_write_byte
+	lda #'l'
+	jsr fat32_write_byte
+	lda #'o'
+	jsr fat32_write_byte
+	lda #'!'
+	jsr fat32_write_byte
+	jsr fat32_close
+
+	rts
+
+name: .byte "FILE.TST",0
 .endproc

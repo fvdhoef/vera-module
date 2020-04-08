@@ -23,8 +23,11 @@ FAT32_CONTEXTS = 6
 ;-----------------------------------------------------------------------------
 ; Functions
 ;-----------------------------------------------------------------------------
+
+; Global operations
 .global fat32_init
 .global fat32_set_context
+.global fat32_get_free_space    ; Get free space, result in KiB in fat32_size
 
 ; Directory operations
 .global fat32_open_cwd          ; Open current working directory
@@ -41,6 +44,6 @@ FAT32_CONTEXTS = 6
 .global fat32_read_byte         ; Read byte, result in A
 .global fat32_write_byte        ; Write byte in A
 
-.global fat32_get_free_space    ; Get free space, result in KiB in fat32_size
-
-.global fat32_test
+; TODO:
+; fat32_mkdir
+; fat32_rmdir
