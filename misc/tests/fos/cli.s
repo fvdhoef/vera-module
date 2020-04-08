@@ -37,6 +37,11 @@ cmd_table:
 	def_cmd "TEST",    cmd_test
 	.byte 0
 
+	.bss
+num_files:  .word 0
+num_dirs:   .word 0
+total_size: .dword 0
+
 	.code
 
 ;-----------------------------------------------------------------------------
@@ -143,20 +148,77 @@ str_cmd_not_found: .byte "Command not found!",10,0
 ; cmd_dir
 ;-----------------------------------------------------------------------------
 .proc cmd_dir
+	set16_val num_files, 0
+	set16_val num_dirs, 0
+	set32_val total_size, 0
+
 	; Open current directory
 	jsr fat32_open_cwd
 	bcs :+
 	rts
 :
 	; Print entries
-:	jsr fat32_read_dirent
-	bcc :+
+next:	jsr fat32_read_dirent
+	bcc done
+
+	lda fat32_dirent + dirent::attributes
+	bit #$10
+	beq is_file
+
+is_dir:
+	inc16 num_dirs
+	bra print
+
+is_file:
+	add32 total_size, total_size, fat32_dirent + dirent::size
+	inc16 num_files
+
+print:
 	jsr print_dirent
-	bra :-
-:
+	bra next
+done:
+	; Print number of files
+	set16 val32, num_files
+	set16_val val32+2, 0
+	lda #' '
+	sta padch
+	jsr print_val32
+	print_str str_files
+
+	; Print total file size
+	set32 val32, total_size
+	lda #' '
+	sta padch
+	jsr print_val32
+	print_str str_bytes
+
+	; Print number of dirs
+	set16 val32, num_dirs
+	set16_val val32+2, 0
+	lda #' '
+	sta padch
+	jsr print_val32
+	print_str str_dirs
+
+	; Print free size
+	jsr fat32_get_free_space
+	set32 val32, fat32_size
+	lda #' '
+	sta padch
+	jsr print_val32
+	print_str str_bytes_free
+
 	rts
+
+str_files: .byte " files(s)", 0
+str_bytes: .byte " bytes", 10, 0
+str_dirs:  .byte " dir(s)  ", 0
+str_bytes_free: .byte " KiB free", 10, 0
 .endproc
 
+;-----------------------------------------------------------------------------
+; check_no_params
+;-----------------------------------------------------------------------------
 .proc check_no_params
 	ldx line_start
 	lda line_buf, x
@@ -166,6 +228,9 @@ ok:	sec
 	rts
 .endproc
 
+;-----------------------------------------------------------------------------
+; set_param1
+;-----------------------------------------------------------------------------
 .proc set_param1
 	clc
 	lda #<line_buf
@@ -178,6 +243,9 @@ ok:	sec
 	jmp terminate_and_skip_to_next_word
 .endproc
 
+;-----------------------------------------------------------------------------
+; set_param2
+;-----------------------------------------------------------------------------
 .proc set_param2
 	clc
 	lda #<line_buf
@@ -190,6 +258,9 @@ ok:	sec
 	jmp terminate_and_skip_to_next_word
 .endproc
 
+;-----------------------------------------------------------------------------
+; set_single_param
+;-----------------------------------------------------------------------------
 .proc set_single_param
 	; Check if string isn't empty
 	ldx line_start
@@ -211,6 +282,9 @@ error:	jsr syntax_error
 	rts
 .endproc
 
+;-----------------------------------------------------------------------------
+; set_two_params
+;-----------------------------------------------------------------------------
 .proc set_two_params
 	; Check if string isn't empty
 	ldx line_start
@@ -246,6 +320,9 @@ error:	jsr syntax_error
 	rts
 .endproc
 
+;-----------------------------------------------------------------------------
+; syntax_error
+;-----------------------------------------------------------------------------
 .proc syntax_error
 	print_str str_syntax_error
 	clc

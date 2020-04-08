@@ -42,7 +42,7 @@
 	bne dir
 
 	; Print size
-	copy_bytes val32, fat32_dirent + dirent::size, 4
+	set32 val32, fat32_dirent + dirent::size
 	lda #' '
 	sta padch
 	jsr print_val32
@@ -63,7 +63,7 @@ cluster:
 	jsr putchar
 
 	; Print cluster
-	; copy_bytes val32, fat32_dirent + dirent::cluster, 4
+	; set32 val32, fat32_dirent + dirent::cluster
 	; lda #0
 	; sta padch
 	; jsr print_val32

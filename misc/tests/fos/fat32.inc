@@ -36,5 +36,6 @@ FAT32_CONTEXTS = 3
 .global fat32_write_byte
 .global fat32_rename
 .global fat32_delete
+.global fat32_get_free_space    ; Result in KiB in fat32_size
 
 .global fat32_test

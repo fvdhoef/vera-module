@@ -43,6 +43,8 @@ fat_size:               .dword 0      ; Size in sectors of each FAT table
 lba_fat:                .dword 0      ; Start sector of first FAT table
 lba_data:               .dword 0      ; Start sector of first data cluster
 cluster_count:          .dword 0      ; Total number of cluster on volume
+lba_fsinfo:             .dword 0      ; Sector number of FS info
+free_clusters:          .dword 0      ; Number of free clusters (from FS info)
 
 ; Contexts
 context_idx:            .byte 0       ; Index of current context
@@ -271,6 +273,18 @@ shift_loop:
 	dey
 	bne :-
 :
+	; Get FS info sector
+	add32_16 lba_fsinfo, lba_partition, sector_buffer + 48
+
+	; Load FS info sector
+	set32 cur_context + context::lba, lba_fsinfo
+	jsr load_sector_buffer
+	bcs :+
+	rts
+:
+	; Get number of free clusters
+	set32 free_clusters, sector_buffer + 488
+
 	; Success
 	sec
 	rts
@@ -1355,6 +1369,34 @@ free_entry:
 	sec
 	rts
 .endproc
+
+;-----------------------------------------------------------------------------
+; fat32_get_free_space
+;-----------------------------------------------------------------------------
+.proc fat32_get_free_space
+	set32 fat32_size, free_clusters
+
+	lda cluster_shift
+	cmp #0	; 512B sectors
+	beq _512b
+
+	sec
+	sbc #1
+	tax
+	cpx #0
+	beq done
+:	shl32 fat32_size
+	dex
+	bne :-
+
+done:	sec
+	rts
+
+_512b:
+	shr32 fat32_size
+	bra done
+.endproc
+
 
 .proc fat32_test
 	; jsr allocate_cluster
