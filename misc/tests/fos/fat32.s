@@ -491,6 +491,9 @@ next:	jsr next_cluster
 	iny
 	sta (bufptr), y
 
+	; Increment free clusters
+	inc32 free_clusters
+
 	; Set sector as dirty
 	lda cur_context + context::flags
 	ora #$02
@@ -503,8 +506,7 @@ next:	jsr next_cluster
 	; Make sure dirty sectors are written to disk
 	jsr sync_sector_buffer
 
-	sec
-	rts
+	jmp update_fs_info
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -554,6 +556,23 @@ not_free:
 .endproc
 
 ;-----------------------------------------------------------------------------
+; update_fs_info
+;-----------------------------------------------------------------------------
+.proc update_fs_info
+	; Load FS info sector
+	set32 cur_context + context::lba, lba_fsinfo
+	jsr load_sector_buffer
+	bcs :+
+	rts
+:
+	; Get number of free clusters
+	set32 sector_buffer + 488, free_clusters
+
+	; Save sector
+	jmp save_sector_buffer
+.endproc
+
+;-----------------------------------------------------------------------------
 ; allocate_cluster
 ;-----------------------------------------------------------------------------
 .proc allocate_cluster
@@ -576,7 +595,13 @@ not_free:
 	sta (bufptr), y
 
 	; Save FAT sector
-	jmp save_sector_buffer
+	jsr save_sector_buffer
+	bcs :+
+	rts
+:
+	; Decrement free clusters and update FS info
+	dec32 free_clusters
+	jmp update_fs_info
 .endproc
 
 ;-----------------------------------------------------------------------------

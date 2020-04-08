@@ -57,7 +57,7 @@ dir:	ldy #0
 	bra :-
 :
 cluster:
-.if 1
+.if 0
 	; Spacing
 	lda #' '
 	jsr putchar
