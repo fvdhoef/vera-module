@@ -6,6 +6,8 @@
 	.include "lib.inc"
 	.include "sdcard.inc"
 
+CONTEXT_SIZE = 32
+
 .struct context
 flags           .byte    ; Flags bit 0:in use, 1:dirty, 2:dirent needs update
 cluster         .dword   ; Current cluster
@@ -14,7 +16,6 @@ cluster_sector  .byte    ; Sector index within current cluster
 bufptr          .word    ; Pointer within sector_buffer
 file_size       .dword   ; Size of current file
 file_offset	.dword   ; Offset in current file
-cwd_cluster     .dword   ; Cluster of current directory
 dirent_lba      .dword   ; Sector containing directory entry for this file
 dirent_bufptr   .word    ; Offset to start of directory entry 
 .endstruct
@@ -30,7 +31,7 @@ bufptr:                 .word 0       ; Points to current offset within sector b
 
 	.bss
 fat32_cluster:          .dword 0      ; Used to pass cluster to open_cluster
-fat32_size:             .word 0       ; Used to specifiy number of bytes to read/write
+fat32_size:             .word 0       ; Used to specify number of bytes to read/write
 fat32_dirent:           .tag dirent   ; Buffer containing decoded directory entry
 tmp_buf:                .res 4
 
@@ -45,11 +46,12 @@ lba_data:               .dword 0      ; Start sector of first data cluster
 cluster_count:          .dword 0      ; Total number of cluster on volume
 lba_fsinfo:             .dword 0      ; Sector number of FS info
 free_clusters:          .dword 0      ; Number of free clusters (from FS info)
+cwd_cluster:            .dword 0      ; Cluster of current directory
 
 ; Contexts
 context_idx:            .byte 0       ; Index of current context
 cur_context:            .tag context  ; Current file descriptor state
-contexts:               .res 32 * FAT32_CONTEXTS
+contexts:               .res CONTEXT_SIZE * FAT32_CONTEXTS
 contexts_end:
 
 sector_lba:             .dword 0
@@ -59,11 +61,11 @@ sector_buffer_end:
 filename_buf:           .res 11       ; Used for filename conversion
 free_cluster:           .res 4
 
-.if .sizeof(context) * FAT32_CONTEXTS > 256
+.if CONTEXT_SIZE * FAT32_CONTEXTS > 256
 .error "FAT32_CONTEXTS too high"
 .endif
 
-.if .sizeof(context) > 32
+.if .sizeof(context) > CONTEXT_SIZE
 .error "Context too big"
 .endif
 
@@ -118,7 +120,7 @@ free_cluster:           .res 4
 ; sync_sector_buffer
 ;-----------------------------------------------------------------------------
 .proc sync_sector_buffer
-	; Write back sector buffer is dirty
+	; Write back sector buffer if dirty
 	lda cur_context + context::flags
 	bit #$02
 	beq done
@@ -172,7 +174,7 @@ normal:	jsr set_sdcard_rw_params
 
 	; Clear dirty bit
 	lda cur_context + context::flags
-	and #$FD
+	and #($02 ^ $FF)
 	sta cur_context + context::flags
 
 	sec
@@ -802,9 +804,9 @@ error:	clc
 .endproc
 
 ;-----------------------------------------------------------------------------
-; fat32_next_sector
+; next_sector
 ;-----------------------------------------------------------------------------
-.proc fat32_next_sector
+.proc next_sector
 	inc cur_context + context::cluster_sector
 	lda cur_context + context::cluster_sector
 	cmp sectors_per_cluster
@@ -839,7 +841,7 @@ error:	clc
 next:
 	; Load next sector if at end of buffer
 	cmp16_val bufptr, sector_buffer_end, :+
-	jsr fat32_next_sector
+	jsr next_sector
 	bcc error
 :
 	; Copy byte from source to destination pointer
@@ -874,7 +876,7 @@ next:
 :
 	; At end of buffer?
 	cmp16_val bufptr, sector_buffer_end, :+
-	jsr fat32_next_sector
+	jsr next_sector
 	bcs :+
 	clc	; Indicate error
 	rts
@@ -970,7 +972,7 @@ allocate_first_cluster:
 read_entry:
 	; Load next sector if at end of buffer
 	cmp16_val bufptr, sector_buffer_end, :+
-	jsr fat32_next_sector
+	jsr next_sector
 	bcs :+
 	clc     ; Indicate error
 	rts
@@ -1089,8 +1091,15 @@ error:	clc
 ; Open current working directory
 ;-----------------------------------------------------------------------------
 .proc fat32_open_cwd
+; 	; Check if context is free
+; 	lda cur_context + context::flags
+; 	bit #$01
+; 	beq :+
+; 	clc
+; 	rts
+; :
 	; Open current directory
-	set32 fat32_cluster, cur_context + context::cwd_cluster
+	set32 fat32_cluster, cwd_cluster
 	jmp open_cluster
 .endproc
 
@@ -1178,6 +1187,13 @@ error:
 ; Open file specified in string pointed to by fat32_ptr
 ;-----------------------------------------------------------------------------
 .proc fat32_open_file
+; 	; Check if context is free
+; 	lda cur_context + context::flags
+; 	bit #$01
+; 	beq :+
+; 	clc
+; 	rts
+; :
 	; Find file
 	jsr find_file
 	bcs :+
@@ -1205,7 +1221,7 @@ error:
 	lda cur_context + context::flags
 	bit #$04
 	beq done
-	and #$FB	; Clear bit
+	and #($04 ^ $FF)	; Clear bit
 	sta cur_context + context::flags
 
 	; Load sector of directory entry
@@ -1214,9 +1230,8 @@ error:
 	bcs :+
 	rts
 :
-	set16 bufptr, cur_context + context::dirent_bufptr
-
 	; Write size to directory entry
+	set16 bufptr, cur_context + context::dirent_bufptr
 	ldy #28
 	lda cur_context + context::file_size + 0
 	sta (bufptr), y
@@ -1235,10 +1250,10 @@ error:
 	bcs :+
 	rts
 :
-	; Clear context
+done:	
 	clear_bytes cur_context, .sizeof(context)
 
-done:	sec
+	sec
 	rts
 .endproc
 
@@ -1252,7 +1267,7 @@ done:	sec
 	rts
 :
 	; Set as current directory
-	set32 cur_context + context::cwd_cluster, fat32_dirent + dirent::cluster
+	set32 cwd_cluster, fat32_dirent + dirent::cluster
 
 	sec
 	rts
@@ -1327,17 +1342,21 @@ done:	sec
 ; fat32_create
 ;-----------------------------------------------------------------------------
 .proc fat32_create
+; 	; Check if context is free
+; 	lda cur_context + context::flags
+; 	bit #$01
+; 	beq :+
+; 	clc
+; 	rts
+; :
 	; Save argument for re-use
-	set16 tmp_buf, fat32_ptr
+	set16 fat32_ptr2, fat32_ptr
 
-	; Check if file already exists
-	jsr find_file
-	bcc :+
-	clc	; File already exists
-	rts
-:
+	; Delete file first is it exists
+	jsr fat32_delete
+
 	; Convert file name
-	set16 fat32_ptr, tmp_buf
+	set16 fat32_ptr, fat32_ptr2
 	jsr convert_filename
 	bcs :+
 	rts
@@ -1350,7 +1369,7 @@ done:	sec
 next_entry:
 	; Load next sector if at end of buffer
 	cmp16_val bufptr, sector_buffer_end, :+
-	jsr fat32_next_sector
+	jsr next_sector
 	bcs :+
 	clc     ; Indicate error,  TODO: allocate new cluster for directory
 	rts
@@ -1446,11 +1465,19 @@ _512b:
 	; sta LENGTH + 1
 	; jsr hexdump
 
+	lda #'T'
+	jsr putchar
+
+
 	set16_val fat32_ptr, name
 	jsr fat32_create
 	bcs :+
 	rts
 :
+
+	lda #'!'
+	jsr putchar
+
 	lda #'H'
 	jsr fat32_write_byte
 	lda #'e'

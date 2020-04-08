@@ -10,7 +10,7 @@ cluster    .dword
 .endstruct
 
 ; Maximum number of open files.
-FAT32_CONTEXTS = 3
+FAT32_CONTEXTS = 6
 
 ;-----------------------------------------------------------------------------
 ; Variables
@@ -26,16 +26,21 @@ FAT32_CONTEXTS = 3
 .global fat32_init
 .global fat32_set_context
 
-.global fat32_open_cwd
-.global fat32_open_file
-.global fat32_close
-.global fat32_create
-.global fat32_chdir
-.global fat32_read_byte
-.global fat32_read_dirent
-.global fat32_write_byte
-.global fat32_rename
-.global fat32_delete
-.global fat32_get_free_space    ; Result in KiB in fat32_size
+; Directory operations
+.global fat32_open_cwd          ; Open current working directory
+.global fat32_read_dirent       ; Read directory entry, result in fat32_dirent
+
+.global fat32_chdir             ; Change to directory with name in fat32_ptr
+.global fat32_rename            ; Rename file with name in fat32_ptr to fat32_ptr2
+.global fat32_delete            ; Delete file with name in fat32_ptr
+
+; File operations
+.global fat32_open_file         ; Open file with name in fat32_ptr
+.global fat32_create            ; Create file with name in fat32_ptr (delete existing file)
+.global fat32_close             ; Close file
+.global fat32_read_byte         ; Read byte, result in A
+.global fat32_write_byte        ; Write byte in A
+
+.global fat32_get_free_space    ; Get free space, result in KiB in fat32_size
 
 .global fat32_test

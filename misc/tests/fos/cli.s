@@ -177,6 +177,8 @@ print:
 	jsr print_dirent
 	bra next
 done:
+	jsr fat32_close
+
 	; Print number of files
 	set16 val32, num_files
 	set16_val val32+2, 0
@@ -368,6 +370,8 @@ ok:
 	jsr putchar
 	bra :-
 done:
+	jsr fat32_close
+
 	; Print new line
 	lda #10
 	jsr putchar
