@@ -517,21 +517,39 @@ str_error: .byte "Error!",10,0
 	lda #'!'
 	jsr putchar
 
-	lda #'H'
+	ldx #0
+loop1:	phx
+
+	lda #' '
+loop2:	pha
 	jsr fat32_write_byte
-	lda #'e'
-	jsr fat32_write_byte
-	lda #'l'
-	jsr fat32_write_byte
-	lda #'l'
-	jsr fat32_write_byte
-	lda #'o'
-	jsr fat32_write_byte
-	lda #'!'
-	jsr fat32_write_byte
-	jsr fat32_close
+	bcc write_failed
+	pla
+	inc
+	cmp #' ' + 64
+	bne loop2
+
+	plx
+	inx
+	cpx #64
+	bne loop1
+
+done:	jsr fat32_close
 
 	rts
+
+write_failed:
+	pla
+	plx
+
+	lda #'%'
+	jsr putchar
+
+	; jsr fat32_write_byte
+
+
+	bra done
+
 
 name: .byte "FILE.TST",0
 .endproc

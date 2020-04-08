@@ -253,9 +253,35 @@ shift_done:
 .endproc
 
 ;-----------------------------------------------------------------------------
+; is_end_of_cluster_chain 
+;-----------------------------------------------------------------------------
+.proc is_end_of_cluster_chain
+	; Check if this is the end of cluster chain (entry >= 0x0FFFFFF8)
+	lda cur_context + context::cluster + 3
+	and #$0F	; Ignore upper 4 bits
+	cmp #$0F
+	bne no
+	lda cur_context + context::cluster + 2
+	cmp #$FF
+	bne no
+	lda cur_context + context::cluster + 1
+	cmp #$FF
+	bne no
+	lda cur_context + context::cluster + 0
+	cmp #$F8
+	bcs yes
+no:	clc
+yes:	rts
+.endproc
+
+;-----------------------------------------------------------------------------
 ; next_cluster
 ;-----------------------------------------------------------------------------
 .proc next_cluster
+	; End of cluster chain?
+	jsr is_end_of_cluster_chain
+	bcs error
+
 	; Load correct FAT sector
 	jsr load_fat_sector_for_cluster
 	bcc error
@@ -268,21 +294,6 @@ shift_done:
 	cpy #4
 	bne :-
 
-	; Check if this is the end of cluster chain (entry >= 0x0FFFFFF8)
-	lda cur_context + context::cluster + 3
-	and #$0F	; Ignore upper 4 bits
-	cmp #$0F
-	bne :+
-	lda cur_context + context::cluster + 2
-	cmp #$FF
-	bne :+
-	lda cur_context + context::cluster + 1
-	cmp #$FF
-	bne :+
-	lda cur_context + context::cluster + 0
-	cmp #$F8
-	bcs error
-:
 	sec
 	rts
 
@@ -304,7 +315,7 @@ error:	clc
 	rts
 
 next:	jsr next_cluster
-	php
+	bcc done
 
 	; Set entry as free
 	lda #0
@@ -325,13 +336,10 @@ next:	jsr next_cluster
 	ora #FLAG_DIRTY
 	sta cur_context + context::flags
 
-	; bcc error
-	plp
-	bcs next
+	bra next
 
 	; Make sure dirty sectors are written to disk
-	jsr sync_sector_buffer
-
+done:	jsr sync_sector_buffer
 	jmp update_fs_info
 .endproc
 
@@ -579,10 +587,11 @@ error:	clc
 ; next_sector
 ;-----------------------------------------------------------------------------
 .proc next_sector
-	inc cur_context + context::cluster_sector
 	lda cur_context + context::cluster_sector
+	inc
 	cmp sectors_per_cluster
 	beq end_of_cluster
+	sta cur_context + context::cluster_sector
 
 	inc32 cur_context + context::lba
 
@@ -596,6 +605,8 @@ done:	sec
 end_of_cluster:
 	jsr next_cluster
 	bcc error
+	jsr is_end_of_cluster_chain
+	bcs error
 	jsr calc_cluster_lba
 	bra read_sector
 
@@ -1230,6 +1241,9 @@ free_entry:
 	lda #FLAG_IN_USE
 	sta cur_context + context::flags
 
+	; Set up bufptr to trigger cluster allocation at first write
+	set16_val bufptr, sector_buffer_end
+
 	sec
 	rts
 .endproc
@@ -1320,12 +1334,19 @@ next:
 	; Save byte to be written
 	sta wrbyte
 
-	; Is this the first cluster?
+	; At end of buffer?
+	cmp16_val bufptr, sector_buffer_end, write_byte
+
+	; Is this the first cluster?  TODO: check if current cluster is 0
 	lda cur_context + context::file_offset + 0
 	ora cur_context + context::file_offset + 1
 	ora cur_context + context::file_offset + 2
 	ora cur_context + context::file_offset + 3
 	beq allocate_first_cluster
+
+	jsr next_sector
+	bcs write_byte
+	rts
 
 write_byte:
 	; Write byte
