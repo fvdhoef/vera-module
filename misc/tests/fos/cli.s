@@ -520,6 +520,10 @@ str_error: .byte "Error!",10,0
 	ldx #0
 loop1:	phx
 
+	lda #'.'
+	jsr putchar
+
+
 	lda #' '
 loop2:	pha
 	jsr fat32_write_byte
@@ -531,7 +535,7 @@ loop2:	pha
 
 	plx
 	inx
-	cpx #64
+	; cpx #64
 	bne loop1
 
 done:	jsr fat32_close

@@ -66,6 +66,10 @@ sector_buffer_end:
 filename_buf:           .res 11       ; Used for filename conversion
 free_cluster:           .res 4
 
+tmp_bufptr:     .word 0
+tmp_sector_lba: .dword 0
+
+
 .if CONTEXT_SIZE * FAT32_CONTEXTS > 256
 .error "FAT32_CONTEXTS too high"
 .endif
@@ -604,14 +608,43 @@ done:	sec
 
 end_of_cluster:
 	jsr next_cluster
-	bcc error
-	jsr is_end_of_cluster_chain
-	bcs error
+	bcs :+
+	rts
+:	jsr is_end_of_cluster_chain
+	bcs end_of_chain
+read_cluster:
 	jsr calc_cluster_lba
 	bra read_sector
 
-error:	clc
+end_of_chain:
+	; Save location of cluster entry in FAT
+	set16 tmp_bufptr, bufptr
+	set32 tmp_sector_lba, sector_lba
+
+	; Allocate a new cluster
+	jsr allocate_cluster
+	bcs :+
 	rts
+:
+	; Load back the cluster sector
+	set32 cur_context + context::lba, tmp_sector_lba
+	jsr load_sector_buffer
+	set16 bufptr, tmp_bufptr
+	
+	; Write allocated cluster number in FAT
+	ldy #0
+:	lda free_cluster, y
+	sta (bufptr), y
+	iny
+	cpy #4
+	bne :-
+
+	; Save FAT sector
+	jsr save_sector_buffer
+
+	; Retry
+	set32 cur_context + context::cluster, free_cluster
+	bra read_cluster
 .endproc
 
 ;-----------------------------------------------------------------------------
