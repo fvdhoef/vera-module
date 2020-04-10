@@ -1,5 +1,12 @@
 ;-----------------------------------------------------------------------------
 ; fat32.s
+; Copyright (C) 2020 Frank van den Hoef
+;
+; TODO:
+; - zero out clusters allocated for directories
+; - implement fat32_mkdir, fat32_rmdir
+; - improve read/write performance
+; - improve free cluster searching
 ;-----------------------------------------------------------------------------
 	.include "text_display.inc"
 
