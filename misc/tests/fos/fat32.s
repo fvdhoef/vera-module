@@ -159,10 +159,7 @@ do_load:
 	jsr sync_sector_buffer
 	set32 sector_lba, cur_context + context::lba
 	jsr set_sdcard_rw_params
-	jsr sdcard_read_sector
-
-done:	sec
-	rts
+	jmp sdcard_read_sector
 .endproc
 
 ;-----------------------------------------------------------------------------

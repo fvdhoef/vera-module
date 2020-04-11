@@ -14,7 +14,40 @@ cmdbuf:          .res 1
 sdcard_lba_be:   .res 4	; Big-endian LBA, this is byte 1-5 of the command buffer
 	         .res 1
 
+timeout_cnt:     .byte 0
+
 	.code
+
+;-----------------------------------------------------------------------------
+; wait ready
+;
+; clobbers: A,X,Y
+;-----------------------------------------------------------------------------
+.proc wait_ready
+	lda #2
+	sta timeout_cnt
+
+l3:	ldx #0			; 2
+l2:	ldy #0			; 2
+l1:	jsr spi_read		; 22
+	cmp #$FF		; 2
+	beq done		; 2 + 1
+	dey			; 2
+	bne l1			; 2 + 1
+	dex			; 2
+	bne l2			; 2 + 1
+	dec timeout_cnt
+	bne l3
+
+	; Total timeout: ~508 ms @ 8MHz
+
+	; Timeout error
+	clc
+	rts
+
+done:	sec
+	rts
+.endproc
 
 ;-----------------------------------------------------------------------------
 ; deselect card
@@ -33,7 +66,7 @@ sdcard_lba_be:   .res 4	; Big-endian LBA, this is byte 1-5 of the command buffer
 ;-----------------------------------------------------------------------------
 ; select card
 ;
-; clobbers: A
+; clobbers: A,X,Y
 ;-----------------------------------------------------------------------------
 .proc select
 	lda VERA_SPI_CTRL
@@ -41,10 +74,12 @@ sdcard_lba_be:   .res 4	; Big-endian LBA, this is byte 1-5 of the command buffer
 	sta VERA_SPI_CTRL
 
 	jsr spi_read
-:	jsr spi_read
-	cmp #$FF
-	bne :-
+	jsr wait_ready
+	bcc error
+	rts
 
+error:	jsr deselect
+	clc
 	rts
 .endproc
 
@@ -54,13 +89,13 @@ sdcard_lba_be:   .res 4	; Big-endian LBA, this is byte 1-5 of the command buffer
 ; result in A
 ;-----------------------------------------------------------------------------
 .proc spi_read
-	lda #$FF
-	sta VERA_SPI_DATA
-:	bit VERA_SPI_CTRL
-	bmi :-
-	lda VERA_SPI_DATA
-	rts
-.endproc
+	lda #$FF		; 2
+	sta VERA_SPI_DATA	; 4
+l1:	bit VERA_SPI_CTRL	; 4
+	bmi l1			; 2 + 1 if branch
+	lda VERA_SPI_DATA	; 4
+	rts			; 6
+.endproc			; >= 22 cycles
 
 ;-----------------------------------------------------------------------------
 ; spi_write
@@ -69,8 +104,8 @@ sdcard_lba_be:   .res 4	; Big-endian LBA, this is byte 1-5 of the command buffer
 ;-----------------------------------------------------------------------------
 .proc spi_write
 	sta VERA_SPI_DATA
-:	bit VERA_SPI_CTRL
-	bmi :-
+l1:	bit VERA_SPI_CTRL
+	bmi l1
 	rts
 .endproc
 
@@ -80,25 +115,36 @@ sdcard_lba_be:   .res 4	; Big-endian LBA, this is byte 1-5 of the command buffer
 ; first byte of result in A, clobbers: Y
 ;-----------------------------------------------------------------------------
 .proc send_cmd
+	; Make sure card is deselected
 	jsr deselect
+
+	; Select card
 	jsr select
+	bcc error
 
 	; Send the 6 cmdbuf bytes
 	ldy #0
-:	lda cmdbuf,y
+l1:	lda cmdbuf,y
 	jsr spi_write
 	iny
 	cpy #6
-	bne :-
+	bne l1
 
 	; Wait for response
-	ldy #10
-:	dey
-	beq :+
+	ldy #(10 + 1)
+l2:	dey
+	beq error	; Out of retries
 	jsr spi_read
 	bit #$80
-	bne :-
-:	rts
+	bne l2
+
+	; Success
+	sec
+	rts
+
+error:	; Error
+	clc
+	rts
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -160,19 +206,25 @@ sdcard_lba_be:   .res 4	; Big-endian LBA, this is byte 1-5 of the command buffer
 
 	; Generate at least 74 SPI clock cycles with device deselected
 	ldx #10
-:	jsr spi_read
+l1:	jsr spi_read
 	dex
-	bne :-
+	bne l1
 
 	; Enter idle state
 	send_cmd_inline 0, 0
-	cmp #1
+	bcs :+
+	jmp error
+:
+	cmp #1	; In idle state?
 	beq :+
 	jmp error
 :
 	; SDv2? (SDHC/SDXC)
 	send_cmd_inline 8, $1AA
-	cmp #1
+	bcs :+
+	jmp error
+:
+	cmp #1	; No error?
 	beq :+
 	jmp error
 :
@@ -183,10 +235,16 @@ sdv2:	; Receive remaining 4 bytes of R7 response
 	jsr spi_read
 
 	; Wait for card to leave idle state
-:	send_cmd_inline 55, 0
+l2:	send_cmd_inline 55, 0
+	bcs :+
+	bra error
+:
 	send_cmd_inline 41, $40000000
+	bcs :+
+	bra error
+:
 	cmp #0
-	bne :-
+	bne l2
 
 	; Check CCS bit in OCR register
 	send_cmd_inline 58, 0
@@ -228,24 +286,29 @@ error:	jsr deselect
 	jsr send_cmd
 
 	; Wait for start of data packet
-	ldy #0
-:	jsr spi_read
+	ldx #0
+l2:	ldy #0
+l1:	jsr spi_read
 	cmp #$FE
-	beq :+
+	beq start
 	dey
-	beq error
-	bra :-
-:
-	; Read 512 bytes of sector data
+	bne l1
+	dex
+	bne l2
+
+	; Timeout error
+	jsr deselect
+	clc
+	rts
+
+start:	; Read 512 bytes of sector data
 	ldx #0
 	ldy #2
 read_loop:
 	jsr spi_read
 	sta (sdcard_bufptr)
-	inc sdcard_bufptr + 0
-	bne :+
-	inc sdcard_bufptr + 1
-:	dex
+	inc16 sdcard_bufptr
+	dex
 	bne read_loop
 	dey
 	bne read_loop
@@ -257,10 +320,6 @@ read_loop:
 	; Success
 	jsr deselect
 	sec
-	rts
-
-error:	; Error
-	clc
 	rts
 .endproc
 
@@ -279,6 +338,10 @@ error:	; Error
 	cmp #00
 	bne error
 
+	; Wait for card to be ready
+	jsr wait_ready
+	bcc error
+
 	; Send start of data token
 	lda #$FE
 	jsr spi_write
@@ -289,10 +352,8 @@ error:	; Error
 write_loop:
 	lda (sdcard_bufptr)
 	jsr spi_write
-	inc sdcard_bufptr + 0
-	bne :+
-	inc sdcard_bufptr + 1
-:	dex
+	inc16 sdcard_bufptr
+	dex
 	bne write_loop
 	dey
 	bne write_loop

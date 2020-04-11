@@ -12,6 +12,7 @@ EMU_PARAMS = -sdcard ~/Work/x16/x16-emulator/disk5.img -quality nearest -scale 2
 install: all
 	cp $(OUT) /media/frank/X16/
 	sync
+	sudo umount /media/frank/X16/
 
 include common/Makefile.common
 
