@@ -97,6 +97,15 @@ l1:	bit VERA_SPI_CTRL	; 4
 	rts			; 6
 .endproc			; >= 22 cycles
 
+.macro spi_read_macro
+	.local l1
+	lda #$FF		; 2
+	sta VERA_SPI_DATA	; 4
+l1:	bit VERA_SPI_CTRL	; 4
+	bmi l1			; 2 + 1 if branch
+	lda VERA_SPI_DATA	; 4
+.endmacro
+
 ;-----------------------------------------------------------------------------
 ; spi_write
 ;
@@ -108,6 +117,13 @@ l1:	bit VERA_SPI_CTRL
 	bmi l1
 	rts
 .endproc
+
+.macro spi_write_macro
+	.local l1
+	sta VERA_SPI_DATA
+l1:	bit VERA_SPI_CTRL
+	bmi l1
+.endmacro
 
 ;-----------------------------------------------------------------------------
 ; send_cmd - Send cmdbuf
@@ -302,16 +318,19 @@ l1:	jsr spi_read
 	rts
 
 start:	; Read 512 bytes of sector data
-	ldx #0
-	ldy #2
-read_loop:
-	jsr spi_read
-	sta (sdcard_bufptr)
-	inc16 sdcard_bufptr
-	dex
-	bne read_loop
-	dey
-	bne read_loop
+	ldy #0
+:	spi_read_macro
+	sta (sdcard_bufptr), y
+	iny
+	bne :-
+
+	inc sdcard_bufptr+1
+
+	; Y already 0 at this point
+:	spi_read_macro
+	sta (sdcard_bufptr), y
+	iny
+	bne :-
 
 	; Read CRC bytes
 	jsr spi_read
@@ -347,16 +366,19 @@ read_loop:
 	jsr spi_write
 
 	; Send 512 bytes of sector data
-	ldx #0
-	ldy #2
-write_loop:
-	lda (sdcard_bufptr)
-	jsr spi_write
-	inc16 sdcard_bufptr
-	dex
-	bne write_loop
-	dey
-	bne write_loop
+	ldy #0
+:	lda (sdcard_bufptr), y
+	spi_write_macro
+	iny
+	bne :-
+
+	inc sdcard_bufptr+1
+
+	; Y already 0 at this point
+:	lda (sdcard_bufptr), y
+	spi_write_macro
+	iny
+	bne :-
 
 	; Dummy CRC
 	lda #0

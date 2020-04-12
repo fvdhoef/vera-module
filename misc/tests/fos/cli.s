@@ -505,11 +505,15 @@ str_error: .byte "Error!",10,0
 ; cmd_test
 ;-----------------------------------------------------------------------------
 .proc cmd_test
+	; Open file
+	jsr set_single_param
+	bcs :+
+	rts
+:
+
 	lda #'T'
 	jsr putchar
 
-
-	set16_val fat32_ptr, name
 	jsr fat32_create
 	bcs :+
 	rts
