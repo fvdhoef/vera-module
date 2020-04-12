@@ -370,7 +370,9 @@ not_free:
 	cmp16_val bufptr, sector_buffer_end, next
 	inc32 cur_context + context::lba
 	jsr load_sector_buffer
-	set16_val bufptr, sector_buffer
+	bcs :+
+	rts
+:	set16_val bufptr, sector_buffer
 	jmp next
 .endproc
 
@@ -557,14 +559,13 @@ readsector:
 	; Read first sector of cluster
 	jsr calc_cluster_lba
 	jsr load_sector_buffer
-
+	bcs :+
+	rts
+:
 	; Reset buffer pointer
 	set16_val bufptr, sector_buffer
 
 done:	sec
-	rts
-
-error:	clc
 	rts
 .endproc
 
@@ -952,6 +953,7 @@ shift_loop:
 	bit #FLAG_IN_USE
 	beq reload_done
 	jsr load_sector_buffer
+	bcc error
 reload_done:
 
 done:	sec
