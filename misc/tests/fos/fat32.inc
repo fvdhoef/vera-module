@@ -16,9 +16,9 @@ FAT32_CONTEXTS = 6
 ;-----------------------------------------------------------------------------
 ; Variables
 ;-----------------------------------------------------------------------------
-.globalzp fat32_ptr              ; Buffer pointer for fat32_read
-.globalzp fat32_ptr2             ; Buffer pointer
-.global   fat32_size             ; Read count for fat32_read
+.globalzp fat32_ptr              ; Buffer pointer for various functions
+.globalzp fat32_ptr2             ; Buffer pointer for various functions
+.global   fat32_size             ; Used for fat32_get_free_space result
 .global   fat32_dirent           ; Directory entry result for fat32_read_dirent
 
 ;-----------------------------------------------------------------------------

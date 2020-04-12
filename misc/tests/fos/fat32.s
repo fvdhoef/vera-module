@@ -14,9 +14,9 @@
 
 CONTEXT_SIZE = 32
 
-FLAG_IN_USE = 1<<0	; Context in use
-FLAG_DIRTY  = 1<<1	; Buffer is dirty
-FLAG_DIRENT = 1<<2	; Directory entry needs to be updated on close
+FLAG_IN_USE = 1<<0  ; Context in use
+FLAG_DIRTY  = 1<<1  ; Buffer is dirty
+FLAG_DIRENT = 1<<2  ; Directory entry needs to be updated on close
 
 .struct context
 flags           .byte    ; Flag bits
@@ -25,48 +25,57 @@ lba             .dword   ; Sector of current cluster
 cluster_sector  .byte    ; Sector index within current cluster
 bufptr          .word    ; Pointer within sector_buffer
 file_size       .dword   ; Size of current file
-file_offset	.dword   ; Offset in current file
+file_offset     .dword   ; Offset in current file
 dirent_lba      .dword   ; Sector containing directory entry for this file
 dirent_bufptr   .word    ; Offset to start of directory entry 
 .endstruct
 
 ;-----------------------------------------------------------------------------
+; API variables
+;-----------------------------------------------------------------------------
+	.zeropage
+wrbyte:                            ; Used by fat32_write_byte
+fat32_ptr:           .word 0       ; Buffer pointer to various functions
+fat32_ptr2:          .word 0       ; Buffer pointer to various functions
+
+	.bss
+fat32_size:          .word 0       ; Used for fat32_get_free_space result
+fat32_dirent:        .tag dirent   ; Buffer containing decoded directory entry
+
+;-----------------------------------------------------------------------------
 ; Variables
 ;-----------------------------------------------------------------------------
 	.zeropage
-wrbyte:
-fat32_ptr:              .word 0       ; Used to pass a buffer pointer to read/write functions
-fat32_ptr2:             .word 0       ; Used to pass a buffer pointer to read/write functions
-bufptr:                 .word 0       ; Points to current offset within sector buffer
+bufptr:              .word 0       ; Points to current offset within sector buffer
 
 	.bss
-fat32_cluster:          .dword 0      ; Used to pass cluster to open_cluster
-fat32_size:             .word 0       ; Used to specify number of bytes to read/write
-fat32_dirent:           .tag dirent   ; Buffer containing decoded directory entry
-tmp_buf:                .res 4
-next_sector_arg:        .byte 0       ; Used by next_sector to store argument
-tmp_bufptr:             .word 0
-tmp_sector_lba:         .dword 0
-free_cluster:           .dword 0      ; Cluster to start search for free clusters, also jolds result of find_free_cluster
-filename_buf:           .res 11       ; Used for filename conversion
+; Static filesystem parameters
+rootdir_cluster:     .dword 0      ; Cluster of root directory
+sectors_per_cluster: .byte 0       ; Sectors per cluster
+cluster_shift:       .byte 0       ; Log2 of sectors_per_cluster
+lba_partition:       .dword 0      ; Start sector of FAT32 partition
+fat_size:            .dword 0      ; Size in sectors of each FAT table
+lba_fat:             .dword 0      ; Start sector of first FAT table
+lba_data:            .dword 0      ; Start sector of first data cluster
+cluster_count:       .dword 0      ; Total number of cluster on volume
+lba_fsinfo:          .dword 0      ; Sector number of FS info
 
-; Filesystem parameters
-fat32_rootdir_cluster:  .dword 0      ; Cluster of root directory
-sectors_per_cluster:    .byte 0       ; Sectors per cluster
-cluster_shift:          .byte 0       ; Log2 of sectors_per_cluster
-lba_partition:          .dword 0      ; Start sector of FAT32 partition
-fat_size:               .dword 0      ; Size in sectors of each FAT table
-lba_fat:                .dword 0      ; Start sector of first FAT table
-lba_data:               .dword 0      ; Start sector of first data cluster
-cluster_count:          .dword 0      ; Total number of cluster on volume
-lba_fsinfo:             .dword 0      ; Sector number of FS info
-free_clusters:          .dword 0      ; Number of free clusters (from FS info)
-cwd_cluster:            .dword 0      ; Cluster of current directory
+; Variables
+cwd_cluster:         .dword 0      ; Cluster of current directory
+free_clusters:       .dword 0      ; Number of free clusters (from FS info)
+free_cluster:        .dword 0      ; Cluster to start search for free clusters, also holds result of find_free_cluster
+filename_buf:        .res 11       ; Used for filename conversion
+
+; Temp buffers
+tmp_buf:             .res 4        ; Used by save_sector_buffer, fat32_rename
+next_sector_arg:     .byte 0       ; Used by next_sector to store argument
+tmp_bufptr:          .word 0       ; Used by next_sector
+tmp_sector_lba:      .dword 0      ; Used by next_sector
 
 ; Contexts
-context_idx:            .byte 0       ; Index of current context
-cur_context:            .tag context  ; Current file descriptor state
-contexts:               .res CONTEXT_SIZE * FAT32_CONTEXTS
+context_idx:         .byte 0       ; Index of current context
+cur_context:         .tag context  ; Current file descriptor state
+contexts:            .res CONTEXT_SIZE * FAT32_CONTEXTS
 contexts_end:
 
 .if CONTEXT_SIZE * FAT32_CONTEXTS > 256
@@ -546,16 +555,15 @@ not_ok:	clc
 ;-----------------------------------------------------------------------------
 .proc open_cluster
 	; Check if cluster == 0 -> modify into root dir
-	lda fat32_cluster + 0
-	ora fat32_cluster + 1
-	ora fat32_cluster + 2
-	ora fat32_cluster + 3
+	lda cur_context + context::cluster + 0
+	ora cur_context + context::cluster + 1
+	ora cur_context + context::cluster + 2
+	ora cur_context + context::cluster + 3
 	beq rootdir
-	set32 cur_context + context::cluster, fat32_cluster
 	bra readsector
 
 rootdir:
-	set32 cur_context + context::cluster, fat32_rootdir_cluster
+	set32 cur_context + context::cluster, rootdir_cluster
 
 readsector:
 	; Read first sector of cluster
@@ -675,7 +683,7 @@ wrdone:
 ;-----------------------------------------------------------------------------
 .proc open_cwd
 	; Open current directory
-	set32 fat32_cluster, cwd_cluster
+	set32 cur_context + context::cluster, cwd_cluster
 	jmp open_cluster
 .endproc
 
@@ -816,10 +824,10 @@ error:
 	clc
 	rts
 :
-	; Get LBA of partition of first partition
+	; Get LBA of first partition
 	set32 lba_partition, sector_buffer + $1BE + 8
 
-	; Read first sector of FAT32 partition
+	; Read first sector of partition
 	set32 cur_context + context::lba, lba_partition
 	jsr load_sector_buffer
 	bcs :+
@@ -841,27 +849,29 @@ error:
 	bne invalid
 	bra valid
 invalid:
+	; Unsupported configuration
 	clc
 	rts
 valid:
-	; Calculate shift amount based on sectors per cluster field
+	; Get sectors per cluster
 	lda sector_buffer + 13
 	sta sectors_per_cluster
 	bne :+
 	clc
 	rts
-:	stz cluster_shift
-shift_loop:
-	lsr
+:
+	; Calculate shift amount based on sectors per cluster
+	stz cluster_shift
+l1:	lsr
 	beq :+
 	inc cluster_shift
-	bra shift_loop
+	bra l1
 :
-	; Fat size in sectors
+	; FAT size in sectors
 	set32 fat_size, sector_buffer + 36
 
 	; Root cluster
-	set32 fat32_rootdir_cluster, sector_buffer + 44
+	set32 rootdir_cluster, sector_buffer + 44
 
 	; Calculate LBA of first FAT
 	add32_16 lba_fat, lba_partition, sector_buffer + 14
@@ -874,10 +884,10 @@ shift_loop:
 	set32 cluster_count, sector_buffer + 32
 	sub32 cluster_count, cluster_count, lba_data
 	ldy cluster_shift
-	beq :++
-:	shr32 cluster_count
+	beq :+
+l2:	shr32 cluster_count
 	dey
-	bne :-
+	bne l2
 :
 	; Get FS info sector
 	add32_16 lba_fsinfo, lba_partition, sector_buffer + 48
@@ -1214,7 +1224,7 @@ error:	clc
 	; Open file
 	set32_val cur_context + context::file_offset, 0
 	set32 cur_context + context::file_size, fat32_dirent + dirent::size
-	set32 fat32_cluster, fat32_dirent + dirent::cluster
+	set32 cur_context + context::cluster, fat32_dirent + dirent::cluster
 	jsr open_cluster
 	bcs :+
 	rts
@@ -1465,7 +1475,7 @@ allocate_first_cluster:
 	rts
 :
 	; Load in cluster
-	set32 fat32_cluster, free_cluster
+	set32 cur_context + context::cluster, free_cluster
 	jsr open_cluster
 	bcs :+
 	rts
