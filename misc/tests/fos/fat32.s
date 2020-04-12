@@ -3,9 +3,8 @@
 ; Copyright (C) 2020 Frank van den Hoef
 ;
 ; TODO:
-; - implement fat32_mkdir, fat32_rmdir
+; - implement fat32_mkdir, fat32_rmdir, fat32_seek
 ; - improve read/write performance
-; - improve free cluster searching
 ;-----------------------------------------------------------------------------
 	.include "text_display.inc"
 
@@ -48,7 +47,7 @@ tmp_buf:                .res 4
 next_sector_arg:        .byte 0       ; Used by next_sector to store argument
 tmp_bufptr:             .word 0
 tmp_sector_lba:         .dword 0
-free_cluster:           .res 4        ; Holds result of find_free_cluster
+free_cluster:           .dword 0      ; Cluster to start search for free clusters, also jolds result of find_free_cluster
 filename_buf:           .res 11       ; Used for filename conversion
 
 ; Filesystem parameters
@@ -322,6 +321,32 @@ error:	clc
 next:	jsr next_cluster
 	bcc done
 
+	; Set this cluster as new search start point if lower than current start point
+	ldy #3
+	lda free_cluster + 3
+	cmp (bufptr), y
+	bcc :+
+	dey
+	lda free_cluster + 2
+	cmp (bufptr), y
+	bcc :+
+	dey
+	lda free_cluster + 1
+	cmp (bufptr), y
+	bcc :+
+	dey
+	lda free_cluster + 0
+	cmp (bufptr), y
+	bcc :+
+	beq :+
+
+	ldy #0
+l1:	lda (bufptr), y
+	sta free_cluster, y
+	iny
+	cpy #4
+	bne l1
+:
 	; Set entry as free
 	lda #0
 	ldy #0
@@ -352,8 +377,8 @@ done:	jsr sync_sector_buffer
 ; find_free_cluster
 ;-----------------------------------------------------------------------------
 .proc find_free_cluster
-	; Start at cluster 2
-	set32_val cur_context + context::cluster, 2
+	; Start search at free_cluster
+	set32 cur_context + context::cluster, free_cluster
 	jsr load_fat_sector_for_cluster
 
 next:
@@ -808,6 +833,7 @@ error:
 	clear_bytes cur_context, contexts_end - cur_context
 
 	set32_val sector_lba, $FFFFFFFF
+	set32_val free_cluster, 2
 
 	; Initialize SD card
 	jsr sdcard_init
