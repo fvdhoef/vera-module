@@ -84,43 +84,6 @@ sector_buffer_end:
 	.code
 
 ;-----------------------------------------------------------------------------
-; set_sdcard_rw_params
-;-----------------------------------------------------------------------------
-.proc set_sdcard_rw_params
-	; SD card driver expects LBA in big-endian
-	lda sector_lba + 0
-	sta sdcard_lba_be + 3
-	lda sector_lba + 1
-	sta sdcard_lba_be + 2
-	lda sector_lba + 2
-	sta sdcard_lba_be + 1
-	lda sector_lba + 3
-	sta sdcard_lba_be + 0
-	rts
-.endproc
-
-;-----------------------------------------------------------------------------
-; set_sdcard_rw_params_fat2
-;-----------------------------------------------------------------------------
-.proc set_sdcard_rw_params_fat2
-	; SD card driver expects LBA in big-endian
-	clc
-	lda sector_lba + 0
-	adc fat_size + 0
-	sta sdcard_lba_be + 3
-	lda sector_lba + 1
-	adc fat_size + 1
-	sta sdcard_lba_be + 2
-	lda sector_lba + 2
-	adc fat_size + 2
-	sta sdcard_lba_be + 1
-	lda sector_lba + 3
-	adc fat_size + 3
-	sta sdcard_lba_be + 0
-	rts
-.endproc
-
-;-----------------------------------------------------------------------------
 ; sync_sector_buffer
 ;-----------------------------------------------------------------------------
 .proc sync_sector_buffer
@@ -146,7 +109,7 @@ done:	sec
 do_load:
 	jsr sync_sector_buffer
 	set32 sector_lba, cur_context + context::lba
-	jsr set_sdcard_rw_params
+	set32 sdcard_lba, sector_lba
 	jmp sdcard_read_sector
 .endproc
 
@@ -167,10 +130,10 @@ do_load:
 	bcs normal
 
 	; Write second FAT
-	jsr set_sdcard_rw_params_fat2
+	add32 sdcard_lba, sector_lba, fat_size
 	jsr sdcard_write_sector
 
-normal:	jsr set_sdcard_rw_params
+normal:	set32 sdcard_lba, sector_lba
 	jsr sdcard_write_sector
 
 	; Clear dirty bit
@@ -689,7 +652,7 @@ l2:	sta sector_buffer, y
 	; Write sectors
 	jsr calc_cluster_lba
 l3:	set32 sector_lba, cur_context + context::lba
-	jsr set_sdcard_rw_params
+	set32 sdcard_lba, sector_lba
 	jsr sdcard_write_sector
 	lda cur_context + context::cluster_sector
 	inc
@@ -833,7 +796,7 @@ error:
 	rts
 :
 	; Read partition table
-	set32_val sdcard_lba_be, 0
+	set32_val sdcard_lba, 0
 	jsr sdcard_read_sector
 	bcs :+
 	rts

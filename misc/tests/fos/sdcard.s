@@ -7,11 +7,11 @@
 	.include "sdcard.inc"
 
 	.bss
-cmdbuf:          .res 1
-sdcard_lba_be:   .res 4	; Big-endian LBA, this is byte 1-5 of the command buffer
-	         .res 1
-
-timeout_cnt:     .byte 0
+cmd_idx:     .byte 0
+sdcard_lba:
+cmd_arg:     .dword 0
+cmd_crc:     .byte 0
+timeout_cnt: .byte 0
 
 	.code
 
@@ -133,12 +133,18 @@ l1:	bit VERA_SPI_CTRL
 	bcc error
 
 	; Send the 6 cmdbuf bytes
-	ldy #0
-l1:	lda cmdbuf,y
+	lda cmd_idx
 	jsr spi_write
-	iny
-	cpy #6
-	bne l1
+	lda cmd_arg + 3
+	jsr spi_write
+	lda cmd_arg + 2
+	jsr spi_write
+	lda cmd_arg + 1
+	jsr spi_write
+	lda cmd_arg + 0
+	jsr spi_write
+	lda cmd_crc
+	jsr spi_write
 
 	; Wait for response
 	ldy #(10 + 1)
@@ -162,34 +168,34 @@ error:	; Error
 ;-----------------------------------------------------------------------------
 .macro send_cmd_inline cmd, arg
 	lda #(cmd | $40)
-	sta cmdbuf + 0
+	sta cmd_idx
 
 .if .hibyte(.hiword(arg)) = 0
-	stz cmdbuf + 1
+	stz cmd_arg + 3
 .else
 	lda #(.hibyte(.hiword(arg)))
-	sta cmdbuf + 1
+	sta cmd_arg + 3
 .endif
 
 .if ^arg = 0
-	stz cmdbuf + 2
+	stz cmd_arg + 2
 .else
 	lda #^arg
-	sta cmdbuf + 2
+	sta cmd_arg + 2
 .endif
 
 .if >arg = 0
-	stz cmdbuf + 3
+	stz cmd_arg + 1
 .else
 	lda #>arg
-	sta cmdbuf + 3
+	sta cmd_arg + 1
 .endif
 
 .if <arg = 0
-	stz cmdbuf + 4
+	stz cmd_arg + 0
 .else
 	lda #<arg
-	sta cmdbuf + 4
+	sta cmd_arg + 0
 .endif
 
 .if cmd = 0
@@ -201,7 +207,7 @@ error:	; Error
 	lda #1
 .endif
 .endif
-	sta cmdbuf + 5
+	sta cmd_crc
 	jsr send_cmd
 .endmacro
 
@@ -290,9 +296,9 @@ error:	jsr deselect
 .proc sdcard_read_sector
 	; Send READ_SINGLE_BLOCK command
 	lda #($40 | 17)
-	sta cmdbuf + 0
+	sta cmd_idx
 	lda #1
-	sta cmdbuf + 5
+	sta cmd_crc
 	jsr send_cmd
 
 	; Wait for start of data packet
@@ -350,9 +356,9 @@ start:	; Read first byte
 .proc sdcard_write_sector
 	; Send WRITE_BLOCK command
 	lda #($40 | 24)
-	sta cmdbuf + 0
+	sta cmd_idx
 	lda #1
-	sta cmdbuf + 5
+	sta cmd_crc
 	jsr send_cmd
 	cmp #00
 	bne error

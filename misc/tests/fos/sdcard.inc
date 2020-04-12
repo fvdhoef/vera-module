@@ -7,7 +7,7 @@
 ; Variables
 ;-----------------------------------------------------------------------------
 .global sector_buffer     ; From fat32.s
-.global sdcard_lba_be     ; LBA of sector to read/write (big-endian)
+.global sdcard_lba        ; LBA of sector to read/write
 
 ;-----------------------------------------------------------------------------
 ; Functions
