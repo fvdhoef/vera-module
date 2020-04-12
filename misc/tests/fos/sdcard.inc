@@ -6,7 +6,7 @@
 ;-----------------------------------------------------------------------------
 ; Variables
 ;-----------------------------------------------------------------------------
-.globalzp sdcard_bufptr   ; Pointer to sector buffer
+.global sector_buffer     ; From fat32.s
 .global sdcard_lba_be     ; LBA of sector to read/write (big-endian)
 
 ;-----------------------------------------------------------------------------

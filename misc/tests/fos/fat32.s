@@ -96,10 +96,6 @@ sector_buffer_end:
 	sta sdcard_lba_be + 1
 	lda sector_lba + 3
 	sta sdcard_lba_be + 0
-
-	; Set pointer to buffer
-	set16_val sdcard_bufptr, sector_buffer
-
 	rts
 .endproc
 
@@ -121,10 +117,6 @@ sector_buffer_end:
 	lda sector_lba + 3
 	adc fat_size + 3
 	sta sdcard_lba_be + 0
-
-	; Set pointer to buffer
-	set16_val sdcard_bufptr, sector_buffer
-
 	rts
 .endproc
 
@@ -842,7 +834,6 @@ error:
 :
 	; Read partition table
 	set32_val sdcard_lba_be, 0
-	set16_val sdcard_bufptr, sector_buffer
 	jsr sdcard_read_sector
 	bcs :+
 	rts
