@@ -6,8 +6,9 @@
 ;-----------------------------------------------------------------------------
 ; Variables
 ;-----------------------------------------------------------------------------
-.global sector_buffer     ; From fat32.s
-.global sdcard_lba        ; LBA of sector to read/write
+.global sector_buffer     ; Sector buffer
+.global sector_buffer_end
+.global sector_lba        ; LBA of sector to read/write
 
 ;-----------------------------------------------------------------------------
 ; Functions

@@ -7,11 +7,13 @@
 	.include "sdcard.inc"
 
 	.bss
-cmd_idx:     .byte 0
-sdcard_lba:
-cmd_arg:     .dword 0
-cmd_crc:     .byte 0
-timeout_cnt: .byte 0
+cmd_idx:           .byte 0
+sector_lba:
+cmd_arg:           .dword 0
+cmd_crc:           .byte 0
+timeout_cnt:       .byte 0
+sector_buffer:     .res 512      ; Sector buffer
+sector_buffer_end:
 
 	.code
 
@@ -292,7 +294,7 @@ error:	jsr deselect
 
 ;-----------------------------------------------------------------------------
 ; sdcard_read_sector
-; Set sdcard_lba prior to calling this function.
+; Set sector_lba prior to calling this function.
 ; result: C=0 -> error, C=1 -> success
 ;-----------------------------------------------------------------------------
 .proc sdcard_read_sector
@@ -344,7 +346,7 @@ start:	; Read 512 bytes of sector data
 
 ;-----------------------------------------------------------------------------
 ; sdcard_write_sector
-; Set sdcard_lba prior to calling this function.
+; Set sector_lba prior to calling this function.
 ; result: C=0 -> error, C=1 -> success
 ;-----------------------------------------------------------------------------
 .proc sdcard_write_sector

@@ -77,10 +77,6 @@ contexts_end:
 .error "Context too big"
 .endif
 
-sector_lba:             .dword 0
-sector_buffer:          .res 512      ; Sector buffer
-sector_buffer_end:
-
 	.code
 
 ;-----------------------------------------------------------------------------
@@ -109,7 +105,6 @@ done:	sec
 do_load:
 	jsr sync_sector_buffer
 	set32 sector_lba, cur_context + context::lba
-	set32 sdcard_lba, sector_lba
 	jmp sdcard_read_sector
 .endproc
 
@@ -130,12 +125,19 @@ do_load:
 	bcs normal
 
 	; Write second FAT
-	add32 sdcard_lba, sector_lba, fat_size
+	set32 tmp_buf, sector_lba
+	add32 sector_lba, sector_lba, fat_size
 	jsr sdcard_write_sector
-
-normal:	set32 sdcard_lba, sector_lba
-	jsr sdcard_write_sector
-
+	php
+	set32 sector_lba, tmp_buf
+	plp
+	bcs :+
+	rts
+:
+normal:	jsr sdcard_write_sector
+	bcs :+
+	rts
+:
 	; Clear dirty bit
 	lda cur_context + context::flags
 	and #(FLAG_DIRTY ^ $FF)
@@ -653,7 +655,6 @@ l2:	sta sector_buffer, y
 	; Write sectors
 	jsr calc_cluster_lba
 l3:	set32 sector_lba, cur_context + context::lba
-	set32 sdcard_lba, sector_lba
 	jsr sdcard_write_sector
 	lda cur_context + context::cluster_sector
 	inc
@@ -784,21 +785,25 @@ error:
 ; fat32_init
 ;-----------------------------------------------------------------------------
 .proc fat32_init
-	; Initialize file contexts
-	stz context_idx
-	clear_bytes cur_context, contexts_end - cur_context
-
-	set32_val sector_lba, $FFFFFFFF
-	set32_val free_cluster, 2
-
 	; Initialize SD card
 	jsr sdcard_init
 	bcs :+
 	rts
 :
+	; Initialize file contexts
+	stz context_idx
+	clear_bytes cur_context, contexts_end - cur_context
+
+	; Make sure sector_lba is non-zero
+	lda #$FF
+	sta sector_lba
+
+	; Set initial start point for free cluster search
+	set32_val free_cluster, 2
+
 	; Read partition table
-	set32_val sdcard_lba, 0
-	jsr sdcard_read_sector
+	set32 cur_context + context::lba, 0
+	jsr load_sector_buffer
 	bcs :+
 	rts
 :
