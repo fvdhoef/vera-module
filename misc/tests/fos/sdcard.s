@@ -93,17 +93,12 @@ l1:	bit VERA_SPI_CTRL	; 4
 	rts			; 6
 .endproc			; >= 22 cycles
 
-; This macro will work correctly up to 8MHz
 .macro spi_read_macro
 	.local l1
 	lda #$FF		; 2
 	sta VERA_SPI_DATA	; 4
-
-	; 640 ns / byte -> 5.12 clock cycles @ 8MHz
-	nop			; 2
-	nop			; 2
-	nop			; 2
-
+l1:	bit VERA_SPI_CTRL	; 4
+	bmi l1			; 2 + 1 if branch
 	lda VERA_SPI_DATA	; 4
 .endmacro
 
@@ -118,6 +113,13 @@ l1:	bit VERA_SPI_CTRL
 	bmi l1
 	rts
 .endproc
+
+.macro spi_write_macro
+	.local l1
+	sta VERA_SPI_DATA
+l1:	bit VERA_SPI_CTRL
+	bmi l1
+.endmacro
 
 ;-----------------------------------------------------------------------------
 ; send_cmd - Send cmdbuf
@@ -290,7 +292,7 @@ error:	jsr deselect
 
 ;-----------------------------------------------------------------------------
 ; sdcard_read_sector
-; Set sdcard_lba_be prior to calling this function.
+; Set sdcard_lba prior to calling this function.
 ; result: C=0 -> error, C=1 -> success
 ;-----------------------------------------------------------------------------
 .proc sdcard_read_sector
@@ -317,29 +319,21 @@ l1:	jsr spi_read
 	clc
 	rts
 
-start:	; Read first byte
-	ldx #$FF
-	stx VERA_SPI_DATA
-:	bit VERA_SPI_CTRL
-	bmi :-
+start:	; Read 512 bytes of sector data
+	ldy #0
+:	spi_read_macro
+	sta sector_buffer, y
+	iny
+	bne :-
 
-	; Efficiently read first 256 bytes (hide SPI transfer time)
-:	lda VERA_SPI_DATA	; 4
-	ldx #$FF		; 2
-	stx VERA_SPI_DATA	; 4
-	sta sector_buffer, y	; 5
-	iny			; 2
-	bne :-			; 2+1
+	; Y already 0 at this point
+:	spi_read_macro
+	sta sector_buffer + 256, y
+	iny
+	bne :-
 
-	; Efficiently read second 256 bytes (hide SPI transfer time)
-:	lda VERA_SPI_DATA		; 4
-	ldx #$FF			; 2
-	stx VERA_SPI_DATA		; 4
-	sta sector_buffer + 256, y	; 5
-	iny				; 2
-	bne :-				; 2+1
-
-	; Next read is now already done (first CRC byte), read second CRC byte
+	; Read CRC bytes
+	jsr spi_read
 	jsr spi_read
 
 	; Success
@@ -350,7 +344,7 @@ start:	; Read first byte
 
 ;-----------------------------------------------------------------------------
 ; sdcard_write_sector
-; Set sdcard_lba_be prior to calling this function.
+; Set sdcard_lba prior to calling this function.
 ; result: C=0 -> error, C=1 -> success
 ;-----------------------------------------------------------------------------
 .proc sdcard_write_sector
@@ -372,19 +366,17 @@ start:	; Read first byte
 	jsr spi_write
 
 	; Send 512 bytes of sector data
-	; NOTE: Direct access of SPI registers to speed up.
-	;       Make sure 9 CPU clock cycles take longer than 640 ns (eg. CPU max 14MHz)
 	ldy #0
-:	lda sector_buffer, y	; 4
-	sta VERA_SPI_DATA	; 4
+l1:	lda sector_buffer, y	; 4
+	spi_write_macro
 	iny			; 2
-	bne :-			; 2 + 1
+	bne l1			; 2 + 1
 
 	; Y already 0 at this point
-:	lda sector_buffer + 256, y	; 4
-	sta VERA_SPI_DATA		; 4
+l2:	lda sector_buffer + 256, y	; 4
+	spi_write_macro
 	iny				; 2
-	bne :-				; 2 + 1
+	bne l2				; 2 + 1
 
 	; Dummy CRC
 	lda #0
