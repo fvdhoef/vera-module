@@ -3,7 +3,6 @@
 ; Copyright (C) 2020 Frank van den Hoef
 ;
 ; TODO:
-; - zero out clusters allocated for directories
 ; - implement fat32_mkdir, fat32_rmdir
 ; - improve read/write performance
 ; - improve free cluster searching
@@ -46,6 +45,11 @@ fat32_cluster:          .dword 0      ; Used to pass cluster to open_cluster
 fat32_size:             .word 0       ; Used to specify number of bytes to read/write
 fat32_dirent:           .tag dirent   ; Buffer containing decoded directory entry
 tmp_buf:                .res 4
+next_sector_arg:        .byte 0       ; Used by next_sector to store argument
+tmp_bufptr:             .word 0
+tmp_sector_lba:         .dword 0
+free_cluster:           .res 4        ; Holds result of find_free_cluster
+filename_buf:           .res 11       ; Used for filename conversion
 
 ; Filesystem parameters
 fat32_rootdir_cluster:  .dword 0      ; Cluster of root directory
@@ -66,17 +70,6 @@ cur_context:            .tag context  ; Current file descriptor state
 contexts:               .res CONTEXT_SIZE * FAT32_CONTEXTS
 contexts_end:
 
-sector_lba:             .dword 0
-sector_buffer:          .res 512      ; Sector buffer
-sector_buffer_end:
-
-filename_buf:           .res 11       ; Used for filename conversion
-free_cluster:           .res 4
-
-tmp_bufptr:     .word 0
-tmp_sector_lba: .dword 0
-
-
 .if CONTEXT_SIZE * FAT32_CONTEXTS > 256
 .error "FAT32_CONTEXTS too high"
 .endif
@@ -84,6 +77,10 @@ tmp_sector_lba: .dword 0
 .if .sizeof(context) > CONTEXT_SIZE
 .error "Context too big"
 .endif
+
+sector_lba:             .dword 0
+sector_buffer:          .res 512      ; Sector buffer
+sector_buffer_end:
 
 	.code
 
@@ -593,16 +590,22 @@ error:	clc
 
 ;-----------------------------------------------------------------------------
 ; next_sector
+; A: bit0 - allocate cluster if at end of cluster chain
+;    bit1 - clear allocated cluster
 ;-----------------------------------------------------------------------------
 .proc next_sector
+	; Save argument
+	sta next_sector_arg
+
+	; Last sector of cluster?
 	lda cur_context + context::cluster_sector
 	inc
 	cmp sectors_per_cluster
 	beq end_of_cluster
 	sta cur_context + context::cluster_sector
 
+	; Load next sector
 	inc32 cur_context + context::lba
-
 read_sector:
 	jsr load_sector_buffer
 	set16_val bufptr, sector_buffer
@@ -621,6 +624,13 @@ read_cluster:
 	bra read_sector
 
 end_of_chain:
+	; Request to allocate new cluster?
+	lda next_sector_arg
+	bit #$01
+	bne :+
+	clc
+	rts
+:
 	; Save location of cluster entry in FAT
 	set16 tmp_bufptr, bufptr
 	set32 tmp_sector_lba, sector_lba
@@ -637,18 +647,45 @@ end_of_chain:
 	
 	; Write allocated cluster number in FAT
 	ldy #0
-:	lda free_cluster, y
+l1:	lda free_cluster, y
 	sta (bufptr), y
 	iny
 	cpy #4
-	bne :-
+	bne l1
 
 	; Save FAT sector
 	jsr save_sector_buffer
 
+	; Request to clear new cluster?
+	lda next_sector_arg
+	bit #$02
+	beq wrdone
+
+	; Fill sector buffer with 0
+	lda #0
+	ldy #0
+l2:	sta sector_buffer, y
+	sta sector_buffer + 256, y
+	iny
+	bne l2
+
+	; Write sectors
+	jsr calc_cluster_lba
+l3:	set32 sector_lba, cur_context + context::lba
+	jsr set_sdcard_rw_params
+	jsr sdcard_write_sector
+	lda cur_context + context::cluster_sector
+	inc
+	cmp sectors_per_cluster
+	beq wrdone
+	sta cur_context + context::cluster_sector
+	inc32 cur_context + context::lba
+	bra l3
+
+wrdone:
 	; Retry
 	set32 cur_context + context::cluster, free_cluster
-	bra read_cluster
+	jmp read_cluster
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -976,6 +1013,7 @@ error:	clc
 read_entry:
 	; Load next sector if at end of buffer
 	cmp16_val bufptr, sector_buffer_end, :+
+	lda #0
 	jsr next_sector
 	bcs :+
 	clc     ; Indicate error
@@ -1231,11 +1269,12 @@ error:	clc
 	rts
 :
 next_entry:
-	; Load next sector if at end of buffer
+	; Load next sector if at end of buffer (allocate and clear new cluster if needed)
 	cmp16_val bufptr, sector_buffer_end, :+
+	lda #3
 	jsr next_sector
 	bcs :+
-	clc     ; Indicate error,  TODO: allocate new cluster for directory
+	clc
 	rts
 :
 	; Is this entry free?
@@ -1348,6 +1387,7 @@ next:
 :
 	; At end of buffer?
 	cmp16_val bufptr, sector_buffer_end, :+
+	lda #0
 	jsr next_sector
 	bcs :+
 	clc	; Indicate error
@@ -1374,13 +1414,15 @@ next:
 	; At end of buffer?
 	cmp16_val bufptr, sector_buffer_end, write_byte
 
-	; Is this the first cluster?  TODO: check if current cluster is 0
-	lda cur_context + context::file_offset + 0
-	ora cur_context + context::file_offset + 1
-	ora cur_context + context::file_offset + 2
-	ora cur_context + context::file_offset + 3
+	; Is this the first cluster?
+	lda cur_context + context::file_size + 0
+	ora cur_context + context::file_size + 1
+	ora cur_context + context::file_size + 2
+	ora cur_context + context::file_size + 3
 	beq allocate_first_cluster
 
+	; Go to next sector (allocate cluster if needed)
+	lda #1
 	jsr next_sector
 	bcs write_byte
 	rts
