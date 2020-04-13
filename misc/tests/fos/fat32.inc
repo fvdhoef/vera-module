@@ -48,3 +48,4 @@ FAT32_CONTEXTS = 6
 ; TODO:
 ; fat32_mkdir
 ; fat32_rmdir
+; fat32_seek

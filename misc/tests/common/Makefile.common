@@ -18,7 +18,7 @@ all: $(OUT)
 
 $(OUT): $(OBJ_DIR) $(S_OBJS)
 	@echo Linking $@
-	@$(LD) -C $(COMMON_DIR)/x16.cfg -o $(OUT) $(S_OBJS)
+	@$(LD) -C $(COMMON_DIR)/x16.cfg -m $(OUT).map -o $(OUT) $(S_OBJS)
 
 $(OBJ_DIR):
 	@mkdir -p $(dir $(S_OBJS))

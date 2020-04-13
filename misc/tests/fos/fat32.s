@@ -1377,11 +1377,16 @@ error:	clc
 ; fat32_write_byte
 ;-----------------------------------------------------------------------------
 .proc fat32_write_byte
+	; At end of buffer? (preserve A)
+	ldx bufptr + 0
+	cpx #<sector_buffer_end
+	bne write_byte
+	ldx bufptr + 1
+	cpx #>sector_buffer_end
+	bne write_byte
+
 	; Save byte to be written
 	sta wrbyte
-
-	; At end of buffer?
-	cmp16_val bufptr, sector_buffer_end, write_byte
 
 	; Is this the first cluster?
 	lda cur_context + context::file_size + 0
@@ -1395,9 +1400,10 @@ error:	clc
 	jsr next_sector
 	bcc error
 
+write_byte2:
+	lda wrbyte
 write_byte:
 	; Write byte
-	lda wrbyte
 	sta (bufptr)
 	inc16 bufptr
 
@@ -1422,7 +1428,6 @@ error:	rts
 	set32 cur_context + context::lba, cur_context + context::dirent_lba
 	jsr load_sector_buffer
 	bcc error
-
 	set16 bufptr, cur_context + context::dirent_bufptr
 
 	; Write cluster number to directory entry
@@ -1448,7 +1453,7 @@ error:	rts
 	jsr open_cluster
 	bcc error
 
-	jmp write_byte
+	jmp write_byte2
 .endproc
 
 ;-----------------------------------------------------------------------------
