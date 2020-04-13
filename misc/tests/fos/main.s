@@ -38,6 +38,9 @@ str_message:
 ;-----------------------------------------------------------------------------
 ; Entry point
 ;-----------------------------------------------------------------------------
+	.import __BSS_LOAD__
+	.import __BSS_SIZE__
+
 	.global entry
 .proc entry
 	; Switch to ISO mode
@@ -49,6 +52,14 @@ str_message:
 	lda VERA_DC_VIDEO
 	and #7
 	sta VERA_DC_VIDEO
+
+	; Clear BSS
+	set16_val DST_PTR, __BSS_LOAD__
+	add16_val SRC_PTR, DST_PTR, __BSS_SIZE__
+:	lda #0
+	sta (DST_PTR)
+	inc16 DST_PTR
+	cmp16 DST_PTR, SRC_PTR, :-
 
 	; Call main
 	jsr main

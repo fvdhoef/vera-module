@@ -76,8 +76,6 @@ next_cmd:
 	; Search and call command
 	jsr call_cmd
 	bra next_cmd
-
-	rts
 .endproc
 
 ;-----------------------------------------------------------------------------
