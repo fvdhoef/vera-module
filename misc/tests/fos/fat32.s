@@ -34,7 +34,6 @@ dirent_bufptr   .word    ; Offset to start of directory entry
 ; API variables
 ;-----------------------------------------------------------------------------
 	.zeropage
-wrbyte:                            ; Used by fat32_write_byte
 fat32_ptr:           .word 0       ; Buffer pointer to various functions
 fat32_ptr2:          .word 0       ; Buffer pointer to various functions
 
@@ -1374,20 +1373,9 @@ error:	clc
 .endproc
 
 ;-----------------------------------------------------------------------------
-; fat32_write_byte
+; write__end_of_buffer
 ;-----------------------------------------------------------------------------
-.proc fat32_write_byte
-	; At end of buffer? (preserve A)
-	ldx bufptr + 0
-	cpx #<sector_buffer_end
-	bne write_byte
-	ldx bufptr + 1
-	cpx #>sector_buffer_end
-	bne write_byte
-
-	; Save byte to be written
-	sta wrbyte
-
+.proc write__end_of_buffer
 	; Is this the first cluster?
 	lda cur_context + context::file_size + 0
 	ora cur_context + context::file_size + 1
@@ -1397,29 +1385,10 @@ error:	clc
 
 	; Go to next sector (allocate cluster if needed)
 	lda #1
-	jsr next_sector
-	bcc error
+	jmp next_sector
 
-write_byte2:
-	lda wrbyte
-write_byte:
-	; Write byte
-	sta (bufptr)
-	inc16 bufptr
-
-	; Set sector as dirty, dirent needs update
-	lda cur_context + context::flags
-	ora #(FLAG_DIRTY | FLAG_DIRENT)
-	sta cur_context + context::flags
-
-	inc32 cur_context + context::file_offset
-	inc32 cur_context + context::file_size
-
-	sec	; Indicate success
-	rts
-
+	; Allocate cluster and add it to the directory entry of this file
 allocate_first_cluster:
-	; Allocate cluster
 	jsr allocate_cluster
 	bcs :+
 error:	rts
@@ -1450,10 +1419,43 @@ error:	rts
 
 	; Load in cluster
 	set32 cur_context + context::cluster, free_cluster
-	jsr open_cluster
-	bcc error
+	jmp open_cluster
+.endproc
 
-	jmp write_byte2
+;-----------------------------------------------------------------------------
+; fat32_write_byte
+;-----------------------------------------------------------------------------
+.proc fat32_write_byte
+	; At end of buffer? (preserve A)
+	ldx bufptr + 0
+	cpx #<sector_buffer_end
+	bne write_byte
+	ldx bufptr + 1
+	cpx #>sector_buffer_end
+	bne write_byte
+
+	; Handle end of buffer condition
+	pha
+	jsr write__end_of_buffer
+	pla
+	bcs write_byte
+	rts
+
+write_byte:
+	; Write byte
+	sta (bufptr)
+	inc16 bufptr
+
+	; Set sector as dirty, dirent needs update
+	lda cur_context + context::flags
+	ora #(FLAG_DIRTY | FLAG_DIRENT)
+	sta cur_context + context::flags
+
+	inc32 cur_context + context::file_offset
+	inc32 cur_context + context::file_size
+
+	sec	; Indicate success
+	rts
 .endproc
 
 ;-----------------------------------------------------------------------------
