@@ -1511,37 +1511,24 @@ nonzero:
 	set16 bytecnt, fat32_size
 :
 	; Y = bytecnt > 256 ? bytecnt = 256 : bytecnt
-	lda bytecnt+1
-	beq l1	; <256?
-
-	; 256 bytes
-	stz bytecnt+0
+	lda bytecnt + 1
+	beq :+		; <256?
+	stz bytecnt + 0	; 256 bytes
 	lda #1
-	sta bytecnt+1
-	bra l2
-
-l1:	ldy bytecnt+0
-l2:
-
+	sta bytecnt + 1
+:
 	; Copy bytecnt bytes into buffer
 	ldy #0
-l3:	lda (fat32_ptr), y
+l1:	lda (fat32_ptr), y
 	sta (bufptr), y
 	iny
 	cpy bytecnt
-	bne l3
+	bne l1
 
-	; fat32_ptr += bytecnt, bufptr += bytecnt, fat32_size -= bytecnt
-	add16 fat32_ptr,  fat32_ptr,  bytecnt
-	add16 bufptr,     bufptr,     bytecnt
+	; fat32_ptr += bytecnt, bufptr += bytecnt, fat32_size -= bytecnt, file_offset += bytecnt
+	add16 fat32_ptr, fat32_ptr, bytecnt
+	add16 bufptr, bufptr, bytecnt
 	sub16 fat32_size, fat32_size, bytecnt
-
-	; Set sector as dirty, dirent needs update
-	lda cur_context + context::flags
-	ora #(FLAG_DIRTY | FLAG_DIRENT)
-	sta cur_context + context::flags
-
-	; file_offset += bytecnt
 	add32_16 cur_context + context::file_offset, cur_context + context::file_offset, bytecnt
 
 	; if (file_size - file_offset < 0) file_size = file_offset
@@ -1557,6 +1544,11 @@ l3:	lda (fat32_ptr), y
 	bpl :+
 	set32 cur_context + context::file_size, cur_context + context::file_offset
 :
+	; Set sector as dirty, dirent needs update
+	lda cur_context + context::flags
+	ora #(FLAG_DIRTY | FLAG_DIRENT)
+	sta cur_context + context::flags
+
 	; Check if done
 	lda fat32_size + 0
 	ora fat32_size + 1
