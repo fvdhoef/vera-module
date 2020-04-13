@@ -64,6 +64,7 @@ cwd_cluster:         .dword 0      ; Cluster of current directory
 free_clusters:       .dword 0      ; Number of free clusters (from FS info)
 free_cluster:        .dword 0      ; Cluster to start search for free clusters, also holds result of find_free_cluster
 filename_buf:        .res 11       ; Used for filename conversion
+bytecnt:             .word 0
 
 ; Temp buffers
 tmp_buf:             .res 4        ; Used by save_sector_buffer, fat32_rename
@@ -1470,7 +1471,94 @@ write_byte:
 	rts
 .endproc
 
+;-----------------------------------------------------------------------------
+; fat32_write
+;
+; fat32_ptr          : pointer to data to write
+; fat32_size (16-bit): size of data to write
+;-----------------------------------------------------------------------------
+.proc fat32_write
+	; Calculate number of bytes remaining in buffer
+	sec
+	lda #<sector_buffer_end
+	sbc bufptr + 0
+	sta bytecnt + 0
+	lda #>sector_buffer_end
+	sbc bufptr + 1
+	sta bytecnt + 1
 
+	ora bytecnt + 0	; Check if 0
+	bne nonzero
+
+	; Handle end of buffer condition
+	jsr write__end_of_buffer
+	bcs :+
+	rts
+:	lda #2
+	sta bytecnt + 1
+
+nonzero:
+	; if (fat32_size - bytecnt < 0) bytecnt = fat32_size
+	sec
+	lda fat32_size + 0
+	sbc bytecnt + 0
+	lda fat32_size + 1
+	sbc bytecnt + 1
+	bpl :+
+	set16 bytecnt, fat32_size
+:
+	; Y = bytecnt > 256 ? bytecnt = 256 : bytecnt
+	lda bytecnt+1
+	beq l1	; <256?
+
+	ldy #0	; 256 bytes
+	stz bytecnt+0
+	lda #1
+	sta bytecnt+1
+	bra l2
+
+l1:	ldy bytecnt+0
+l2:
+
+	; Copy bytecnt bytes into buffer
+l3:	lda (fat32_ptr), y
+	sta (bufptr), y
+	iny
+	cpy bytecnt
+	bne l3
+
+	; fat32_ptr += bytecnt, bufptr += bytecnt, fat32_size -= bytecnt
+	add16 fat32_ptr,  fat32_ptr,  bytecnt
+	add16 bufptr,     bufptr,     bytecnt
+	sub16 fat32_size, fat32_size, bytecnt
+
+	; Set sector as dirty, dirent needs update
+	lda cur_context + context::flags
+	ora #(FLAG_DIRTY | FLAG_DIRENT)
+	sta cur_context + context::flags
+
+	; file_offset += bytecnt
+	add32_16 cur_context + context::file_offset, cur_context + context::file_offset, bytecnt
+
+	; if (file_size - file_offset < 0) file_size = file_offset
+	sec
+	lda cur_context + context::file_size + 0
+	sbc cur_context + context::file_offset + 0
+	lda cur_context + context::file_size + 1
+	sbc cur_context + context::file_offset + 1
+	lda cur_context + context::file_size + 2
+	sbc cur_context + context::file_offset + 2
+	lda cur_context + context::file_size + 3
+	sbc cur_context + context::file_offset + 3
+	bpl :+
+	set32 cur_context + context::file_size, cur_context + context::file_offset
+:
+	; Check if done
+	lda fat32_size + 0
+	ora fat32_size + 1
+	beq :+
+	jmp fat32_write		; Not done yet
+:
 	sec	; Indicate success
 	rts
 .endproc

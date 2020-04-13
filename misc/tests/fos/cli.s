@@ -36,6 +36,7 @@ cmd_table:
 	def_cmd "REN",     cmd_rename   ; Rename file
 	def_cmd "TYPE",    cmd_type     ; Print contents of file
 	def_cmd "TEST",    cmd_test
+	def_cmd "TEST2",   cmd_test2
 	.byte 0
 
 	.bss
@@ -558,7 +559,44 @@ write_failed:
 
 
 	bra done
+.endproc
 
+;-----------------------------------------------------------------------------
+; cmd_test2
+;-----------------------------------------------------------------------------
+.proc cmd_test2
+	; Open file
+	jsr set_single_param
+	bcs :+
+	rts
+:
 
-name: .byte "FILE.TST",0
+	lda #'T'
+	jsr putchar
+
+	jsr fat32_create
+	bcs :+
+	rts
+:
+
+	ldx #32
+:	lda #'.'
+	jsr putchar
+	phx
+	set16_val fat32_ptr, $0
+	set16_val fat32_size, $8000
+	jsr fat32_write
+	plx
+	bcc error
+	dex
+	bne :-
+
+done:	jsr fat32_close
+	rts
+
+error:
+	lda #'%'
+	jsr putchar
+	bra done
+
 .endproc
