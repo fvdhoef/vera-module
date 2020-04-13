@@ -64,9 +64,9 @@ cwd_cluster:         .dword 0      ; Cluster of current directory
 free_clusters:       .dword 0      ; Number of free clusters (from FS info)
 free_cluster:        .dword 0      ; Cluster to start search for free clusters, also holds result of find_free_cluster
 filename_buf:        .res 11       ; Used for filename conversion
-bytecnt:             .word 0
 
 ; Temp buffers
+bytecnt:             .word 0       ; Used by fat32_write
 tmp_buf:             .res 4        ; Used by save_sector_buffer, fat32_rename
 next_sector_arg:     .byte 0       ; Used by next_sector to store argument
 tmp_bufptr:          .word 0       ; Used by next_sector
@@ -889,6 +889,9 @@ l2:	shr32 cluster_count
 :
 	; Get number of free clusters
 	set32 free_clusters, sector_buffer + 488
+
+	; Initial directory is root directory
+	set32 cwd_cluster, 0
 
 	; Success
 	sec
