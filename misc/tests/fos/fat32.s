@@ -1514,7 +1514,7 @@ nonzero:
 	lda bytecnt+1
 	beq l1	; <256?
 
-	ldy #0	; 256 bytes
+	; 256 bytes
 	stz bytecnt+0
 	lda #1
 	sta bytecnt+1
@@ -1524,6 +1524,7 @@ l1:	ldy bytecnt+0
 l2:
 
 	; Copy bytecnt bytes into buffer
+	ldy #0
 l3:	lda (fat32_ptr), y
 	sta (bufptr), y
 	iny
