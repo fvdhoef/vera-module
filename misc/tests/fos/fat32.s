@@ -38,7 +38,7 @@ fat32_ptr:           .word 0       ; Buffer pointer to various functions
 fat32_ptr2:          .word 0       ; Buffer pointer to various functions
 
 	.bss
-fat32_size:          .word 0       ; Used for fat32_get_free_space result
+fat32_size:          .dword 0      ; Used for fat32_get_free_space result
 fat32_dirent:        .tag dirent   ; Buffer containing decoded directory entry
 
 ;-----------------------------------------------------------------------------
@@ -1452,7 +1452,24 @@ write_byte:
 	sta cur_context + context::flags
 
 	inc32 cur_context + context::file_offset
-	inc32 cur_context + context::file_size
+
+	; if (file_size - file_offset < 0) file_size = file_offset
+	sec
+	lda cur_context + context::file_size + 0
+	sbc cur_context + context::file_offset + 0
+	lda cur_context + context::file_size + 1
+	sbc cur_context + context::file_offset + 1
+	lda cur_context + context::file_size + 2
+	sbc cur_context + context::file_offset + 2
+	lda cur_context + context::file_size + 3
+	sbc cur_context + context::file_offset + 3
+	bpl :+
+	set32 cur_context + context::file_size, cur_context + context::file_offset
+:
+	sec	; Indicate success
+	rts
+.endproc
+
 
 	sec	; Indicate success
 	rts
