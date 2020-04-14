@@ -1377,6 +1377,108 @@ error:	clc
 .endproc
 
 ;-----------------------------------------------------------------------------
+; fat32_read
+;
+; fat32_ptr          : pointer to store read data
+; fat32_size (16-bit): size of data to read
+;
+; On return fat32_size reflects the number of bytes actually read
+;-----------------------------------------------------------------------------
+.proc fat32_read
+	set16 fat32_ptr2, fat32_size
+
+again:
+	; Calculate number of bytes remaining in file
+	sub32 tmp_buf, cur_context + context::file_size, cur_context + context::file_offset
+	lda tmp_buf + 0
+	ora tmp_buf + 1
+	ora tmp_buf + 2
+	ora tmp_buf + 3
+	bne :+
+	clc		; End of file
+	jmp done
+:
+	; Calculate number of bytes remaining in buffer
+	sec
+	lda #<sector_buffer_end
+	sbc bufptr + 0
+	sta bytecnt + 0
+	lda #>sector_buffer_end
+	sbc bufptr + 1
+	sta bytecnt + 1
+	ora bytecnt + 0	; Check if 0
+	bne nonzero
+
+	; At end of buffer, read next sector
+	lda #0
+	jsr next_sector
+	bcs :+
+	jmp done	; No sectors left (this shouldn't happen with a correct file size)
+:	lda #2
+	sta bytecnt + 1
+
+nonzero:
+	; if (fat32_size - bytecnt < 0) bytecnt = fat32_size
+	sec
+	lda fat32_size + 0
+	sbc bytecnt + 0
+	lda fat32_size + 1
+	sbc bytecnt + 1
+	bpl :+
+	set16 bytecnt, fat32_size
+:
+	; if (bytecnt > 256) bytecnt = 256
+	lda bytecnt + 1
+	beq :+		; <256?
+	stz bytecnt + 0	; 256 bytes
+	lda #1
+	sta bytecnt + 1
+:
+	; if (tmp_buf - bytecnt < 0) bytecnt = tmp_buf
+	sec	
+	lda tmp_buf + 0
+	sbc bytecnt + 0
+	lda tmp_buf + 1
+	sbc bytecnt + 1
+	lda tmp_buf + 2
+	sbc #0
+	lda tmp_buf + 3
+	sbc #0
+	bpl :+
+	set16 bytecnt, tmp_buf
+:
+	; Copy bytecnt bytes from buffer
+	ldy #0
+l1:	lda (bufptr), y
+	sta (fat32_ptr), y
+	iny
+	cpy bytecnt
+	bne l1
+
+	; fat32_ptr += bytecnt, bufptr += bytecnt, fat32_size -= bytecnt, file_offset += bytecnt
+	add16 fat32_ptr, fat32_ptr, bytecnt
+	add16 bufptr, bufptr, bytecnt
+	sub16 fat32_size, fat32_size, bytecnt
+	add32_16 cur_context + context::file_offset, cur_context + context::file_offset, bytecnt
+
+	; Check if done
+	lda fat32_size + 0
+	ora fat32_size + 1
+	beq :+
+	jmp again		; Not done yet
+:
+	sec	; Indicate success
+
+done:
+	; Calculate number of bytes read
+	php
+	sub16 fat32_size, fat32_ptr2, fat32_size
+	plp
+
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
 ; write__end_of_buffer
 ;-----------------------------------------------------------------------------
 .proc write__end_of_buffer
@@ -1489,7 +1591,6 @@ write_byte:
 	lda #>sector_buffer_end
 	sbc bufptr + 1
 	sta bytecnt + 1
-
 	ora bytecnt + 0	; Check if 0
 	bne nonzero
 
@@ -1510,7 +1611,7 @@ nonzero:
 	bpl :+
 	set16 bytecnt, fat32_size
 :
-	; Y = bytecnt > 256 ? bytecnt = 256 : bytecnt
+	; if (bytecnt > 256) bytecnt = 256
 	lda bytecnt + 1
 	beq :+		; <256?
 	stz bytecnt + 0	; 256 bytes

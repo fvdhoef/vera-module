@@ -37,6 +37,7 @@ cmd_table:
 	def_cmd "TYPE",    cmd_type     ; Print contents of file
 	def_cmd "TEST",    cmd_test
 	def_cmd "TEST2",   cmd_test2
+	def_cmd "TEST3",   cmd_test3
 	.byte 0
 
 	.bss
@@ -597,4 +598,46 @@ error:
 	jsr putchar
 	bra done
 
+.endproc
+
+;-----------------------------------------------------------------------------
+; cmd_test2
+;-----------------------------------------------------------------------------
+.proc cmd_test3
+	; Open file
+	jsr set_single_param
+	bcs :+
+	rts
+:
+	lda #'T'
+	jsr putchar
+
+	jsr fat32_open
+	bcs ok
+
+	; Opening file failed, print error message
+	print_str str_file_not_found
+	rts
+ok:
+
+:	lda #'.'
+	jsr putchar
+	set16_val fat32_ptr, $4000
+	set16_val fat32_size, $4000
+	jsr fat32_read
+
+	php
+	lda fat32_size + 1
+	jsr puthex
+	lda fat32_size + 0
+	jsr puthex
+	plp
+
+	bcs :-
+
+done:
+	jsr fat32_close
+	rts
+
+str_file_not_found: .byte "File not found!",10,0
 .endproc

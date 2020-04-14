@@ -43,6 +43,7 @@ FAT32_CONTEXTS = 6
 .global fat32_create            ; Create file with name in fat32_ptr (delete existing file)
 .global fat32_close             ; Close file
 .global fat32_read_byte         ; Read byte, result in A
+.global fat32_read              ; Read fat32_size bytes to fat32_ptr
 .global fat32_write_byte        ; Write byte in A
 .global fat32_write             ; Write fat32_size bytes from fat32_ptr
 
