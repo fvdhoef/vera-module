@@ -15,6 +15,8 @@ timeout_cnt:       .byte 0
 sector_buffer:     .res 512      ; Sector buffer
 sector_buffer_end:
 
+FAST_READ=1
+
 	.code
 
 ;-----------------------------------------------------------------------------
@@ -321,22 +323,122 @@ l1:	jsr spi_read
 	clc
 	rts
 
+.ifdef FAST_READ
+start:	; Read first byte
+	ldx #$FF
+	stx VERA_SPI_DATA
+	nop
+
+	; Efficiently read first 256 bytes (hide SPI transfer time)
+ 	ldy #0
+l3:	lda VERA_SPI_DATA		; 4
+	stx VERA_SPI_DATA		; 4
+	sta sector_buffer + 0, y	; 5
+
+	lda VERA_SPI_DATA		; 4
+	stx VERA_SPI_DATA		; 4
+	sta sector_buffer + 1, y	; 5
+
+	lda VERA_SPI_DATA		; 4
+	stx VERA_SPI_DATA		; 4
+	sta sector_buffer + 2, y	; 5
+
+	lda VERA_SPI_DATA		; 4
+	stx VERA_SPI_DATA		; 4
+	sta sector_buffer + 3, y	; 5
+
+	lda VERA_SPI_DATA		; 4
+	stx VERA_SPI_DATA		; 4
+	sta sector_buffer + 4, y	; 5
+
+	lda VERA_SPI_DATA		; 4
+	stx VERA_SPI_DATA		; 4
+	sta sector_buffer + 5, y	; 5
+
+	lda VERA_SPI_DATA		; 4
+	stx VERA_SPI_DATA		; 4
+	sta sector_buffer + 6, y	; 5
+
+	lda VERA_SPI_DATA		; 4
+	stx VERA_SPI_DATA		; 4
+	sta sector_buffer + 7, y	; 5
+
+	tya				; 2
+	clc				; 2
+	adc #8				; 2
+	tay				; 2
+
+	bne l3				; 2+1
+
+	; Efficiently read second 256 bytes (hide SPI transfer time)
+l4:	lda VERA_SPI_DATA		; 4
+	stx VERA_SPI_DATA		; 4
+	sta sector_buffer + 256 + 0, y	; 5
+
+	lda VERA_SPI_DATA		; 4
+	stx VERA_SPI_DATA		; 4
+	sta sector_buffer + 256 + 1, y	; 5
+
+	lda VERA_SPI_DATA		; 4
+	stx VERA_SPI_DATA		; 4
+	sta sector_buffer + 256 + 2, y	; 5
+
+	lda VERA_SPI_DATA		; 4
+	stx VERA_SPI_DATA		; 4
+	sta sector_buffer + 256 + 3, y	; 5
+
+	lda VERA_SPI_DATA		; 4
+	stx VERA_SPI_DATA		; 4
+	sta sector_buffer + 256 + 4, y	; 5
+
+	lda VERA_SPI_DATA		; 4
+	stx VERA_SPI_DATA		; 4
+	sta sector_buffer + 256 + 5, y	; 5
+
+	lda VERA_SPI_DATA		; 4
+	stx VERA_SPI_DATA		; 4
+	sta sector_buffer + 256 + 6, y	; 5
+
+	lda VERA_SPI_DATA		; 4
+	stx VERA_SPI_DATA		; 4
+	sta sector_buffer + 256 + 7, y	; 5
+
+	tya				; 2
+	clc				; 2
+	adc #8				; 2
+	tay				; 2
+
+	bne l4				; 2+1
+
+	; Next read is now already done (first CRC byte), read second CRC byte
+	jsr spi_read
+
+.else
 start:	; Read 512 bytes of sector data
+	ldx #$FF
 	ldy #0
-:	spi_read_macro
-	sta sector_buffer, y
+l3:	stx VERA_SPI_DATA	; 4
+:	bit VERA_SPI_CTRL	; 4
+	bmi :-			; 2 + 1 if branch
+
+	lda VERA_SPI_DATA	; 4
+	sta sector_buffer + 0, y
 	iny
-	bne :-
+	bne l3
 
 	; Y already 0 at this point
-:	spi_read_macro
+l4:	stx VERA_SPI_DATA	; 4
+:	bit VERA_SPI_CTRL	; 4
+	bmi :-			; 2 + 1 if branch
+	lda VERA_SPI_DATA	; 4
 	sta sector_buffer + 256, y
 	iny
-	bne :-
+	bne l4
 
 	; Read CRC bytes
 	jsr spi_read
 	jsr spi_read
+.endif
 
 	; Success
 	jsr deselect

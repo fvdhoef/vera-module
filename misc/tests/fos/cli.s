@@ -626,12 +626,12 @@ ok:
 	set16_val fat32_size, $4000
 	jsr fat32_read
 
-	php
-	lda fat32_size + 1
-	jsr puthex
-	lda fat32_size + 0
-	jsr puthex
-	plp
+	; php
+	; lda fat32_size + 1
+	; jsr puthex
+	; lda fat32_size + 0
+	; jsr puthex
+	; plp
 
 	bcs :-
 
