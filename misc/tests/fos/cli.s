@@ -38,6 +38,7 @@ cmd_table:
 	def_cmd "TEST",    cmd_test
 	def_cmd "TEST2",   cmd_test2
 	def_cmd "TEST3",   cmd_test3
+	def_cmd "MOVIE",   cmd_movie
 	.byte 0
 
 	.bss
@@ -601,7 +602,7 @@ error:
 .endproc
 
 ;-----------------------------------------------------------------------------
-; cmd_test2
+; cmd_test3
 ;-----------------------------------------------------------------------------
 .proc cmd_test3
 	; Open file
@@ -637,6 +638,181 @@ ok:
 
 done:
 	jsr fat32_close
+	rts
+
+str_file_not_found: .byte "File not found!",10,0
+.endproc
+
+;-----------------------------------------------------------------------------
+; read_sectors_vera
+;
+; A: number of sectors to read
+;-----------------------------------------------------------------------------
+.proc read_sectors_vera
+	tax
+
+again:
+	; Read first 256 bytes from buffer
+	ldy #0
+l1:	lda sector_buffer+0, y
+	sta VERA_DATA0
+	lda sector_buffer+1, y
+	sta VERA_DATA0
+	lda sector_buffer+2, y
+	sta VERA_DATA0
+	lda sector_buffer+3, y
+	sta VERA_DATA0
+	lda sector_buffer+4, y
+	sta VERA_DATA0
+	lda sector_buffer+5, y
+	sta VERA_DATA0
+	lda sector_buffer+6, y
+	sta VERA_DATA0
+	lda sector_buffer+7, y
+	sta VERA_DATA0
+
+	tya
+	clc
+	adc #8
+	tay
+	bne l1
+
+	; Read second 256 bytes from buffer
+	ldy #0
+l2:	lda sector_buffer+256+0, y
+	sta VERA_DATA0
+	lda sector_buffer+256+1, y
+	sta VERA_DATA0
+	lda sector_buffer+256+2, y
+	sta VERA_DATA0
+	lda sector_buffer+256+3, y
+	sta VERA_DATA0
+	lda sector_buffer+256+4, y
+	sta VERA_DATA0
+	lda sector_buffer+256+5, y
+	sta VERA_DATA0
+	lda sector_buffer+256+6, y
+	sta VERA_DATA0
+	lda sector_buffer+256+7, y
+	sta VERA_DATA0
+
+	tya
+	clc
+	adc #8
+	tay
+	bne l2
+
+	phx
+	jsr fat32_next_sector
+	plx
+	bcs :+
+	rts
+:
+	dex
+	beq :+
+	jmp again
+:
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; cmd_movie
+;-----------------------------------------------------------------------------
+.proc cmd_movie
+	; Open file
+	jsr set_single_param
+	bcs :+
+	rts
+:
+	jsr fat32_open
+	bcs ok
+
+	; Opening file failed, print error message
+	print_str str_file_not_found
+	rts
+ok:
+
+	lda VERA_L0_CONFIG
+	pha
+	lda VERA_L0_TILEBASE
+	pha
+	lda VERA_L0_HSCROLL_H
+	pha
+	lda VERA_DC_HSCALE
+	pha
+	lda VERA_DC_VSCALE
+	pha
+
+	lda VERA_DC_VIDEO
+	and #($10 ^ $FF)
+	sta VERA_DC_VIDEO
+
+	; Switch to 4bpp bitmap mode
+	lda #$06
+	sta VERA_L0_CONFIG
+	stz VERA_L0_TILEBASE
+	lda #1			; Set palette offset to grayscale
+	sta VERA_L0_HSCROLL_H
+
+	; Display scaling
+	lda #64
+	sta VERA_DC_HSCALE
+	sta VERA_DC_VSCALE
+
+loop:	stz VERA_ADDR_L
+	stz VERA_ADDR_M
+	lda #$10
+	sta VERA_ADDR_H
+
+	lda #75
+	jsr read_sectors_vera
+	bcc done
+
+	stz VERA_L0_TILEBASE
+
+	stz VERA_ADDR_L
+	stz VERA_ADDR_M
+	lda #$11
+	sta VERA_ADDR_H
+
+	lda #75
+	jsr read_sectors_vera
+	bcc done
+
+	lda #$80
+	sta VERA_L0_TILEBASE
+
+	lda VERA_DC_VIDEO
+	ora #$10
+	sta VERA_DC_VIDEO
+
+	bra loop
+
+done:
+	jsr fat32_close
+
+	lda VERA_DC_VIDEO
+	and #($10 ^ $FF)
+	sta VERA_DC_VIDEO
+
+	pla
+	sta VERA_DC_VSCALE
+	pla
+	sta VERA_DC_HSCALE
+	pla
+	sta VERA_L0_HSCROLL_H
+	pla
+	sta VERA_L0_TILEBASE
+	pla
+	sta VERA_L0_CONFIG
+
+	jsr clear_screen
+
+	lda VERA_DC_VIDEO
+	ora #$10
+	sta VERA_DC_VIDEO
+
+	; jsr text_display_init
 	rts
 
 str_file_not_found: .byte "File not found!",10,0

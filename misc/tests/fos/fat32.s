@@ -1686,3 +1686,17 @@ _512b:
 	shr32 fat32_size
 	bra done
 .endproc
+
+;-----------------------------------------------------------------------------
+; fat32_next_sector
+;-----------------------------------------------------------------------------
+.proc fat32_next_sector
+	lda #0
+	jsr next_sector
+	bcs :+
+	rts
+:
+	add32 cur_context + context::file_offset, cur_context + context::file_offset, 512
+	sec
+	rts
+.endproc

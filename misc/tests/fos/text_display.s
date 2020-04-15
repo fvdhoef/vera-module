@@ -68,6 +68,11 @@ next:	lda (SRC_PTR)
 	lda #$60
 	sta VERA_L0_CONFIG
 
+	; Display scaling
+	lda #128
+	sta VERA_DC_HSCALE
+	sta VERA_DC_VSCALE
+
 	; Clear screen
 	jsr clear_screen
 

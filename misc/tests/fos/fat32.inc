@@ -51,3 +51,7 @@ FAT32_CONTEXTS = 6
 ; fat32_mkdir
 ; fat32_rmdir
 ; fat32_seek
+
+; Low level fast API
+.global sector_buffer
+.global fat32_next_sector
