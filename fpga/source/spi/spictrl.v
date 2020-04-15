@@ -1,4 +1,4 @@
-`default_nettype none
+//`default_nettype none
 
 module spictrl(
     input  wire       rst,
@@ -30,7 +30,7 @@ module spictrl(
         if (rst) begin
             div_cnt_r <= 0;
         end else begin
-            div_cnt_r <= div_cnt_r + 1;
+            div_cnt_r <= div_cnt_r + 5'd1;
         end
     end
 

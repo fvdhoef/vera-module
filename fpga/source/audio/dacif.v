@@ -1,4 +1,4 @@
-`default_nettype none
+//`default_nettype none
 
 module dacif(
     input  wire        rst,
@@ -27,7 +27,7 @@ module dacif(
                 i2s_lrck <= !i2s_lrck;
                 div_r    <= 0;
             end else begin
-                div_r <= div_r + 'd1;
+                div_r <= div_r + 8'd1;
             end
         end
     end

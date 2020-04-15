@@ -1,4 +1,4 @@
-`default_nettype none
+//`default_nettype none
 
 module sprite_line_buffer(
     input  wire        rst,
@@ -106,7 +106,7 @@ module sprite_line_buffer(
                 composer_wr_en  <= 1;
 
             end else if (composer_erase_busy) begin
-                composer_wr_idx <= composer_wr_idx + 1;
+                composer_wr_idx <= composer_wr_idx + 8'd1;
                 composer_wr_en <= 1;
             end
         end

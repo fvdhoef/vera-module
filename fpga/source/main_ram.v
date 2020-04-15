@@ -1,4 +1,4 @@
-`default_nettype none
+//`default_nettype none
 
 module main_ram(
     input  wire        clk,

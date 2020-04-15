@@ -1,4 +1,4 @@
-`default_nettype none
+//`default_nettype none
 
 module reset_sync(
     input  wire async_rst_in,

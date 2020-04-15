@@ -1,4 +1,4 @@
-`default_nettype none
+//`default_nettype none
 
 module top(
     input  wire       clk25,
@@ -33,7 +33,7 @@ module top(
     // Synchronize external asynchronous reset signal to clk25 domain
     //////////////////////////////////////////////////////////////////////////
     reg [7:0] por_cnt_r = 0;
-    always @(posedge clk25) if (!por_cnt_r[7]) por_cnt_r <= por_cnt_r + 1;
+    always @(posedge clk25) if (!por_cnt_r[7]) por_cnt_r <= por_cnt_r + 8'd1;
 
     wire reset;
     reset_sync reset_sync_clk25(
@@ -1060,7 +1060,7 @@ module top(
     wire [5:0] video_composite_luma, video_composite_chroma;
     wire [3:0] video_rgb_r, video_rgb_g, video_rgb_b;
     wire       video_rgb_sync_n;
-    wire [5:0] video_composite_chroma2 = chroma_disable_r ? 0 : video_composite_chroma;
+    wire [5:0] video_composite_chroma2 = chroma_disable_r ? 6'd0 : video_composite_chroma;
 
     video_composite video_composite(
         .rst(reset),

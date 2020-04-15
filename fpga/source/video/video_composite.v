@@ -1,4 +1,4 @@
-`default_nettype none
+//`default_nettype none
 
 module video_composite(
     input  wire        rst,
@@ -126,9 +126,9 @@ module video_composite(
             vcnt <= 0;
 
         end else begin
-            hcnt <= h_last ? 0 : hcnt + 1;
+            hcnt <= h_last ? 11'd0 : hcnt + 11'd1;
             if (h_half_line_last) begin
-                vcnt <= v_last ? 0 : vcnt + 1;
+                vcnt <= v_last ? 11'd0 : vcnt + 11'd1;
             end
         end
     end

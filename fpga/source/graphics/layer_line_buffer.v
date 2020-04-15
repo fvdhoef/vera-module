@@ -1,4 +1,4 @@
-`default_nettype none
+//`default_nettype none
 
 module layer_line_buffer(
     input  wire        rst,

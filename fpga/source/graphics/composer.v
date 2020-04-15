@@ -1,4 +1,4 @@
-`default_nettype none
+//`default_nettype none
 
 module composer(
     input  wire        rst,
@@ -78,7 +78,7 @@ module composer(
             next_line_r <= display_next_line;
             if (display_next_line) begin
                 // Interlaced mode skips every other line
-                y_counter_r  <= y_counter_r + (interlaced ? 'd2 : 'd1);
+                y_counter_r  <= y_counter_r + (interlaced ? 9'd2 : 9'd1);
 
                 y_counter_rr <= y_counter_r;
             end
@@ -86,7 +86,7 @@ module composer(
                 current_field <= !display_current_field;
 
                 // Interlaced mode starts at either the even or odd line
-                y_counter_r <= (interlaced && !display_current_field) ? 'd1 : 'd0;
+                y_counter_r <= (interlaced && !display_current_field) ? 9'd1 : 9'd0;
             end
         end
     end
@@ -110,7 +110,7 @@ module composer(
             x_counter_r <= 0;
         end else begin
             if (display_next_pixel) begin
-                x_counter_r <= x_counter_r + (interlaced ? 'd1 : 'd2);
+                x_counter_r <= x_counter_r + (interlaced ? 11'd1 : 11'd2);
             end
             if (display_next_line) begin
                 x_counter_r <= 0;
@@ -147,7 +147,7 @@ module composer(
                     render_start_r     <= 1;
 
                     // Start line is dependent of current field in interlaced mode
-                    scaled_y_counter_r <= (interlaced && (current_field ^ active_vstart[0])) ? {8'b0, frac_y_incr} : 'd0;
+                    scaled_y_counter_r <= (interlaced && (current_field ^ active_vstart[0])) ? {8'b0, frac_y_incr} : 16'd0;
 
                 end else if (scaled_y_counter < 'd480 && vactive) begin
                     render_start_r     <= 1;

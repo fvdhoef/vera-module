@@ -1,4 +1,4 @@
-`default_nettype none
+//`default_nettype none
 
 module pcm(
     input  wire        rst,

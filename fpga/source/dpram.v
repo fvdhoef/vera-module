@@ -1,4 +1,4 @@
-`default_nettype none
+//`default_nettype none
 
 module dpram #(parameter ADDR_WIDTH = 8, DATA_WIDTH = 8) (
     input  wire                  wr_clk,

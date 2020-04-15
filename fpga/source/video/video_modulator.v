@@ -1,4 +1,4 @@
-`default_nettype none
+//`default_nettype none
 
 module video_modulator(
     input  wire        clk,
@@ -25,16 +25,16 @@ module video_modulator(
     parameter Q_G = -66; // -0.5227
     parameter Q_B =  40; //  0.3112
 
-    wire signed [4:0] r_s = color_burst ? 9 : {1'b0, r};
-    wire signed [4:0] g_s = color_burst ? 9 : {1'b0, g};
-    wire signed [4:0] b_s = color_burst ? 0 : {1'b0, b};
+    wire signed [4:0] r_s = color_burst ? 5'd9 : {1'b0, r};
+    wire signed [4:0] g_s = color_burst ? 5'd9 : {1'b0, g};
+    wire signed [4:0] b_s = color_burst ? 5'd0 : {1'b0, b};
 
     reg signed [11:0] y_s;
     reg signed [11:0] i_s;
     reg signed [11:0] q_s;
 
     always @(posedge clk) begin
-        y_s <= (sync_n_in == 0) ? 'd0 : 'd544;
+        y_s <= (sync_n_in == 0) ? 12'd0 : 12'd544;
         i_s <= 0;
         q_s <= 0;
 
@@ -86,7 +86,7 @@ module video_modulator(
 
     always @(posedge clk) begin
         luma   <= lum[7:2];
-        chroma <= chroma_s[13:8] + 'd32;
+        chroma <= chroma_s[13:8] + 6'd32;
     end
 
 endmodule

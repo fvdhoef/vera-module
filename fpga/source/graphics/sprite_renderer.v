@@ -1,4 +1,4 @@
-`default_nettype none
+//`default_nettype none
 
 module sprite_renderer(
     input  wire        rst,
@@ -51,7 +51,7 @@ module sprite_renderer(
                 render_time_r <= 0;
             end else begin
                 if (!render_time_done) begin
-                    render_time_r <= render_time_r + 1;
+                    render_time_r <= render_time_r + 10'd1;
                 end
             end
         end
@@ -75,7 +75,7 @@ module sprite_renderer(
     wire  [9:0] sprite_attr_x              = sprite_attr[25:16];
 
     // sprite_attr_sel_r=1
-    wire  [9:0] sprite_attr_y              = sprite_attr[11:0];
+    wire  [9:0] sprite_attr_y              = sprite_attr[9:0];
     wire        sprite_attr_hflip          = sprite_attr[16];
     wire        sprite_attr_vflip          = sprite_attr[17];
     wire  [1:0] sprite_attr_z              = sprite_attr[19:18];
@@ -124,7 +124,7 @@ module sprite_renderer(
     reg        start_render_r, start_render_next;
 
 
-    wire [7:0] sprite_idx_incr = sprite_idx_r + 'd1;
+    wire [7:0] sprite_idx_incr = sprite_idx_r + 8'd1;
 
     // Render state machine
     always @* begin
@@ -361,8 +361,8 @@ module sprite_renderer(
 
             // Render the fetched data to the line buffer
             STATE_RENDER: begin
-                xcnt_next         = xcnt_r + 1;
-                linebuf_idx_next  = linebuf_idx_r + 1;
+                xcnt_next         = xcnt_r + 6'd1;
+                linebuf_idx_next  = linebuf_idx_r + 10'd1;
                 linebuf_wren_next = render_pixel;
 
                 // Merge collision with current frame's collision mask

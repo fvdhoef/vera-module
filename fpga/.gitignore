@@ -1,5 +1,6 @@
 *.html
 .floorplanner.ini
+.ng_run_manager.ini
 .setting.ini
 .recovery
 *.log

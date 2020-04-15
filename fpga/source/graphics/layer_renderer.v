@@ -1,4 +1,4 @@
-`default_nettype none
+//`default_nettype none
 
 module layer_renderer(
     input  wire        rst,
@@ -247,7 +247,7 @@ module layer_renderer(
 
                 FETCH_TILE: begin
                     bus_addr      <= bitmap_mode ? bitmap_addr_r : tile_addr;
-                    bitmap_addr_r <= bitmap_addr_r + 1;
+                    bitmap_addr_r <= bitmap_addr_r + 15'd1;
                     bus_strobe_r  <= 1;
                     state_r       <= WAIT_FETCH_TILE;
                 end
@@ -283,12 +283,12 @@ module layer_renderer(
                         end else begin
                             if (word_cnt_r == words_per_line_minus1) begin
                                 word_cnt_r <= 0;
-                                htile_cnt_r <= htile_cnt_r + 1;
+                                htile_cnt_r <= htile_cnt_r + 8'd1;
 
                                 // Two map entries per word
                                 state_r <= scrolled_htile_cnt[0] ? FETCH_MAP : FETCH_TILE;
                             end else begin
-                                word_cnt_r <= word_cnt_r + 1;
+                                word_cnt_r <= word_cnt_r + 2'd1;
                                 state_r <= FETCH_TILE;
                             end
                         end
@@ -500,7 +500,7 @@ module layer_renderer(
                 render_busy_next = 0;
                 xcnt_next = 0;
             end else begin
-                xcnt_next = xcnt_r + 1;
+                xcnt_next = xcnt_r + 5'd1;
             end
 
             if (render_start) begin
@@ -512,7 +512,7 @@ module layer_renderer(
             linebuf_wrdata_next = cur_pixel_color;
             linebuf_wren_next   = 1;
 
-            lb_wridx_next = lb_wridx_r + 1;
+            lb_wridx_next = lb_wridx_r + 10'd1;
         end
 
         if (line_render_start) begin
@@ -520,7 +520,7 @@ module layer_renderer(
             render_busy_next = 0;
 
             // Handle sub-tile horizontal scrolling
-            lb_wridx_next = bitmap_mode ? 0 : lb_wridx_start;
+            lb_wridx_next = bitmap_mode ? 10'd0 : lb_wridx_start;
         end
     end
 

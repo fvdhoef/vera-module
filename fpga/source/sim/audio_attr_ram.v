@@ -1,4 +1,4 @@
-`default_nettype none
+//`default_nettype none
 
 module audio_attr_ram(
     input  wire        wr_clk_i,

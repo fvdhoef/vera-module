@@ -1,4 +1,4 @@
-`default_nettype none
+//`default_nettype none
 
 module video_vga(
     input  wire        rst,
@@ -54,9 +54,9 @@ module video_vga(
 `endif
 
         end else begin
-            x_counter <= h_last ? 0 : (x_counter + 1);
+            x_counter <= h_last ? 10'd0 : (x_counter + 10'd1);
             if (h_last)
-                y_counter <= v_last ? 0 : (y_counter + 1);
+                y_counter <= v_last ? 10'd0 : (y_counter + 10'd1);
         end
     end
 

@@ -1,5 +1,5 @@
 `timescale 1 ns / 1 ps
-`default_nettype none
+//`default_nettype none
 
 module tb();
 
@@ -72,9 +72,9 @@ module tb();
             extbus_rw_n = 1'b1;
             // extbus_d_wr = 8'bX;
 
-            @(negedge phi2);
-            @(negedge phi2);
-            @(negedge phi2);
+            // @(negedge phi2);
+            // @(negedge phi2);
+            // @(negedge phi2);
 
         end
     endtask
@@ -109,29 +109,29 @@ module tb();
     initial begin
         #6000
 
-        // extbus_write(16'h9F25, 8'h01);
+        extbus_write(16'h9F25, 8'h01);
 
-        // extbus_write(16'h9F20, 8'h00);
-        // extbus_write(16'h9F21, 8'h40);
-        // extbus_write(16'h9F22, 8'h10);
+        extbus_write(16'h9F20, 8'h00);
+        extbus_write(16'h9F21, 8'h40);
+        extbus_write(16'h9F22, 8'h10);
 
-        // extbus_write(16'h9F24, 8'hA1);
-        // extbus_write(16'h9F24, 8'hA2);
-        // extbus_write(16'h9F24, 8'hA3);
-        // extbus_write(16'h9F24, 8'hA4);
+        extbus_write(16'h9F24, 8'hA1);
+        extbus_write(16'h9F24, 8'hA2);
+        extbus_write(16'h9F24, 8'hA3);
+        extbus_write(16'h9F24, 8'hA4);
 
-        // extbus_write(16'h9F20, 8'h00);
-        // extbus_write(16'h9F21, 8'h40);
-        // extbus_write(16'h9F22, 8'h10);
+        extbus_write(16'h9F20, 8'h00);
+        extbus_write(16'h9F21, 8'h40);
+        extbus_write(16'h9F22, 8'h10);
 
-        // extbus_read(16'h9F24);
-        // extbus_read(16'h9F24);
-        // extbus_read(16'h9F24);
-        // extbus_read(16'h9F24);
+        extbus_read(16'h9F24);
+        extbus_read(16'h9F24);
+        extbus_read(16'h9F24);
+        extbus_read(16'h9F24);
 
 
-        extbus_write(16'h9F2D, 8'h04);
-        extbus_write(16'h9F2F, 8'h01);
+        // extbus_write(16'h9F2D, 8'h04);
+        // extbus_write(16'h9F2F, 8'h01);
 
 
 

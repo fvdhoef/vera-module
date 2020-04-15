@@ -1,4 +1,4 @@
-`default_nettype none
+//`default_nettype none
 
 module video_modulator_sinlut(
     input  wire       clk,

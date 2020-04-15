@@ -1,4 +1,4 @@
-`default_nettype none
+//`default_nettype none
 
 module psg(
     input  wire        rst,
@@ -156,7 +156,7 @@ module psg(
     //////////////////////////////////////////////////////////////////////////
     // Signal generation
     //////////////////////////////////////////////////////////////////////////
-    wire [5:0] signal_pw       = (cur_phase[16:10] > {1'b0, cur_pulsewidth}) ? 0 : 63;
+    wire [5:0] signal_pw       = (cur_phase[16:10] > {1'b0, cur_pulsewidth}) ? 6'd0 : 6'd63;
     wire [5:0] signal_saw      = cur_phase[16:11];
     wire [5:0] signal_triangle = cur_phase[16] ? ~cur_phase[15:10] : cur_phase[15:10];
     wire [5:0] signal_noise    = cur_noise;
@@ -224,7 +224,7 @@ module psg(
                     end
 
                     cur_channel_attr_r <= {attr_rddata, cur_channel_attr_r[31:8]};
-                    cur_channel_byte_r <= cur_channel_byte_r + 1;
+                    cur_channel_byte_r <= cur_channel_byte_r + 3'd1;
                 end
 
                 CALC_CH: begin
@@ -241,7 +241,7 @@ module psg(
                     end
 
                     cur_channel_byte_r <= 0;
-                    cur_channel_r <= cur_channel_r + 1;
+                    cur_channel_r <= cur_channel_r + 4'd1;
                 end
             endcase
         end
