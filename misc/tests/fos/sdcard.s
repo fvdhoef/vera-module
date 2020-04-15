@@ -324,91 +324,67 @@ l1:	jsr spi_read
 	rts
 
 .ifdef FAST_READ
-start:	; Read first byte
-	ldx #$FF
-	stx VERA_SPI_DATA
-	nop
+start:	
+	; Enable auto-rx mode
+	lda VERA_SPI_CTRL
+	ora #$04
+	sta VERA_SPI_CTRL
+
+	; Start first read transfer
+	lda VERA_SPI_DATA		; Auto-rx
+	nop				; 2
 
 	; Efficiently read first 256 bytes (hide SPI transfer time)
- 	ldy #0
+ 	ldy #0				; 2
 l3:	lda VERA_SPI_DATA		; 4
-	stx VERA_SPI_DATA		; 4
 	sta sector_buffer + 0, y	; 5
-
 	lda VERA_SPI_DATA		; 4
-	stx VERA_SPI_DATA		; 4
 	sta sector_buffer + 1, y	; 5
-
 	lda VERA_SPI_DATA		; 4
-	stx VERA_SPI_DATA		; 4
 	sta sector_buffer + 2, y	; 5
-
 	lda VERA_SPI_DATA		; 4
-	stx VERA_SPI_DATA		; 4
 	sta sector_buffer + 3, y	; 5
-
 	lda VERA_SPI_DATA		; 4
-	stx VERA_SPI_DATA		; 4
 	sta sector_buffer + 4, y	; 5
-
 	lda VERA_SPI_DATA		; 4
-	stx VERA_SPI_DATA		; 4
 	sta sector_buffer + 5, y	; 5
-
 	lda VERA_SPI_DATA		; 4
-	stx VERA_SPI_DATA		; 4
 	sta sector_buffer + 6, y	; 5
-
 	lda VERA_SPI_DATA		; 4
-	stx VERA_SPI_DATA		; 4
 	sta sector_buffer + 7, y	; 5
-
 	tya				; 2
 	clc				; 2
 	adc #8				; 2
 	tay				; 2
-
 	bne l3				; 2+1
 
 	; Efficiently read second 256 bytes (hide SPI transfer time)
 l4:	lda VERA_SPI_DATA		; 4
-	stx VERA_SPI_DATA		; 4
 	sta sector_buffer + 256 + 0, y	; 5
-
 	lda VERA_SPI_DATA		; 4
-	stx VERA_SPI_DATA		; 4
 	sta sector_buffer + 256 + 1, y	; 5
-
 	lda VERA_SPI_DATA		; 4
-	stx VERA_SPI_DATA		; 4
 	sta sector_buffer + 256 + 2, y	; 5
-
 	lda VERA_SPI_DATA		; 4
-	stx VERA_SPI_DATA		; 4
 	sta sector_buffer + 256 + 3, y	; 5
-
 	lda VERA_SPI_DATA		; 4
-	stx VERA_SPI_DATA		; 4
 	sta sector_buffer + 256 + 4, y	; 5
-
 	lda VERA_SPI_DATA		; 4
-	stx VERA_SPI_DATA		; 4
 	sta sector_buffer + 256 + 5, y	; 5
-
 	lda VERA_SPI_DATA		; 4
-	stx VERA_SPI_DATA		; 4
 	sta sector_buffer + 256 + 6, y	; 5
-
 	lda VERA_SPI_DATA		; 4
-	stx VERA_SPI_DATA		; 4
 	sta sector_buffer + 256 + 7, y	; 5
-
 	tya				; 2
 	clc				; 2
 	adc #8				; 2
 	tay				; 2
-
 	bne l4				; 2+1
+
+	; Disable auto-rx mode
+	lda VERA_SPI_CTRL
+	and #($04 ^ $FF)
+	sta VERA_SPI_CTRL
 
 	; Next read is now already done (first CRC byte), read second CRC byte
 	jsr spi_read
