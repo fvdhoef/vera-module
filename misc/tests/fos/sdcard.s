@@ -16,6 +16,7 @@ sector_buffer:     .res 512      ; Sector buffer
 sector_buffer_end:
 
 FAST_READ=1
+FAST_WRITE=1
 
 	.code
 
@@ -445,6 +446,22 @@ l4:	stx VERA_SPI_DATA	; 4
 	lda #$FE
 	jsr spi_write
 
+.ifdef FAST_WRITE
+	; Send 512 bytes of sector data
+	; NOTE: Direct access of SPI registers to speed up.
+	;       Make sure 9 CPU clock cycles take longer than 640 ns (eg. CPU max 14MHz)
+	ldy #0
+:	lda sector_buffer, y	; 4
+	sta VERA_SPI_DATA	; 4
+	iny			; 2
+	bne :-			; 2 + 1
+
+	; Y already 0 at this point
+:	lda sector_buffer + 256, y	; 4
+	sta VERA_SPI_DATA		; 4
+	iny				; 2
+	bne :-				; 2 + 1
+.else
 	; Send 512 bytes of sector data
 	ldy #0
 l1:	lda sector_buffer, y	; 4
@@ -457,6 +474,7 @@ l2:	lda sector_buffer + 256, y	; 4
 	spi_write_macro
 	iny				; 2
 	bne l2				; 2 + 1
+.endif
 
 	; Dummy CRC
 	lda #0
