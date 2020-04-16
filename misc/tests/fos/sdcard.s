@@ -325,13 +325,13 @@ l1:	jsr spi_read
 
 .ifdef FAST_READ
 start:	
-	; Enable auto-rx mode
+	; Enable auto-tx mode
 	lda VERA_SPI_CTRL
 	ora #$04
 	sta VERA_SPI_CTRL
 
 	; Start first read transfer
-	lda VERA_SPI_DATA		; Auto-rx
+	lda VERA_SPI_DATA		; Auto-tx
 	nop				; 2
 
 	; Efficiently read first 256 bytes (hide SPI transfer time)
@@ -381,7 +381,7 @@ l4:	lda VERA_SPI_DATA		; 4
 	tay				; 2
 	bne l4				; 2+1
 
-	; Disable auto-rx mode
+	; Disable auto-tx mode
 	lda VERA_SPI_CTRL
 	and #($04 ^ $FF)
 	sta VERA_SPI_CTRL

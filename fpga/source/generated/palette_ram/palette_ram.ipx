@@ -1,14 +1,16 @@
 <?xml version="1.0" ?>
-<RadiantModule date="2019 07 03 18:49:36" generator="ipgen" library="module" module="ram_dp" name="palette_ram" source_format="Verilog" vendor="latticesemi.com" version="1.1.0">
+<RadiantModule architecture="iCE40UP" date="2020 04 15 20:30:32" device="iCE40UP5K" generator="ipgen" library="module" module="ram_dp" name="palette_ram" package="SG48" source_format="Verilog" speed="High-Performance_1.2V" vendor="latticesemi.com" version="1.1.0">
  <Package>
-  <File modified="2019 07 03 18:49:36" name="rtl/palette_ram.v" type="top_level_verilog"/>
-  <File modified="2019 07 03 18:49:36" name="rtl/palette_ram_bb.v" type="black_box_verilog"/>
-  <File modified="2019 07 03 18:49:36" name="testbench/dut_params.v" type="testbench_parameters_verilog"/>
-  <File modified="2019 07 03 18:49:36" name="misc/palette_ram_tmpl.vhd" type="template_vhdl"/>
-  <File modified="2019 07 03 18:49:36" name="testbench/dut_inst.v" type="testbench_instance_verilog"/>
-  <File modified="2019 07 03 18:49:36" name="component.xml" type="IP-XACT_output_file"/>
-  <File modified="2019 07 03 18:49:36" name="palette_ram.cfg" type="cfg"/>
-  <File modified="2019 07 03 18:49:36" name="misc/palette_ram_tmpl.v" type="template_verilog"/>
-  <File modified="2018 09 26 02:14:30" name="testbench/tb_top.v" type="testbench_verilog"/>
+  <File modified="2020 04 15 20:30:31" name="design.xml" type="IP-XACT_design"/>
+  <File modified="2020 04 15 20:30:31" name="rtl/palette_ram_bb.v" type="black_box_verilog"/>
+  <File modified="2020 04 15 20:30:31" name="testbench/dut_params.v" type="dependency_file"/>
+  <File modified="2020 04 15 20:30:31" name="misc/palette_ram_tmpl.vhd" type="template_vhdl"/>
+  <File modified="2020 04 15 20:30:31" name="testbench/dut_inst.v" type="dependency_file"/>
+  <File modified="2020 04 15 20:30:31" name="misc/palette_ram_tmpl.v" type="template_verilog"/>
+  <File modified="2020 04 15 20:30:32" name="component.xml" type="IP-XACT_component"/>
+  <File modified="2020 04 15 20:30:31" name="constraints/palette_ram.ldc" type="timing_constraints"/>
+  <File modified="2020 04 15 20:30:31" name="palette_ram.cfg" type="cfg"/>
+  <File modified="2020 04 15 20:30:31" name="rtl/palette_ram.v" type="top_level_verilog"/>
+  <File modified="2019 09 03 22:49:53" name="testbench/tb_top.v" type="testbench_verilog"/>
  </Package>
 </RadiantModule>

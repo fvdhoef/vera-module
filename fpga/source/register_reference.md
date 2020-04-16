@@ -253,7 +253,8 @@ This document describes the **V**ersatile **E**mbedded **R**etro **A**dapter or 
 		<td>$9F3F</td>
 		<td>SPI_CTRL</td>
 		<td colspan="1" align="center">Busy</td>
-		<td colspan="5" align="center">-</td>
+		<td colspan="4" align="center">-</td>
+		<td colspan="1" align="center">Auto-tx</td>
 		<td colspan="1" align="center">Slow clock</td>
 		<td colspan="1" align="center">Select</td>
 	</tr>
@@ -505,6 +506,7 @@ A transfer can be started by writing to **SPI_DATA**. While the transfer is in p
 
 The chip select can be controlled by writing the **SELECT** bit. Writing 1 will assert the chip-select (logic-0) and writing 0 will release the chip-select (logic-1).
 
+If the **Auto-tx** bit is set, the SPI controller will automatically start a new transfer (using 0xFF as data) as soon as the **SPI_DATA** register is read. This can be used to speed up SD card read transfers. 
 
 ## Palette
 

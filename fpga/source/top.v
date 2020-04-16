@@ -124,7 +124,7 @@ module top(
 
     reg        spi_select_r,                  spi_select_next;
     reg        spi_slow_r,                    spi_slow_next;
-    reg        spi_autorx_r,                  spi_autorx_next;
+    reg        spi_autotx_r,                  spi_autotx_next;
     reg  [7:0] spi_txdata;
     reg        spi_txstart;
     wire       spi_busy;
@@ -193,7 +193,7 @@ module top(
         5'h1D: rddata = 8'h00;
 
         5'h1E: rddata = spi_rxdata;
-        5'h1F: rddata = {spi_busy, 4'b0, spi_autorx_r, spi_slow_r, spi_select_r};
+        5'h1F: rddata = {spi_busy, 4'b0, spi_autotx_r, spi_slow_r, spi_select_r};
     endcase
 
     wire bus_read  = !extbus_cs_n &&  extbus_wr_n && !extbus_rd_n;
@@ -334,7 +334,7 @@ module top(
 
         spi_select_next                  = spi_select_r;
         spi_slow_next                    = spi_slow_r;
-        spi_autorx_next                  = spi_autorx_r;
+        spi_autotx_next                  = spi_autotx_r;
 
         ib_addr_next                     = ib_addr_r;
         ib_wrdata_next                   = ib_wrdata_r;
@@ -507,15 +507,15 @@ module top(
 
                 5'h1E: spi_txstart = 1;
                 5'h1F: begin
-                    spi_autorx_next = write_data[2];
+                    spi_autotx_next = write_data[2];
                     spi_slow_next   = write_data[1];
                     spi_select_next = write_data[0];
                 end
             endcase
         end
 
-        // SPI auto-rx function
-        if (spi_autorx_r && access_addr == 5'h1E && do_read) begin
+        // SPI auto-tx function
+        if (spi_autotx_r && access_addr == 5'h1E && do_read) begin
             spi_txdata = 8'hFF;
             spi_txstart = 1;
         end
@@ -620,7 +620,7 @@ module top(
             audio_fifo_write_r            <= 0;
             spi_select_r                  <= 0;
             spi_slow_r                    <= 0;
-            spi_autorx_r                  <= 0;
+            spi_autotx_r                  <= 0;
 
             ib_addr_r                     <= 0;
             ib_wrdata_r                   <= 0;
@@ -696,7 +696,7 @@ module top(
             audio_fifo_write_r            <= audio_fifo_write_next;
             spi_select_r                  <= spi_select_next;
             spi_slow_r                    <= spi_slow_next;
-            spi_autorx_r                  <= spi_autorx_next;
+            spi_autotx_r                  <= spi_autotx_next;
 
             ib_addr_r                     <= ib_addr_next;
             ib_wrdata_r                   <= ib_wrdata_next;
@@ -967,6 +967,7 @@ module top(
     endcase
 
     sprite_ram sprite_attr_ram(
+        .rst_i(1'b0),
         .wr_clk_i(clk),
         .rd_clk_i(clk),
         .wr_clk_en_i(1'b1),
@@ -1037,6 +1038,7 @@ module top(
     wire [15:0] palette_wrdata  = {2{ib_wrdata_r}};
 
     palette_ram palette_ram(
+        .rst_i(1'b0),
         .wr_clk_i(clk),
         .rd_clk_i(clk),
         .wr_clk_en_i(1'b1),

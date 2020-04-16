@@ -65,6 +65,9 @@ module tb_top();
 
 `include "dut_params.v"
 
+localparam CLK_FREQ = (FAMILY == "iCE40UP") ? 40 : 10;
+localparam RESET_CNT = (FAMILY == "iCE40UP") ? 140 : 35;
+
 reg                         chk_init = 1'b1;
 reg                         chk_norm = 1'b1;
 
@@ -87,13 +90,35 @@ wire [RDATA_WIDTH-1:0] 	    rd_data_o;
 
 reg [255:0]                 data_in = {256{1'b0}};
 
+`ifdef LIFCL
+    // ----------------------------
+    // LIFCL GSR instance
+    // ----------------------------
+    reg CLK_GSR = 0;
+    reg USER_GSR = 1;
+    wire GSROUT;
+    
+    initial begin
+        forever begin
+            #5;
+            CLK_GSR = ~CLK_GSR;
+        end
+    end
+    
+    GSR GSR_INST (
+        .GSR_N(USER_GSR),
+        .CLK(CLK_GSR)
+    );
+`endif
+
 `include "dut_inst.v"
 
 genvar din0;
-
-for(din0 = 0; din0 < 8; din0 = din0 + 1) begin
-    always @ (posedge wr_clk_i) begin
-        data_in[din0*32+31:din0*32] <= $urandom_range({32{1'b0}}, {32{1'b1}});
+begin : data_generate
+    for(din0 = 0; din0 < 8; din0 = din0 + 1) begin
+        always @ (posedge wr_clk_i) begin
+            data_in[din0*32+31:din0*32] <= $urandom_range({32{1'b0}}, {32{1'b1}});
+        end
     end
 end
 
@@ -106,21 +131,22 @@ initial begin
 	ben_i <= {BYTE_WIDTH{1'b1}};
 	wr_addr_i <= 'h0;
 	rd_addr_i <= 'h0;
+    wr_data_i <= data_in[WDATA_WIDTH-1:0];
 end
 
 initial begin
 	wr_clk_i = 1'b0;
-	forever #10 wr_clk_i = ~wr_clk_i;
+	forever #CLK_FREQ wr_clk_i = ~wr_clk_i;
 end
 
 initial begin
 	rd_clk_i = 1'b0;
-	forever #10 rd_clk_i = ~rd_clk_i;
+	forever #CLK_FREQ rd_clk_i = ~rd_clk_i;
 end
 
 initial begin
 	rst_i = 1'b1;
-	#15;
+	#RESET_CNT;
 	rst_i = 1'b0;
 end
 
@@ -162,12 +188,12 @@ initial begin
         rd_en_i <= 1'b0;
         if(chk_init == 1'b1) begin
             $display("-----------------------------------------------------");
-            $display("------------ MEMORY INITIALIATION PASSED ------------");
+            $display("------------ MEMORY INITIALIZATION PASSED -----------");
             $display("-----------------------------------------------------");
         end
         else begin
             $display("-----------------------------------------------------");
-            $display("!!!!!!!!!!!! MEMORY INITIALIATION FAILED !!!!!!!!!!!!");
+            $display("!!!!!!!!!!!! MEMORY INITIALIZATION FAILED !!!!!!!!!!!");
             $display("-----------------------------------------------------");
         end
     end
@@ -197,7 +223,7 @@ initial begin
 	    end
         @(posedge rd_clk_i);
         current_state <= SM_IDLE;
-        if(REGMODE == "noreg") @(posedge rd_clk_i);    
+        if(REGMODE == "reg") @(posedge rd_clk_i);    
     end
     if(chk_norm == 1'b1) begin
         $display("-----------------------------------------------------");
@@ -213,16 +239,22 @@ initial begin
 end
 
 genvar i_1;
+integer mem_i0;
 if (INIT_EN == 1) begin : INIT_MODE_CHECKER
     reg [WDATA_WIDTH-1:0] mem_init [2**WADDR_WIDTH-1:0];
     initial begin
-        if (INIT_MODE == "mem_file" && INIT_FILE != "none") begin
+        if (INIT_MODE == "mem_file") begin
           if (INIT_FILE_FORMAT == "hex") begin
             $readmemh(INIT_FILE, mem_init, 0, WADDR_DEPTH-1);
           end
           else begin
             $readmemb(INIT_FILE, mem_init, 0, WADDR_DEPTH-1);
           end
+        end
+        else begin
+            for(mem_i0 = 0; mem_i0 < WADDR_DEPTH; mem_i0 = mem_i0 + 1) begin
+                mem_init[mem_i0] = (INIT_MODE == "all_one") ? {WDATA_WIDTH{1'b1}} : {WDATA_WIDTH{1'b0}};
+            end
         end
     end
     
@@ -359,7 +391,7 @@ begin : MEM_NORMAL_OPERATION
         end
         else begin
             for(mem_normi0 = 0; mem_normi0 < 2**WADDR_WIDTH; mem_normi0 = mem_normi0 + 1) begin
-                mem_norm[mem_normi0] = {WDATA_WIDTH{1'b0}};
+                mem_norm[mem_normi0] = (INIT_MODE == "all_one") ? {WDATA_WIDTH{1'b1}} : {WDATA_WIDTH{1'b0}};
             end
         end
     end
@@ -503,31 +535,6 @@ begin : MEM_NORMAL_OPERATION
         end
     end
 end
-
-function [31:0] roundUP;
-	input [31:0] dividend;
-	input [31:0] divisor;
-	begin
-		if(divisor == 1) begin
-			roundUP = dividend;
-		end
-		else if(divisor == dividend) begin
-			roundUP = 1;
-		end
-		else begin
-			roundUP = dividend/divisor + (((dividend % divisor) == 0) ? 0 : 1);
-		end
-	end
-endfunction
-
-function [31:0] clog2;
-  input [31:0] value;
-  reg   [31:0] num;
-  begin
-    num = value - 1;
-    for (clog2=0; num>0; clog2=clog2+1) num = num>>1;
-  end
-endfunction
 
 endmodule
 `endif
