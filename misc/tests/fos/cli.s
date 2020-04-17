@@ -35,6 +35,7 @@ cmd_table:
 	; def_cmd "MOVE",    cmd_move     ; Move file
 	def_cmd "REN",     cmd_rename   ; Rename file
 	def_cmd "MKDIR",   cmd_mkdir    ; Make directory
+	def_cmd "RMDIR",   cmd_rmdir    ; Remove directory
 
 	def_cmd "TYPE",    cmd_type     ; Print contents of file
 	def_cmd "TEST",    cmd_test
@@ -496,12 +497,32 @@ str_error: .byte "Error!",10,0
 str_error: .byte "Error!",10,0
 .endproc
 
+;-----------------------------------------------------------------------------
+; cmd_mkdir
+;-----------------------------------------------------------------------------
 .proc cmd_mkdir
 	jsr set_single_param
 	bcs :+
 	rts
 :
 	jsr fat32_mkdir
+	bcs :+
+	print_str str_error
+:
+	rts
+
+str_error: .byte "Error!",10,0
+.endproc
+
+;-----------------------------------------------------------------------------
+; cmd_rmdir
+;-----------------------------------------------------------------------------
+.proc cmd_rmdir
+	jsr set_single_param
+	bcs :+
+	rts
+:
+	jsr fat32_rmdir
 	bcs :+
 	print_str str_error
 :

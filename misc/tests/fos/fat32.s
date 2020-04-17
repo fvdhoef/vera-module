@@ -3,7 +3,7 @@
 ; Copyright (C) 2020 Frank van den Hoef
 ;
 ; TODO:
-; - implement fat32_rmdir, fat32_seek
+; - implement fat32_seek
 ;-----------------------------------------------------------------------------
 	.include "text_display.inc"
 
@@ -777,9 +777,9 @@ error:	clc
 .endproc
 
 ;-----------------------------------------------------------------------------
-; delete
+; delete_file
 ;-----------------------------------------------------------------------------
-.proc delete
+.proc delete_file
 	; Find file
 	jsr find_file
 	bcc error
@@ -1197,7 +1197,57 @@ error:	clc	; Error, file exists
 	clc
 	rts
 :
-	jmp delete
+	jmp delete_file
+.endproc
+
+;-----------------------------------------------------------------------------
+; fat32_rmdir
+;-----------------------------------------------------------------------------
+.proc fat32_rmdir
+	; Check if context is free
+	lda cur_context + context::flags
+	beq :+
+error:	clc
+	rts
+:
+	lda #'A'
+	jsr putchar
+
+	; Find directory
+	jsr find_dir
+	bcc error
+
+
+	; Open directory
+	set32 cur_context + context::cluster, fat32_dirent + dirent::cluster
+	jsr open_cluster
+	bcc error
+
+	; Make sure directory is empty
+next:	jsr fat32_read_dirent
+	bcc done
+	lda fat32_dirent + dirent::name
+	cmp #'.'	; Allow for dot-entries
+	beq next
+	bra error
+done:
+
+	; Find directory
+	jsr find_dir
+	bcc error
+
+	; Mark file as deleted
+	set16 bufptr, cur_context + context::dirent_bufptr
+	lda #$E5
+	sta (bufptr)
+
+	; Write sector buffer to disk
+	jsr save_sector_buffer
+	bcc error
+
+	; Unlink cluster chain
+	set32 cur_context + context::cluster, fat32_dirent + dirent::cluster
+	jmp unlink_cluster_chain
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -1316,16 +1366,21 @@ free_entry:
 	; Check if context is free
 	lda cur_context + context::flags
 	beq :+
-	clc
+error:	clc
 	rts
 :
 	; Save argument for re-use
 	set16 fat32_ptr2, fat32_ptr
 
-	; Delete file first is it exists
-	jsr delete
+	; Check if directory entry already exists?
+	jsr find_dirent
+	bcc ok
 
-	; Create directory entry
+	; Delete file first if it exists
+	jsr delete_file
+	bcc error
+
+ok:	; Create directory entry
 	set16 fat32_ptr, fat32_ptr2
 	lda #0
 	jmp create_dir_entry
