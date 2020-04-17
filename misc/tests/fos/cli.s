@@ -34,6 +34,8 @@ cmd_table:
 	; def_cmd "LOAD",    cmd_load     ; Load file
 	; def_cmd "MOVE",    cmd_move     ; Move file
 	def_cmd "REN",     cmd_rename   ; Rename file
+	def_cmd "MKDIR",   cmd_mkdir    ; Make directory
+
 	def_cmd "TYPE",    cmd_type     ; Print contents of file
 	def_cmd "TEST",    cmd_test
 	def_cmd "TEST2",   cmd_test2
@@ -481,7 +483,6 @@ str_error: .byte "Error!",10,0
 ; cmd_delete
 ;-----------------------------------------------------------------------------
 .proc cmd_delete
-	; Open file
 	jsr set_single_param
 	bcs :+
 	rts
@@ -494,6 +495,22 @@ str_error: .byte "Error!",10,0
 
 str_error: .byte "Error!",10,0
 .endproc
+
+.proc cmd_mkdir
+	jsr set_single_param
+	bcs :+
+	rts
+:
+	jsr fat32_mkdir
+	bcs :+
+	print_str str_error
+:
+	rts
+
+str_error: .byte "Error!",10,0
+.endproc
+
+
 
 ;-----------------------------------------------------------------------------
 ; cmd_hexdump

@@ -37,6 +37,7 @@ FAT32_CONTEXTS = 6
 .global fat32_chdir             ; Change to directory with name in fat32_ptr
 .global fat32_rename            ; Rename file with name in fat32_ptr to fat32_ptr2
 .global fat32_delete            ; Delete file with name in fat32_ptr
+.global fat32_mkdir             ; Create new directory
 
 ; File operations
 .global fat32_open              ; Open file with name in fat32_ptr
@@ -48,7 +49,6 @@ FAT32_CONTEXTS = 6
 .global fat32_write             ; Write fat32_size bytes from fat32_ptr
 
 ; TODO:
-; fat32_mkdir
 ; fat32_rmdir
 ; fat32_seek
 

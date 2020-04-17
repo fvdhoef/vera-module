@@ -3,8 +3,7 @@
 ; Copyright (C) 2020 Frank van den Hoef
 ;
 ; TODO:
-; - implement fat32_mkdir, fat32_rmdir, fat32_seek
-; - improve read/write performance
+; - implement fat32_rmdir, fat32_seek
 ;-----------------------------------------------------------------------------
 	.include "text_display.inc"
 
@@ -576,6 +575,36 @@ exit:	rts
 .endproc
 
 ;-----------------------------------------------------------------------------
+; clear_cluster
+;-----------------------------------------------------------------------------
+.proc clear_cluster
+	; Fill sector buffer with 0
+	lda #0
+	ldy #0
+l1:	sta sector_buffer, y
+	sta sector_buffer + 256, y
+	iny
+	bne l1
+
+	; Write sectors
+	jsr calc_cluster_lba
+l2:	set32 sector_lba, cur_context + context::lba
+	jsr sdcard_write_sector
+	bcs :+
+	rts
+:	lda cur_context + context::cluster_sector
+	inc
+	cmp sectors_per_cluster
+	beq wrdone
+	sta cur_context + context::cluster_sector
+	inc32 cur_context + context::lba
+	bra l2
+
+wrdone:	sec
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
 ; next_sector
 ; A: bit0 - allocate cluster if at end of cluster chain
 ;    bit1 - clear allocated cluster
@@ -644,34 +673,17 @@ l1:	lda free_cluster, y
 	jsr save_sector_buffer
 	bcc error
 
+	; Set allocated cluster as current
+	set32 cur_context + context::cluster, free_cluster
+
 	; Request to clear new cluster?
 	lda next_sector_arg
 	bit #$02
 	beq wrdone
-
-	; Fill sector buffer with 0
-	lda #0
-	ldy #0
-l2:	sta sector_buffer, y
-	sta sector_buffer + 256, y
-	iny
-	bne l2
-
-	; Write sectors
-	jsr calc_cluster_lba
-l3:	set32 sector_lba, cur_context + context::lba
-	jsr sdcard_write_sector
+	jsr clear_cluster
 	bcc error
-	lda cur_context + context::cluster_sector
-	inc
-	cmp sectors_per_cluster
-	beq wrdone
-	sta cur_context + context::cluster_sector
-	inc32 cur_context + context::lba
-	bra l3
 
 wrdone:	; Retry
-	set32 cur_context + context::cluster, free_cluster
 	jmp read_cluster
 .endproc
 
@@ -1222,21 +1234,14 @@ error:	clc
 .endproc
 
 ;-----------------------------------------------------------------------------
-; fat32_create
+; create_dir_entry
+;
+; File attribute
 ;-----------------------------------------------------------------------------
-.proc fat32_create
-	; Check if context is free
-	lda cur_context + context::flags
-	bne error
-
-	; Save argument for re-use
-	set16 fat32_ptr2, fat32_ptr
-
-	; Delete file first is it exists
-	jsr delete
+.proc create_dir_entry
+	sta tmp_buf
 
 	; Convert file name
-	set16 fat32_ptr, fat32_ptr2
 	jsr convert_filename
 	bcc error
 
@@ -1273,6 +1278,11 @@ free_entry:
 	cpy #11
 	bne :-
 
+	; File attribute
+	lda tmp_buf
+	sta (bufptr), y
+	iny
+
 	; Zero fill rest of entry
 	lda #0
 :	sta (bufptr), y
@@ -1300,11 +1310,112 @@ free_entry:
 .endproc
 
 ;-----------------------------------------------------------------------------
+; fat32_create
+;-----------------------------------------------------------------------------
+.proc fat32_create
+	; Check if context is free
+	lda cur_context + context::flags
+	beq :+
+	clc
+	rts
+:
+	; Save argument for re-use
+	set16 fat32_ptr2, fat32_ptr
+
+	; Delete file first is it exists
+	jsr delete
+
+	; Create directory entry
+	set16 fat32_ptr, fat32_ptr2
+	lda #0
+	jmp create_dir_entry
+.endproc
+
+;-----------------------------------------------------------------------------
+; fat32_mkdir
+;-----------------------------------------------------------------------------
+.proc fat32_mkdir
+	; Check if context is free
+	lda cur_context + context::flags
+	bne error
+
+	; Save argument for re-use
+	set16 fat32_ptr2, fat32_ptr
+
+	; Check if directory doesn't exist yet
+	jsr find_dirent
+	bcs error
+
+	; Create directory entry
+	set16 fat32_ptr, fat32_ptr2
+	lda #$10
+	jsr create_dir_entry
+	bcc error
+
+	; Allocate the cluster
+	jsr allocate_first_cluster
+	bcc error
+	jsr clear_cluster
+	bcc error
+	jsr open_cluster
+	bcs :+
+error:	jsr fat32_close
+	clc
+	rts
+:
+	; Create '.' and '..' entries
+	ldy #0
+	lda #' '
+:	sta sector_buffer + 0, y
+	sta sector_buffer + 32, y
+	iny
+	cpy #11
+	bne :-
+
+	lda #'.'	; Name
+	sta sector_buffer + 0
+	sta sector_buffer + 32 + 0
+	sta sector_buffer + 32 + 1
+
+	lda #$10	; Directory attribute
+	sta sector_buffer + 11
+	sta sector_buffer + 32 + 11
+
+	lda free_cluster + 0
+	sta sector_buffer + 26
+	lda free_cluster + 1
+	sta sector_buffer + 27
+	lda free_cluster + 2
+	sta sector_buffer + 20
+	lda free_cluster + 3
+	sta sector_buffer + 21
+
+	lda cwd_cluster + 0
+	sta sector_buffer + 32 + 26
+	lda cwd_cluster + 1
+	sta sector_buffer + 32 + 27
+	lda cwd_cluster + 2
+	sta sector_buffer + 32 + 20
+	lda cwd_cluster + 3
+	sta sector_buffer + 32 + 21
+
+	; Set sector as dirty
+	lda cur_context + context::flags
+	ora #FLAG_DIRTY
+	sta cur_context + context::flags
+	
+	jmp fat32_close
+.endproc
+
+;-----------------------------------------------------------------------------
 ; fat32_close
 ;
 ; Close current file
 ;-----------------------------------------------------------------------------
 .proc fat32_close
+	lda cur_context + context::flags
+	beq done
+
 	; Write current sector if dirty
 	jsr sync_sector_buffer
 	bcc error
@@ -1479,22 +1590,9 @@ done:
 .endproc
 
 ;-----------------------------------------------------------------------------
-; write__end_of_buffer
+; allocate_first_cluster
 ;-----------------------------------------------------------------------------
-.proc write__end_of_buffer
-	; Is this the first cluster?
-	lda cur_context + context::file_size + 0
-	ora cur_context + context::file_size + 1
-	ora cur_context + context::file_size + 2
-	ora cur_context + context::file_size + 3
-	beq allocate_first_cluster
-
-	; Go to next sector (allocate cluster if needed)
-	lda #1
-	jmp next_sector
-
-	; Allocate cluster and add it to the directory entry of this file
-allocate_first_cluster:
+.proc allocate_first_cluster
 	jsr allocate_cluster
 	bcs :+
 error:	rts
@@ -1523,8 +1621,33 @@ error:	rts
 	jsr save_sector_buffer
 	bcc error
 
-	; Load in cluster
+	; Set allocated cluster as current
 	set32 cur_context + context::cluster, free_cluster
+	sec
+	rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; write__end_of_buffer
+;-----------------------------------------------------------------------------
+.proc write__end_of_buffer
+	; Is this the first cluster?
+	lda cur_context + context::file_size + 0
+	ora cur_context + context::file_size + 1
+	ora cur_context + context::file_size + 2
+	ora cur_context + context::file_size + 3
+	beq first_cluster
+
+	; Go to next sector (allocate cluster if needed)
+	lda #1
+	jmp next_sector
+
+first_cluster:
+	jsr allocate_first_cluster
+	bcs :+
+	rts
+:
+	; Load in cluster
 	jmp open_cluster
 .endproc
 
