@@ -927,6 +927,9 @@ l2:	shr32 cluster_count
 	; Save new context index
 	pha
 
+	; Save dirty sector
+	jsr sync_sector_buffer
+
 	; Put zero page variables in current context
 	set16 cur_context + context::bufptr, bufptr
 
@@ -949,7 +952,8 @@ l2:	shr32 cluster_count
 
 	; Copy new context to current
 	pla              ; Get new context idx
-	sta context_idx  ; X=A*16
+	sta context_idx  ; X=A*32
+	asl
 	asl
 	asl
 	asl

@@ -26,8 +26,8 @@ FAT32_CONTEXTS = 6
 ;-----------------------------------------------------------------------------
 
 ; Global operations
-.global fat32_init
-.global fat32_set_context
+.global fat32_init              ; Initialize FAT32 driver and SD card
+.global fat32_set_context       ; Set current context to idx in A (0..FAT32_CONTEXTS-1)
 .global fat32_get_free_space    ; Get free space, result in KiB in fat32_size
 
 ; Directory operations
@@ -37,8 +37,8 @@ FAT32_CONTEXTS = 6
 .global fat32_chdir             ; Change to directory with name in fat32_ptr
 .global fat32_rename            ; Rename file with name in fat32_ptr to fat32_ptr2
 .global fat32_delete            ; Delete file with name in fat32_ptr
-.global fat32_mkdir             ; Create new directory
-.global fat32_rmdir             ; Delete empty directory
+.global fat32_mkdir             ; Create new directory with name in fat32_ptr
+.global fat32_rmdir             ; Delete empty directory with name in fat32_ptr
 
 ; File operations
 .global fat32_open              ; Open file with name in fat32_ptr
