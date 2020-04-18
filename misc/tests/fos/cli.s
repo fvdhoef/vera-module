@@ -26,16 +26,17 @@ l1:
 cmd_table:
 	def_cmd "CD",      cmd_cd       ; Change directory
 	def_cmd "CLS",     cmd_cls      ; Clear screen
-	; def_cmd "COPY",    cmd_copy     ; Copy file
+	def_cmd "COPY",    cmd_copy     ; Copy file
 	def_cmd "DEL",     cmd_delete   ; Delete file
 	def_cmd "DIR",     cmd_dir      ; List directory
 	def_cmd "HELP",    cmd_help     ; Show available commands
+	def_cmd "MKDIR",   cmd_mkdir    ; Make directory
+	def_cmd "REN",     cmd_rename   ; Rename file
+	def_cmd "RMDIR",   cmd_rmdir    ; Remove directory
+
 	; def_cmd "HEXDUMP", cmd_hexdump  ; Hexdump contents of file
 	; def_cmd "LOAD",    cmd_load     ; Load file
 	; def_cmd "MOVE",    cmd_move     ; Move file
-	def_cmd "REN",     cmd_rename   ; Rename file
-	def_cmd "MKDIR",   cmd_mkdir    ; Make directory
-	def_cmd "RMDIR",   cmd_rmdir    ; Remove directory
 
 	def_cmd "TYPE",    cmd_type     ; Print contents of file
 	def_cmd "TEST",    cmd_test
@@ -48,6 +49,7 @@ cmd_table:
 num_files:  .word 0
 num_dirs:   .word 0
 total_size: .dword 0
+tmp_param:  .word 0
 
 	.code
 
@@ -470,6 +472,53 @@ str_error: .byte "Error!",10,0
 ; cmd_copy
 ;-----------------------------------------------------------------------------
 .proc cmd_copy
+	jsr set_two_params
+	bcs :+
+	rts
+:
+	set16 tmp_param, fat32_ptr2
+
+	lda #0
+	jsr fat32_set_context
+	bcc error
+	jsr fat32_open
+	bcc error
+
+	lda #1
+	jsr fat32_set_context
+	bcc error
+	set16 fat32_ptr, tmp_param
+	jsr fat32_create
+	bcc error
+
+
+loop:	lda #'.'
+	jsr putchar
+
+	lda #0
+	jsr fat32_set_context
+	set16_val fat32_ptr, $4000
+	set16_val fat32_size, $4000
+	jsr fat32_read
+
+	lda fat32_size + 0
+	ora fat32_size + 1
+	beq done
+
+	lda #1
+	jsr fat32_set_context
+	set16_val fat32_ptr, $4000
+	jsr fat32_write
+
+	bra loop
+done:
+
+error:	lda #1
+	jsr fat32_set_context
+	jsr fat32_close
+	lda #0
+	jsr fat32_set_context
+	jsr fat32_close
 	rts
 .endproc
 
