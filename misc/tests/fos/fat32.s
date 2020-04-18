@@ -29,24 +29,22 @@ dirent_lba      .dword   ; Sector containing directory entry for this file
 dirent_bufptr   .word    ; Offset to start of directory entry 
 .endstruct
 
-;-----------------------------------------------------------------------------
-; API variables
-;-----------------------------------------------------------------------------
 	.zeropage
+; API variables
 fat32_ptr:           .word 0       ; Buffer pointer to various functions
 fat32_ptr2:          .word 0       ; Buffer pointer to various functions
 
-	.bss
-fat32_size:          .dword 0      ; Used for fat32_get_free_space result
-fat32_dirent:        .tag dirent   ; Buffer containing decoded directory entry
-
-;-----------------------------------------------------------------------------
-; Variables
-;-----------------------------------------------------------------------------
-	.zeropage
+; Internal variables
 bufptr:              .word 0       ; Points to current offset within sector buffer
 
 	.bss
+_fat32_bss_start:
+
+; API variables
+fat32_size:          .dword 0      ; Used for fat32_get_free_space result
+fat32_dirent:        .tag dirent   ; Buffer containing decoded directory entry
+fat32_cwd_cluster:   .dword 0      ; Cluster of current directory
+
 ; Static filesystem parameters
 rootdir_cluster:     .dword 0      ; Cluster of root directory
 sectors_per_cluster: .byte 0       ; Sectors per cluster
@@ -59,7 +57,6 @@ cluster_count:       .dword 0      ; Total number of cluster on volume
 lba_fsinfo:          .dword 0      ; Sector number of FS info
 
 ; Variables
-cwd_cluster:         .dword 0      ; Cluster of current directory
 free_clusters:       .dword 0      ; Number of free clusters (from FS info)
 free_cluster:        .dword 0      ; Cluster to start search for free clusters, also holds result of find_free_cluster
 filename_buf:        .res 11       ; Used for filename conversion
@@ -74,16 +71,20 @@ tmp_sector_lba:      .dword 0      ; Used by next_sector
 ; Contexts
 context_idx:         .byte 0       ; Index of current context
 cur_context:         .tag context  ; Current file descriptor state
+
+.if FAT32_CONTEXTS > 1
 contexts:            .res CONTEXT_SIZE * FAT32_CONTEXTS
-contexts_end:
+.endif
 
 .if CONTEXT_SIZE * FAT32_CONTEXTS > 256
-.error "FAT32_CONTEXTS too high"
+.error "FAT32_CONTEXTS > 8"
 .endif
 
 .if .sizeof(context) > CONTEXT_SIZE
 .error "Context too big"
 .endif
+
+_fat32_bss_end:
 
 	.code
 
@@ -692,7 +693,7 @@ wrdone:	; Retry
 ;-----------------------------------------------------------------------------
 .proc open_cwd
 	; Open current directory
-	set32 cur_context + context::cluster, cwd_cluster
+	set32 cur_context + context::cluster, fat32_cwd_cluster
 	jmp open_cluster
 .endproc
 
@@ -808,9 +809,19 @@ error:	rts
 	jsr sdcard_init
 	bcc error
 
-	; Initialize file contexts
-	stz context_idx
-	clear_bytes cur_context, contexts_end - cur_context
+	; Clear FAT32 BSS
+	set16_val bufptr, _fat32_bss_start
+	lda #0
+l0:	sta (bufptr)
+	inc bufptr + 0
+	bne :+
+	inc bufptr + 1
+:	ldx bufptr + 0
+	cpx #<_fat32_bss_end
+	bne l0
+	ldx bufptr + 1
+	cpx #>_fat32_bss_end
+	bne l0
 
 	; Make sure sector_lba is non-zero
 	lda #$FF
@@ -819,8 +830,8 @@ error:	rts
 	; Set initial start point for free cluster search
 	set32_val free_cluster, 2
 
-	; Read partition table
-	set32 cur_context + context::lba, 0
+	; Read partition table (sector 0)
+	; cur_context::lba already 0
 	jsr load_sector_buffer
 	bcc error
 
@@ -862,7 +873,7 @@ error:	clc
 	beq error
 
 	; Calculate shift amount based on sectors per cluster
-	stz cluster_shift
+	; cluster_shift already 0
 l1:	lsr
 	beq :+
 	inc cluster_shift
@@ -902,9 +913,6 @@ l2:	shr32 cluster_count
 	; Get number of free clusters
 	set32 free_clusters, sector_buffer + 488
 
-	; Initial directory is root directory
-	set32 cwd_cluster, 0
-
 	; Success
 	sec
 	rts
@@ -924,6 +932,7 @@ l2:	shr32 cluster_count
 	cmp #FAT32_CONTEXTS
 	bcs error
 
+.if ::FAT32_CONTEXTS > 1
 	; Save new context index
 	pha
 
@@ -978,6 +987,7 @@ l2:	shr32 cluster_count
 	jsr load_sector_buffer
 	bcc error
 reload_done:
+.endif
 
 done:	sec
 	rts
@@ -1141,7 +1151,7 @@ next_entry:
 	bcc error
 
 	; Set as current directory
-	set32 cwd_cluster, fat32_dirent + dirent::cluster
+	set32 fat32_cwd_cluster, fat32_dirent + dirent::cluster
 
 	sec
 	rts
@@ -1449,13 +1459,13 @@ error:	jsr fat32_close
 	lda free_cluster + 3
 	sta sector_buffer + 21
 
-	lda cwd_cluster + 0
+	lda fat32_cwd_cluster + 0
 	sta sector_buffer + 32 + 26
-	lda cwd_cluster + 1
+	lda fat32_cwd_cluster + 1
 	sta sector_buffer + 32 + 27
-	lda cwd_cluster + 2
+	lda fat32_cwd_cluster + 2
 	sta sector_buffer + 32 + 20
-	lda cwd_cluster + 3
+	lda fat32_cwd_cluster + 3
 	sta sector_buffer + 32 + 21
 
 	; Set sector as dirty

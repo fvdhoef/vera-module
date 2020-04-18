@@ -11,15 +11,19 @@ cluster    .dword
 .endstruct
 
 ; Maximum number of open files.
-FAT32_CONTEXTS = 6
+FAT32_CONTEXTS = 3              ; Set to 0/1 to disable contexts, max value: 8
 
 ;-----------------------------------------------------------------------------
 ; Variables
 ;-----------------------------------------------------------------------------
-.globalzp fat32_ptr              ; Buffer pointer for various functions
-.globalzp fat32_ptr2             ; Buffer pointer for various functions
-.global   fat32_size             ; Used for fat32_get_free_space result
-.global   fat32_dirent           ; Directory entry result for fat32_read_dirent
+.globalzp fat32_ptr             ; Buffer pointer for various functions
+.globalzp fat32_ptr2            ; Buffer pointer for various functions
+.global   fat32_size            ; Used for fat32_get_free_space result
+.global   fat32_dirent          ; Directory entry result for fat32_read_dirent
+
+; Low level
+.global fat32_cwd_cluster       ; Cluster of current working directory (can be used to save and restore working directory by user)
+.global sector_buffer           ; Current sector buffer (can be used with fat32_next_sector)
 
 ;-----------------------------------------------------------------------------
 ; Functions
@@ -53,5 +57,4 @@ FAT32_CONTEXTS = 6
 ; fat32_seek
 
 ; Low level fast API
-.global sector_buffer
 .global fat32_next_sector
