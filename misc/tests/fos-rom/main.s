@@ -8,6 +8,7 @@
 	.include "fat32.inc"
 	.include "text_input.inc"
 	.include "cli.inc"
+	.include "ps2.inc"
 
 ;-----------------------------------------------------------------------------
 ; Variables
@@ -17,15 +18,14 @@
 	.zeropage
 
 	.segment "VECTORS"
-.word nmi_entry
-.word reset_entry
-.word irq_entry
+	.word nmi_entry
+	.word reset_entry
+	.word irq_entry
 
+	.bss
 	.code
 
-nmi_entry: rti
 irq_entry: rti
-
 
 ;-----------------------------------------------------------------------------
 ; main
@@ -52,8 +52,15 @@ str_message:
 	.import __BSS_SIZE__
 
 .proc reset_entry
-	sei	; Disable IRQs
-	cld	; Clear decimal mode
+	; Disable IRQs
+	sei	
+	stz VIA1_IER
+	stz VIA2_IER
+	lda #$FF
+	sta VIA2_IFR
+
+	; Clear decimal mode
+	cld
 
 	; Clear BSS
 	set16_val DST_PTR, __BSS_LOAD__
@@ -62,6 +69,32 @@ str_message:
 	sta (DST_PTR)
 	inc16 DST_PTR
 	cmp16 DST_PTR, SRC_PTR, :-
+
+	;---------------------------------------------------------------------
+	; Init VIAs
+	;---------------------------------------------------------------------
+
+	; VIA1 port A: RAM bank
+	stz VIA1_ORA	; RAM bank to 0
+	lda $FF		; All output
+	sta VIA1_DDRA
+
+	; VIA1 port B: ROM bank (+ IEC port)
+	stz VIA2_ORB	; ROM bank to 0
+	lda $07		; ROM bank bits to output
+	sta VIA2_DDRB
+
+	; VIA2 port A: PS/2 (+ NES ports)
+	stz VIA2_DDRA
+
+	; VIA2 port B: user port
+	stz VIA2_DDRB
+
+	; Configure NMI for PS/2 clock
+	stz VIA2_PCR
+	lda #$82
+	sta VIA2_IER
+
 
 	; Wait for VERA to be ready
 vera_wait_ready:

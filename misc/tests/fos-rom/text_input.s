@@ -6,6 +6,7 @@
         .include "text_input.inc"
 	.include "lib.inc"
 	.include "text_display.inc"
+	.include "ps2.inc"
 
 ;-----------------------------------------------------------------------------
 ; Variables
@@ -24,20 +25,9 @@ line_start:
 ; getchar
 ;-----------------------------------------------------------------------------
 .proc getchar
-	bra getchar
-:	jsr $FFE4
-	beq :-
-
-	cmp #13
-	beq enter
-	cmp #20
-	beq backspace
-	rts
-
-enter:	lda #10
-	rts
-backspace:
-	lda #8
+	jsr ps2_getkey
+	cmp #0
+	beq getchar
 	rts
 .endproc
 

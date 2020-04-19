@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <RadiantProject version="4.1" title="vera_module" device="iCE40UP5K-SG48I" performance_grade="High-Performance_1.2V" default_implementation="impl">
     <Options/>
-    <Implementation title="impl" dir="impl" description="impl" synthesis="synplify" default_strategy="Strategy1">
+    <Implementation title="impl" dir="impl" description="impl" synthesis="lse" default_strategy="Strategy1">
         <Options def_top="top" top="top"/>
         <Source name="source/top.v" type="Verilog" type_short="Verilog">
             <Options top_module="top"/>
