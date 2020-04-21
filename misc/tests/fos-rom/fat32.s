@@ -5,7 +5,6 @@
 ; TODO:
 ; - implement fat32_seek
 ;-----------------------------------------------------------------------------
-	.include "text_display.inc"
 
 	.include "fat32.inc"
 	.include "lib.inc"
@@ -30,20 +29,12 @@ dirent_bufptr   .word    ; Offset to start of directory entry
 .endstruct
 
 	.zeropage
-; API variables
-fat32_ptr:           .word 0       ; Buffer pointer to various functions
-fat32_ptr2:          .word 0       ; Buffer pointer to various functions
 
 ; Internal variables
 bufptr:              .word 0       ; Points to current offset within sector buffer
 
 	.bss
 _fat32_bss_start:
-
-; API variables
-fat32_size:          .dword 0      ; Used for fat32_get_free_space result
-fat32_dirent:        .tag dirent   ; Buffer containing decoded directory entry
-fat32_cwd_cluster:   .dword 0      ; Cluster of current directory
 
 ; Static filesystem parameters
 rootdir_cluster:     .dword 0      ; Cluster of root directory
@@ -1224,13 +1215,9 @@ error:	clc	; Error, file exists
 error:	clc
 	rts
 :
-	lda #'A'
-	jsr putchar
-
 	; Find directory
 	jsr find_dir
 	bcc error
-
 
 	; Open directory
 	set32 cur_context + context::cluster, fat32_dirent + dirent::cluster
@@ -1245,7 +1232,6 @@ next:	jsr fat32_read_dirent
 	beq next
 	bra error
 done:
-
 	; Find directory
 	jsr find_dir
 	bcc error

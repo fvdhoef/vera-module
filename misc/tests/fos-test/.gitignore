@@ -1,4 +1,3 @@
 obj/
-font/
+disk.img
 jumptable.inc
-.vscode/

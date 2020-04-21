@@ -7,6 +7,7 @@ S_SRCS += text_display.s
 S_SRCS += text_input.s
 S_SRCS += fat32_util.s
 S_SRCS += cli.s
+S_SRCS += jumptable.s
 
 EMU_PARAMS = -sdcard ~/Work/x16/x16-emulator/disk5.img -quality nearest -scale 2 -echo
 
@@ -29,6 +30,7 @@ $(OUT): $(OBJ_DIR) $(S_OBJS)
 	@echo Linking $@
 	@$(LD) -C x16-rom.cfg -m $(OUT).map -o $(OUT) $(S_OBJS)
 	cat $(OUT) $(OUT) $(OUT) $(OUT) $(OUT) $(OUT) $(OUT) $(OUT) > $(OUT).bin
+	./jumptable_to_inc.py
 
 $(OBJ_DIR):
 	@mkdir -p $(dir $(S_OBJS))

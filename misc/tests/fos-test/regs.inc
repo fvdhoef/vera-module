@@ -105,23 +105,13 @@ VERA_PALETTE_BASE = $1FA00
 VERA_SPRITES_BASE = $1FC00
 
 ;-----------------------------------------------------------------------------
-; Zero-page kernel variables
+; Zero-page kernal variables
 ;-----------------------------------------------------------------------------
-fat32_ptr  = $F6         ; word - Buffer pointer to various functions
-fat32_ptr2 = $F8         ; word - Buffer pointer to various functions
-SRC_PTR    = $FA         ; word
-DST_PTR    = $FC         ; word
-LENGTH     = $FE         ; word
+SRC_PTR = $70
+DST_PTR = $72
+LENGTH  = $74
 
 ;-----------------------------------------------------------------------------
-; Kernel variables
+; KERNAL
 ;-----------------------------------------------------------------------------
-sector_buffer       = $200  ; 512 bytes - Sector buffer
-sector_buffer_end   = $400
-sdcard_param        = $400  ; 6 bytes
-sector_lba          = $401  ; dword (part of sdcard_param) - LBA of sector to read/write
-fat32_size          = $406  ; dword - Used for fat32_get_free_space result
-fat32_cwd_cluster   = $40A  ; dword - Cluster of current directory
-fat32_dirent        = $40E  ; 22 bytes - Buffer containing decoded directory entry
-val32               = $424  ; dword
-padch               = $428  ; byte
+CINV = $0314

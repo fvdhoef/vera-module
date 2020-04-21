@@ -33,10 +33,7 @@ cmd_table:
 	def_cmd "MKDIR",   cmd_mkdir    ; Make directory
 	def_cmd "REN",     cmd_rename   ; Rename file
 	def_cmd "RMDIR",   cmd_rmdir    ; Remove directory
-
-	; def_cmd "HEXDUMP", cmd_hexdump  ; Hexdump contents of file
-	; def_cmd "LOAD",    cmd_load     ; Load file
-	; def_cmd "MOVE",    cmd_move     ; Move file
+	def_cmd "RUN",     cmd_run      ; Run program
 
 	def_cmd "TYPE",    cmd_type     ; Print contents of file
 	def_cmd "TEST",    cmd_test
@@ -53,6 +50,8 @@ tmp_param:  .word 0
 
 	.code
 
+AUTORUN=1
+
 ;-----------------------------------------------------------------------------
 ; cli_start
 ;-----------------------------------------------------------------------------
@@ -64,6 +63,14 @@ tmp_param:  .word 0
 	jsr putchar
 	rts
 :
+.ifdef AUTORUN
+	ldx #$FF
+:	inx
+	lda cmd, x
+	sta line_buf, x
+	bne :-
+	bra l1
+.endif
 	; Get commands from user
 next_cmd:
 	; Print prompt
@@ -72,7 +79,7 @@ next_cmd:
 
 	; Get line from user
 	jsr getline
-	jsr skip_spaces
+l1:	jsr skip_spaces
 	jsr first_word_to_upper
 
 	; Empty line?
@@ -83,6 +90,8 @@ next_cmd:
 	; Search and call command
 	jsr call_cmd
 	bra next_cmd
+
+cmd: .byte "run fostest.prg",0
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -523,13 +532,6 @@ error:	lda #1
 .endproc
 
 ;-----------------------------------------------------------------------------
-; cmd_move
-;-----------------------------------------------------------------------------
-.proc cmd_move
-	rts
-.endproc
-
-;-----------------------------------------------------------------------------
 ; cmd_delete
 ;-----------------------------------------------------------------------------
 .proc cmd_delete
@@ -580,13 +582,40 @@ str_error: .byte "Error!",10,0
 str_error: .byte "Error!",10,0
 .endproc
 
-
-
 ;-----------------------------------------------------------------------------
-; cmd_hexdump
+; cmd_run
 ;-----------------------------------------------------------------------------
-.proc cmd_hexdump
+.proc cmd_run
+	; Open file
+	jsr set_single_param
+	bcs :+
 	rts
+:	jsr fat32_open
+	bcs ok
+
+	; Opening file failed, print error message
+	print_str str_file_not_found
+	rts
+ok:
+	; Read code to $800
+	set16_val fat32_ptr, $800
+	set16_val fat32_size, ($9F00 - $800)
+	jsr fat32_read
+
+	; Print number of bytes read
+	set16 val32, fat32_size
+	stz val32+2
+	stz val32+3
+	stz padch
+	jsr print_val32
+	print_str str_bytes_loaded
+	jsr fat32_close
+
+	; Call loaded code
+	jmp $800
+
+str_file_not_found: .byte "File not found!",10,0
+str_bytes_loaded: .byte " bytes loaded",10,0
 .endproc
 
 ;-----------------------------------------------------------------------------

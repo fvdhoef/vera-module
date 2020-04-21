@@ -7,8 +7,6 @@
 	.include "text_display.inc"
 
 	.bss
-val32:  .dword 0
-padch:  .byte 0
 line:   .byte 0
 
 	.rodata

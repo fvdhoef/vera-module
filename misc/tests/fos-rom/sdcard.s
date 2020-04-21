@@ -7,13 +7,11 @@
 	.include "sdcard.inc"
 
 	.bss
-cmd_idx:           .byte 0
-sector_lba:
-cmd_arg:           .dword 0
-cmd_crc:           .byte 0
+cmd_idx = sdcard_param
+cmd_arg = sdcard_param + 1
+cmd_crc = sdcard_param + 5
+
 timeout_cnt:       .byte 0
-sector_buffer:     .res 512      ; Sector buffer
-sector_buffer_end:
 
 FAST_READ=1
 FAST_WRITE=1

@@ -63,8 +63,8 @@ str_message:
 	cld
 
 	; Clear BSS
-	set16_val DST_PTR, __BSS_LOAD__
-	add16_val SRC_PTR, DST_PTR, __BSS_SIZE__
+	set16_val DST_PTR, $200
+	set16_val SRC_PTR, $800
 :	lda #0
 	sta (DST_PTR)
 	inc16 DST_PTR
