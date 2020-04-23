@@ -9,6 +9,7 @@
 	.include "text_input.inc"
 	.include "fat32.inc"
 	.include "fat32_util.inc"
+	.include "ps2.inc"
 
 ;-----------------------------------------------------------------------------
 ; Variables
@@ -152,12 +153,14 @@ match_ok:
 	; Call handler function
 	jmp (DST_PTR)
 
-done:	
-	; Print error message
-	print_str str_cmd_not_found
-	rts
+done:
+	jmp cmd_run
 
-str_cmd_not_found: .byte "Command not found!",10,0
+; 	; Print error message
+; 	print_str str_cmd_not_found
+; 	rts
+
+; str_cmd_not_found: .byte "Command not found!",10,0
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -597,6 +600,19 @@ str_error: .byte "Error!",10,0
 	print_str str_file_not_found
 	rts
 ok:
+	jsr fat32_read_byte
+	cmp #'E'
+	bne error
+	jsr fat32_read_byte
+	cmp #'X'
+	bne error
+	jsr fat32_read_byte
+	cmp #'E'
+	bne error
+	jsr fat32_read_byte
+	cmp #'s'
+	bne error
+
 	; Read code to $800
 	set16_val fat32_ptr, $800
 	set16_val fat32_size, ($9F00 - $800)
@@ -614,6 +630,12 @@ ok:
 	; Call loaded code
 	jmp $800
 
+error:
+	jsr fat32_close
+	print_str str_invalid_exe
+	rts
+
+str_invalid_exe: .byte "Invalid executable!",10,0
 str_file_not_found: .byte "File not found!",10,0
 str_bytes_loaded: .byte " bytes loaded",10,0
 .endproc
@@ -902,7 +924,9 @@ loop:	stz VERA_ADDR_L
 	ora #$10
 	sta VERA_DC_VIDEO
 
-	bra loop
+	jsr ps2_getkey
+	cmp #0
+	beq loop
 
 done:
 	jsr fat32_close
