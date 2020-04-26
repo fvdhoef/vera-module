@@ -9,6 +9,7 @@
 	.include "text_input.inc"
 	.include "cli.inc"
 	.include "ps2.inc"
+	.include "vera.inc"
 
 ;-----------------------------------------------------------------------------
 ; Variables
@@ -106,7 +107,8 @@ vera_wait_ready:
 
 	; Init display
 	lda #1
-	sta VERA_DC_VIDEO
+	sta vera_output_mode
+	jsr vera_reset_settings
 
 	; Call main
 	jsr main

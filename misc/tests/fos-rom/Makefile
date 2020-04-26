@@ -1,5 +1,6 @@
 OUT     = $(OBJ_DIR)/fos.rom
 S_SRCS += main.s
+S_SRCS += vera.s
 S_SRCS += sdcard.s
 S_SRCS += fat32.s
 S_SRCS += ps2.s

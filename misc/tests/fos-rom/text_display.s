@@ -95,7 +95,8 @@ next:	lda (SRC_PTR)
 @loop2: ldx #128
 @loop1:	lda #' '
 	sta VERA_DATA0
-	lda #$61
+	; lda #$61
+	lda #$16
 	sta VERA_DATA0
 	dex
 	bne @loop1
@@ -110,6 +111,8 @@ next:	lda (SRC_PTR)
 	sta VERA_ADDR_H
 
 	; Reset scroll position
+	stz VERA_L0_HSCROLL_L
+	stz VERA_L0_HSCROLL_H
 	stz VERA_L0_VSCROLL_L
 	stz VERA_L0_VSCROLL_H
 	stz line

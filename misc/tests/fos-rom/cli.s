@@ -869,18 +869,7 @@ l2:	lda sector_buffer+256+0, y
 	print_str str_file_not_found
 	rts
 ok:
-
-	lda VERA_L0_CONFIG
-	pha
-	lda VERA_L0_TILEBASE
-	pha
-	lda VERA_L0_HSCROLL_H
-	pha
-	lda VERA_DC_HSCALE
-	pha
-	lda VERA_DC_VSCALE
-	pha
-
+	; Disable layer 0
 	lda VERA_DC_VIDEO
 	and #($10 ^ $FF)
 	sta VERA_DC_VIDEO
@@ -920,6 +909,7 @@ loop:	stz VERA_ADDR_L
 	lda #$80
 	sta VERA_L0_TILEBASE
 
+	; Enable layer 0
 	lda VERA_DC_VIDEO
 	ora #$10
 	sta VERA_DC_VIDEO
@@ -935,24 +925,7 @@ done:
 	and #($10 ^ $FF)
 	sta VERA_DC_VIDEO
 
-	pla
-	sta VERA_DC_VSCALE
-	pla
-	sta VERA_DC_HSCALE
-	pla
-	sta VERA_L0_HSCROLL_H
-	pla
-	sta VERA_L0_TILEBASE
-	pla
-	sta VERA_L0_CONFIG
-
-	jsr clear_screen
-
-	lda VERA_DC_VIDEO
-	ora #$10
-	sta VERA_DC_VIDEO
-
-	; jsr text_display_init
+	jsr text_display_init
 	rts
 
 str_file_not_found: .byte "File not found!",10,0
