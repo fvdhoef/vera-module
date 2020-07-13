@@ -203,7 +203,7 @@ module top(
     wire [3:0] irq_enable = {irq_enable_audio_fifo_low_r, irq_enable_sprite_collision_r, irq_enable_line_r, irq_enable_vsync_r};
     wire [3:0] irq_status = {audio_fifo_low,              irq_status_sprite_collision_r, irq_status_line_r, irq_status_vsync_r};
 
-    assign extbus_irq_n = (irq_status & irq_enable) != 0;
+    assign extbus_irq_n = (irq_status & irq_enable) == 0;
 
     // Capture address / write-data at end of write cycle
     reg [4:0] rdaddr_r;
