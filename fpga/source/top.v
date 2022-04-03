@@ -213,7 +213,7 @@ module top(
         wraddr_r <= extbus_a;
         wrdata_r <= extbus_d;
     end
-    always @(negedge bus_read) begin
+    always @(posedge bus_read) begin
         rdaddr_r <= extbus_a;
     end
 
