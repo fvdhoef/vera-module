@@ -319,7 +319,8 @@ module sprite_renderer(
     assign linebuf_wrdata = {linebuf_rddata[15:12] | sprite_collision_mask_r, 2'b0, sprite_z_r, cur_pixel_color};
 
     // Determine if current pixel should be rendered
-    wire render_pixel =  !pixel_is_transparent && sprite_z_r >= linebuf_rddata[9:8] && tmp_pixel_color != 0;
+    wire dest_pixel_is_transparent = (linebuf_rddata[7:0] == 8'b0);
+	wire render_pixel = !pixel_is_transparent && ((sprite_z_r > linebuf_rddata[9:8]) || dest_pixel_is_transparent);
 
     // Determine collision for the current pixel
     wire [3:0] collision =
