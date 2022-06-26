@@ -65,7 +65,7 @@ module composer(
     wire sprite_z3 = sprite_lb_rddata[9:8] == 2'd3;
 
     // Regular vertical counter
-    reg  [8:0] y_counter_r, y_counter_rr;
+    reg  [9:0] y_counter_r, y_counter_rr;
     reg  next_line_r;
 
     always @(posedge clk or posedge rst) begin
@@ -119,7 +119,7 @@ module composer(
     end
 
     wire [9:0] x_counter = x_counter_r[10:1];
-    wire [8:0] y_counter = y_counter_rr;
+    wire [9:0] y_counter = y_counter_rr;
 
     // Generate start signal of sprite line buffer clearing
     assign sprite_lb_erase_start = (x_counter_r == {10'd639, interlaced});
