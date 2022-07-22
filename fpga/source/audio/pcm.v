@@ -18,6 +18,7 @@ module pcm(
     input  wire        fifo_write,
     output wire        fifo_full,
     output wire        fifo_almost_empty,
+    output wire        fifo_empty,
 
     // Audio output
     output wire [15:0] left_audio,
@@ -30,7 +31,6 @@ module pcm(
 
     wire [7:0] fifo_rddata;
     reg        fifo_read;
-    wire       fifo_empty;
 
     audio_fifo audio_fifo(
         .clk(clk),

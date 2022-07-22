@@ -21,6 +21,7 @@ module audio(
     input  wire        fifo_write,
     output wire        fifo_full,
     output wire        fifo_almost_empty,
+    output wire        fifo_empty,
     
     // I2S audio output
     output wire        i2s_lrck,
@@ -73,6 +74,7 @@ module audio(
         .fifo_write(fifo_write),
         .fifo_full(fifo_full),
         .fifo_almost_empty(fifo_almost_empty),
+        .fifo_empty(fifo_empty),
 
         // Audio output
         .left_audio(pcm_left),
