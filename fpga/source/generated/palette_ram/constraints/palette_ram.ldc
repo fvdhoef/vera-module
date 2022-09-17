@@ -1,7 +1,7 @@
-set device "iCE40UP5K"
-set speed "High-Performance_1.2V"
 set architecture "iCE40UP"
+set device "iCE40UP5K"
 set package "SG48"
+set speed "High-Performance_1.2V"
 set WRAPPER_INST "lscc_ram_dp_inst"
 set FAMILY "iCE40UP"
 set MEM_ID "palette_ram"
@@ -17,9 +17,10 @@ set OUTPUT_CLK_EN 0
 set RESETMODE "sync"
 set BYTE_ENABLE 1
 set BYTE_WIDTH 2
+set BYTE_SIZE 8
 set ECC_ENABLE 0
 set INIT_MODE "mem_file"
-set INIT_FILE "misc/palette_ram_palette_ram_copy.mem"
+set INIT_FILE "D:/_Dev/Radiant/vera/fpga/source/generated/palette_ram/misc/palette_ram_palette_ram_copy.mem"
 set INIT_FILE_FORMAT "hex"
 set INIT_VALUE_00 "0x0BBB008F0AF6077703330F7706400D850EE7000A00C50C4C0AFE08000FFF0000"
 set INIT_VALUE_01 "0x0FFF0EEE0DDD0CCC0BBB0AAA0999088807770666055504440333022201110000"

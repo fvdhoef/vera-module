@@ -1,7 +1,7 @@
-set device "iCE40UP5K"
-set speed "High-Performance_1.2V"
 set architecture "iCE40UP"
+set device "iCE40UP5K"
 set package "SG48"
+set speed "High-Performance_1.2V"
 set WRAPPER_INST "lscc_ram_dp_inst"
 set FAMILY "iCE40UP"
 set MEM_ID "sprite_ram"
@@ -17,6 +17,7 @@ set OUTPUT_CLK_EN 0
 set RESETMODE "sync"
 set BYTE_ENABLE 1
 set BYTE_WIDTH 4
+set BYTE_SIZE 8
 set ECC_ENABLE 0
 set INIT_MODE "all_zero"
 set INIT_FILE "none"

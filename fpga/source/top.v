@@ -4,7 +4,7 @@ module top(
     input  wire       clk25,
 
     // External bus interface
-    input  wire       extbus_cs_n,   /* Chip select */
+    //input  wire       extbus_cs_n,   /* Chip select */
     input  wire       extbus_rd_n,   /* Read strobe */
     input  wire       extbus_wr_n,   /* Write strobe */
     input  wire [4:0] extbus_a,      /* Address */
@@ -17,6 +17,7 @@ module top(
     output reg  [3:0] vga_b       /* synthesis syn_useioff = 1 */,
     output reg        vga_hsync   /* synthesis syn_useioff = 1 */,
     output reg        vga_vsync   /* synthesis syn_useioff = 1 */,
+	output reg        vga_de      /* Modification by LJB for HDMI signal*/,
 
     // SPI interface
     output wire       spi_sck,
@@ -28,6 +29,13 @@ module top(
     output wire       audio_lrck,
     output wire       audio_bck,
     output wire       audio_data);
+
+    //////////////////////////////////////////////////////////////////////////
+    // LJB Mods -  
+    //////////////////////////////////////////////////////////////////////////
+	
+	//CS Control
+	//wire extbus_cs_n = (extbus_rd_n && extbus_wr_n) ? 1'b1 : 1'b0;
 
     //////////////////////////////////////////////////////////////////////////
     // Synchronize external asynchronous reset signal to clk25 domain
@@ -195,10 +203,15 @@ module top(
         5'h1E: rddata = spi_rxdata;
         5'h1F: rddata = {spi_busy, 4'b0, spi_autotx_r, spi_slow_r, spi_select_r};
     endcase
-
-    wire bus_read  = !extbus_cs_n &&  extbus_wr_n && !extbus_rd_n;
-    wire bus_write = !extbus_cs_n && !extbus_wr_n;
-    assign extbus_d = bus_read ? rddata : 8'bZ;
+	
+	//LJB MOD
+	wire bus_read  = !extbus_rd_n;
+    wire bus_write = !extbus_wr_n;
+    //wire bus_read  = !extbus_cs_n &&  extbus_wr_n && !extbus_rd_n;
+    //wire bus_write = !extbus_cs_n && !extbus_wr_n;
+    
+	
+	assign extbus_d = bus_read ? rddata : 8'bZ;
 
     wire [3:0] irq_enable = {irq_enable_audio_fifo_low_r, irq_enable_sprite_collision_r, irq_enable_line_r, irq_enable_vsync_r};
     wire [3:0] irq_status = {audio_fifo_low,              irq_status_sprite_collision_r, irq_status_line_r, irq_status_vsync_r};
@@ -213,9 +226,12 @@ module top(
         wraddr_r <= extbus_a;
         wrdata_r <= extbus_d;
     end
-    always @(negedge bus_read) begin
+	//LJB MOD
+    //always @(negedge bus_read) begin
+	always @(posedge bus_read) begin
         rdaddr_r <= extbus_a;
     end
+	
 
     // Synchronize read and write signals
     reg [2:0] bus_read_r;
@@ -225,8 +241,11 @@ module top(
         bus_write_r <= {bus_write_r[1:0], bus_write};
     end
 
-    wire do_read  = bus_read_r[2:1] == 2'b10;
+	//LJB MOD
+	wire do_read  = bus_read_r[2:1] == 2'b01;
     wire do_write = bus_write_r[2:1] == 2'b10;
+    //wire do_read  = bus_read_r[2:1] == 2'b10;
+    //wire do_write = bus_write_r[2:1] == 2'b10;
     wire [4:0] access_addr = do_write ? wraddr_r : rdaddr_r;
     wire [7:0] write_data  = wrdata_r;
 
@@ -346,6 +365,7 @@ module top(
 
         spi_txdata                       = write_data;
         spi_txstart                      = 0;
+		
 
         if (save_result_r) begin
             if (!save_result_port_r) begin
@@ -1097,7 +1117,8 @@ module top(
 
     wire [3:0] video_vga_r, video_vga_g, video_vga_b;
     wire       video_vga_hsync, video_vga_vsync;
-
+	//LJB Mod DE Signal
+	wire       video_vga_de; 
     video_vga video_vga(
         .rst(reset),
         .clk(clk),
@@ -1115,7 +1136,9 @@ module top(
         .vga_g(video_vga_g),
         .vga_b(video_vga_b),
         .vga_hsync(video_vga_hsync),
-        .vga_vsync(video_vga_vsync));
+        .vga_vsync(video_vga_vsync),
+		//LJB Mod - Adding DE signal for HDMI
+		.vga_de(video_vga_de));
 
     //////////////////////////////////////////////////////////////////////////
     // Video output selection
@@ -1132,6 +1155,8 @@ module top(
             vga_b     <= video_vga_b;
             vga_hsync <= video_vga_hsync;
             vga_vsync <= video_vga_vsync;
+			//LJBMOD DE For HDMI
+			vga_de <= video_vga_de;
         end
 
         2'b10: begin
@@ -1140,6 +1165,7 @@ module top(
             vga_b     <= video_composite_chroma2[3:0];
             vga_hsync <= 0;
             vga_vsync <= 0;
+			vga_de <= 0;
         end
 
         2'b11: begin
@@ -1148,6 +1174,7 @@ module top(
             vga_b     <= video_rgb_b;
             vga_hsync <= video_rgb_sync_n;
             vga_vsync <= 0;
+			vga_de <= 0;
         end
 
         default: begin
@@ -1156,6 +1183,7 @@ module top(
             vga_b     <= 0;
             vga_hsync <= 0;
             vga_vsync <= 0;
+			vga_de <= 0;
         end
     endcase
 

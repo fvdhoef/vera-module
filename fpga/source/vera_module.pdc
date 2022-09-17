@@ -2,7 +2,8 @@
 ldc_set_location -site {35} [get_ports clk25]
 
 # Bus
-ldc_set_location -site {28} [get_ports extbus_cs_n]
+#ldc_set_location -site {28} [get_ports extbus_cs_n]
+ldc_set_location -site {28} [get_ports vga_de]
 ldc_set_location -site {36} [get_ports extbus_rd_n]
 ldc_set_location -site {31} [get_ports extbus_wr_n]
 

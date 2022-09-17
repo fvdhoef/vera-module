@@ -8,4 +8,4 @@ create_clock -name {rdclk} -period 125 [get_pins rdaddr_r/clock]
 # Define clock domains to be independent
 set_clock_groups -group [get_clocks clk25] -group [get_clocks {rdclk wrclk}] -asynchronous
 
-set_output_delay -clock [get_clocks clk25] 10 [get_ports {vga_r[0] vga_r[1] vga_r[2] vga_r[3] vga_g[0] vga_g[1] vga_g[2] vga_g[3] vga_b[0] vga_b[1] vga_b[2] vga_b[3] vga_hsync vga_vsync}]
+set_output_delay -clock [get_clocks clk25] 10 [get_ports {vga_r[0] vga_r[1] vga_r[2] vga_r[3] vga_g[0] vga_g[1] vga_g[2] vga_g[3] vga_b[0] vga_b[1] vga_b[2] vga_b[3] vga_hsync vga_vsync vga_de}]
