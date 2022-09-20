@@ -210,9 +210,22 @@ module top(
     reg [4:0] rdaddr_r;
     reg [4:0] wraddr_r;
     reg [7:0] wrdata_r;
+    reg [4:0] wraddrp_r;
+    reg [7:0] wrdatap_r;
+    reg [4:0] wraddrn_r;
+    reg [7:0] wrdatan_r;
+
+    always @(posedge clk) begin
+        wraddrp_r <= extbus_a;
+        wrdatap_r <= extbus_d;
+    end
+    always @(negedge clk) begin
+        wraddrn_r <= extbus_a;
+        wrdatan_r <= extbus_d;
+    end
     always @(negedge bus_write) begin
-        wraddr_r <= extbus_a;
-        wrdata_r <= extbus_d;
+        wraddr_r <= clk ? wraddrn_r : wraddrp_r;
+        wrdata_r <= clk ? wrdatan_r : wrdatap_r;
     end
     always @(negedge bus_read) begin
         rdaddr_r <= extbus_a;
