@@ -96,7 +96,7 @@ This document describes the **V**ersatile **E**mbedded **R**etro **A**dapter or 
 	<tr>
 		<td>$08</td>
 		<td>SCANLINE_L (Read only)</td>
-		<td colspan="8" align="center">Read line (7:0)</td>
+		<td colspan="8" align="center">Scan line (7:0)</td>
 	</tr>
 	<tr>
 		<td>$09</td>
@@ -319,7 +319,7 @@ Interrupts will be generated for the interrupt sources set in the lower 4 bits o
 
 **IRQ_LINE** (write-only) specifies at which line the **LINE** interrupt will be generated. Note that bit 8 of this value is present in the **IEN** register. For interlaced modes the interrupt will be generated each field and the bit 0 of **IRQ_LINE** is ignored.
 
-**SCANLINE** (read-only) specified the current scanline being drawn. Bit 8 of this value is present in the **IEN** register. This value continues to count beyond the 480th visible line, but returns $1FF for lines 512-524 that are beyond its 9 bit resolution. **SCANLINE** is not affected by interlaced modes and will return either all even or all odd values during an even or odd field, respectively.
+**SCANLINE** (read-only) indicates the current scanline being sent to the screen. Bit 8 of this value is present in the **IEN** register. The value is 0 during the first visible line and "479" during the last. This value continues to count beyond the 480th visible line, but returns $1FF for lines 512-524 that are beyond its 9-bit resolution. **SCANLINE** is not affected by interlaced modes and will return either all even or all odd values during an even or odd field, respectively. Note that VERA renders lines ahead of scanout such that line 1 is being rendered while line 0 is being scanned out. Visible changes may be delayed one scanline because of this.
 
 The upper 4 (read-only) bits of the **ISR** register contain the [sprite collisions](#sprite-collisions) as determined by the sprite renderer.
 
