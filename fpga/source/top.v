@@ -118,6 +118,7 @@ module top(
     wire [7:0] vram_rddata;
 
     wire       audio_fifo_low;
+    wire       audio_fifo_empty;
     wire       sprcol_irq;
     wire       vblank_pulse;
     wire       line_irq;
@@ -188,7 +189,7 @@ module top(
         5'h19: rddata = l1_vscroll_r[7:0];
         5'h1A: rddata = {4'b0, l1_vscroll_r[11:8]};
 
-        5'h1B: rddata = {audio_fifo_full, 1'b0, audio_mode_16bit_r, audio_mode_stereo_r, audio_pcm_volume_r};
+        5'h1B: rddata = {audio_fifo_full, audio_fifo_empty, audio_mode_16bit_r, audio_mode_stereo_r, audio_pcm_volume_r};
         5'h1C: rddata = audio_pcm_sample_rate_r;
         5'h1D: rddata = 8'h00;
 
@@ -209,9 +210,22 @@ module top(
     reg [4:0] rdaddr_r;
     reg [4:0] wraddr_r;
     reg [7:0] wrdata_r;
+    reg [4:0] wraddrp_r;
+    reg [7:0] wrdatap_r;
+    reg [4:0] wraddrn_r;
+    reg [7:0] wrdatan_r;
+
+    always @(posedge clk) begin
+        wraddrp_r <= extbus_a;
+        wrdatap_r <= extbus_d;
+    end
+    always @(negedge clk) begin
+        wraddrn_r <= extbus_a;
+        wrdatan_r <= extbus_d;
+    end
     always @(negedge bus_write) begin
-        wraddr_r <= extbus_a;
-        wrdata_r <= extbus_d;
+        wraddr_r <= clk ? wraddrn_r : wraddrp_r;
+        wrdata_r <= clk ? wrdatan_r : wrdatap_r;
     end
     always @(negedge bus_read) begin
         rdaddr_r <= extbus_a;
@@ -1217,6 +1231,7 @@ module top(
         .fifo_write(audio_fifo_write_r),
         .fifo_full(audio_fifo_full),
         .fifo_almost_empty(audio_fifo_low),
+        .fifo_empty(audio_fifo_empty),
 
         // I2S audio output
         .i2s_lrck(audio_lrck),

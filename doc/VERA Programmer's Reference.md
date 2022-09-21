@@ -229,7 +229,7 @@ This document describes the **V**ersatile **E**mbedded **R**etro **A**dapter or 
 		<td>$1B</td>
 		<td>AUDIO_CTRL</td>
 		<td colspan="1" align="center">FIFO Full / FIFO Reset</td>
-		<td colspan="1" align="center">-</td>
+		<td colspan="1" align="center">FIFO Empty</td>
 		<td colspan="1" align="center">16-Bit</td>
 		<td colspan="1" align="center">Stereo</td>
 		<td colspan="4" align="center">PCM Volume</td>
@@ -723,6 +723,8 @@ For PCM playback, VERA contains a 4kB FIFO buffer. This buffer needs to be fille
 **16-bit** sets the data format to 16-bit. If this bit is 0, 8-bit data is expected.
 
 **FIFO Full** is a read-only flag that indicated if the FIFO is full. Any writes to the FIFO while this flag is 1 will be ignored. Writing a 1 to this register (**FIFO Reset**) will perform a FIFO reset, which will clear the contents of the FIFO buffer.
+
+**FIFO Empty** is a read-only flag that indicates the FIFO has completely drained and is no longer producing PCM audio.
 
 **PCM sample rate** controls the speed at which samples are read from the FIFO. A few example values:
 
