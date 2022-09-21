@@ -72,7 +72,7 @@ This document describes the **V**ersatile **E**mbedded **R**etro **A**dapter or 
 	<tr>
 		<td>$06</td>
 		<td>IEN</td>
-		<td colspan="1" align="center">IRQ line (8)</td>
+		<td colspan="1" align="center">IRQ/Scan line (8)</td>
 		<td colspan="3" align="center">-</td>
 		<td colspan="1" align="center">AFLOW</td>
 		<td colspan="1" align="center">SPRCOL</td>
@@ -90,8 +90,13 @@ This document describes the **V**ersatile **E**mbedded **R**etro **A**dapter or 
 	</tr>
 	<tr>
 		<td>$08</td>
-		<td>IRQLINE_L</td>
+		<td>IRQLINE_L (Write only)</td>
 		<td colspan="8" align="center">IRQ line (7:0)</td>
+	</tr>
+	<tr>
+		<td>$08</td>
+		<td>SCANLINE_L (Read only)</td>
+		<td colspan="8" align="center">Read line (7:0)</td>
 	</tr>
 	<tr>
 		<td>$09</td>
@@ -312,7 +317,9 @@ When **RESET** in **CTRL** is set to 1, the FPGA will reconfigure itself. All re
 Interrupts will be generated for the interrupt sources set in the lower 4 bits of **IEN**.
 **ISR** will indicate the interrupts that have occurred. Writing a 1 to one of the lower 3 bits in **ISR** will clear that interrupt status. **AFLOW** can only be cleared by filling the audio FIFO for at least 1/4.
 
-**IRQ_LINE** specifies at which line the **LINE** interrupt will be generated. Note that bit 8 of this value is present in the **IEN** register. For interlaced modes the interrupt will be generated each field and the bit 0 of **IRQ_LINE** is ignored.
+**IRQ_LINE** (write-only) specifies at which line the **LINE** interrupt will be generated. Note that bit 8 of this value is present in the **IEN** register. For interlaced modes the interrupt will be generated each field and the bit 0 of **IRQ_LINE** is ignored.
+
+**SCANLINE** (read-only) specified the current scanline being drawn. Bit 8 of this value is present in the **IEN** register. This value continues to count beyond the 480th visible line, but returns $1FF for lines 512-524 that are beyond its 9 bit resolution. **SCANLINE** is not affected by interlaced modes and will return either all even or all odd values during an even or odd field, respectively.
 
 The upper 4 (read-only) bits of the **ISR** register contain the [sprite collisions](#sprite-collisions) as determined by the sprite renderer.
 
