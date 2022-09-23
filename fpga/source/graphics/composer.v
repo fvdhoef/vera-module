@@ -21,6 +21,8 @@ module composer(
     output reg         current_field,
     output reg         line_irq,
 
+    output wire [8:0]  scanline,
+
     // Render interface
     output wire  [8:0] line_idx,
     output wire        line_render_start,
@@ -120,6 +122,9 @@ module composer(
 
     wire [9:0] x_counter = x_counter_r[10:1];
     wire [9:0] y_counter = y_counter_rr;
+
+    // Peg scanline at 511 for lines 512-524
+    assign scanline = y_counter[9] == 1 ? 9'b1_1111_1111 : y_counter_r[8:0];
 
     // Generate start signal of sprite line buffer clearing
     assign sprite_lb_erase_start = (x_counter_r == {10'd639, interlaced});

@@ -122,6 +122,7 @@ module top(
     wire       sprcol_irq;
     wire       vblank_pulse;
     wire       line_irq;
+    wire [8:0] scanline;
 
     reg        spi_select_r,                  spi_select_next;
     reg        spi_slow_r,                    spi_slow_next;
@@ -140,9 +141,9 @@ module top(
         5'h04: rddata = vram_data1_r;
         5'h05: rddata = {6'b0, dc_select_r, vram_addr_select_r};
 
-        5'h06: rddata = {irq_line_r[8], 3'b0, irq_enable_audio_fifo_low_r, irq_enable_sprite_collision_r, irq_enable_line_r, irq_enable_vsync_r};
+        5'h06: rddata = {scanline[8], 3'b0, irq_enable_audio_fifo_low_r, irq_enable_sprite_collision_r, irq_enable_line_r, irq_enable_vsync_r};
         5'h07: rddata = {sprite_collisions,   audio_fifo_low,              irq_status_sprite_collision_r, irq_status_line_r, irq_status_vsync_r};
-        5'h08: rddata = irq_line_r[7:0];
+        5'h08: rddata = scanline[7:0];
 
         5'h09: begin
             if (dc_select_r == 0) begin
@@ -1024,6 +1025,7 @@ module top(
 
         .current_field(current_field),
         .line_irq(line_irq),
+        .scanline(scanline),
 
         // Render interface
         .line_idx(line_idx),
