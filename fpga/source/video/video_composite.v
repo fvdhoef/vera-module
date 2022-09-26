@@ -118,7 +118,7 @@ module video_composite(
     assign current_field = current_field_r;
 
 
-    assign vblank_pulse  = h_last && (vcnt == 524 || vcnt == 1049);
+    assign vblank_pulse  = h_half_line_last && (vcnt == 524 || vcnt == 1049);
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
