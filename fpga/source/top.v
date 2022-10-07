@@ -141,7 +141,7 @@ module top(
         5'h04: rddata = vram_data1_r;
         5'h05: rddata = {6'b0, dc_select_r, vram_addr_select_r};
 
-        5'h06: rddata = {scanline[8], 3'b0, irq_enable_audio_fifo_low_r, irq_enable_sprite_collision_r, irq_enable_line_r, irq_enable_vsync_r};
+        5'h06: rddata = {irqline[8], scanline[8], 2'b0, irq_enable_audio_fifo_low_r, irq_enable_sprite_collision_r, irq_enable_line_r, irq_enable_vsync_r};
         5'h07: rddata = {sprite_collisions,   audio_fifo_low,              irq_status_sprite_collision_r, irq_status_line_r, irq_status_vsync_r};
         5'h08: rddata = scanline[7:0];
 
@@ -1096,7 +1096,7 @@ module top(
         // Composite interface
         .luma(video_composite_luma),
         .chroma(video_composite_chroma),
-    
+
         // RGB interface
         .rgb_r(video_rgb_r),
         .rgb_g(video_rgb_g),
@@ -1201,7 +1201,7 @@ module top(
         .busy(spi_busy),
 
         .slow(spi_slow_r),
-        
+
         // SPI interface
         .spi_sck(spi_sck),
         .spi_mosi(spi_mosi),
