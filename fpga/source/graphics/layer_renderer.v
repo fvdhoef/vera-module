@@ -124,9 +124,17 @@ module layer_renderer(
     wire  [1:0] hflipped_word_cnt = cur_tile_hflip ? ~word_cnt_r : word_cnt_r;
 
     // Calculate tile address 1bpp
-    wire [14:0] tile_addr_1bpp_x8    = {4'b0, cur_tile_idx, vflipped_line_idx[2]};
-    wire [14:0] tile_addr_1bpp_x16   = {3'b0, cur_tile_idx, vflipped_line_idx[3:2]};
-    wire [14:0] tile_addr_1bpp       = tile_height ? tile_addr_1bpp_x16 : tile_addr_1bpp_x8;
+    wire [14:0] tile_addr_1bpp_8x8    = {4'b0, cur_tile_idx, vflipped_line_idx[2]};
+    wire [14:0] tile_addr_1bpp_8x16   = {3'b0, cur_tile_idx, vflipped_line_idx[3:2]};
+    wire [14:0] tile_addr_1bpp_16x8   = {3'b0, cur_tile_idx, vflipped_line_idx[2:1]};
+    wire [14:0] tile_addr_1bpp_16x16  = {2'b0, cur_tile_idx, vflipped_line_idx[3:1]};
+    reg [14:0] tile_addr_1bpp;
+    always @* case ({tile_width, tile_height})
+        2'b00: tile_addr_1bpp = tile_addr_1bpp_8x8;
+        2'b01: tile_addr_1bpp = tile_addr_1bpp_8x16;
+        2'b10: tile_addr_1bpp = tile_addr_1bpp_16x8;
+        2'b11: tile_addr_1bpp = tile_addr_1bpp_16x16;
+    endcase
 
     // Calculate tile address 2bpp
     wire [14:0] tile_addr_2bpp_8x8   = {3'b0, cur_tile_idx, vflipped_line_idx[2:1]};
