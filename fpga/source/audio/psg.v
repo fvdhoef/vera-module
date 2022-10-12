@@ -12,8 +12,8 @@ module psg(
     input  wire        next_sample,
 
     // Audio output
-    output wire [15:0] left_audio,
-    output wire [15:0] right_audio);
+    output wire signed [22:0] left_audio,
+    output wire signed [22:0] right_audio);
 
     //////////////////////////////////////////////////////////////////////////
     // Audio attribute RAM
@@ -42,108 +42,108 @@ module psg(
     wire  [5:0] cur_pulsewidth = cur_channel_attr_r[29:24];
     wire  [1:0] cur_waveform   = cur_channel_attr_r[31:30];
 
-    // Logarithmic volume conversion (3dB per step)
-    reg [5:0] cur_volume_log;
+    // Logarithmic volume conversion (0.5dB per step)
+    reg [9:0] cur_volume_log;
     always @* case (cur_volume)
-        6'd0:  cur_volume_log = 6'd0;
-        6'd1:  cur_volume_log = 6'd1;
-        6'd2:  cur_volume_log = 6'd1;
-        6'd3:  cur_volume_log = 6'd1;
-        6'd4:  cur_volume_log = 6'd2;
-        6'd5:  cur_volume_log = 6'd2;
-        6'd6:  cur_volume_log = 6'd2;
-        6'd7:  cur_volume_log = 6'd2;
-        6'd8:  cur_volume_log = 6'd2;
-        6'd9:  cur_volume_log = 6'd2;
-        6'd10: cur_volume_log = 6'd2;
-        6'd11: cur_volume_log = 6'd3;
-        6'd12: cur_volume_log = 6'd3;
-        6'd13: cur_volume_log = 6'd3;
-        6'd14: cur_volume_log = 6'd3;
-        6'd15: cur_volume_log = 6'd3;
-        6'd16: cur_volume_log = 6'd4;
-        6'd17: cur_volume_log = 6'd4;
-        6'd18: cur_volume_log = 6'd4;
-        6'd19: cur_volume_log = 6'd4;
-        6'd20: cur_volume_log = 6'd5;
-        6'd21: cur_volume_log = 6'd5;
-        6'd22: cur_volume_log = 6'd5;
-        6'd23: cur_volume_log = 6'd6;
-        6'd24: cur_volume_log = 6'd6;
-        6'd25: cur_volume_log = 6'd7;
-        6'd26: cur_volume_log = 6'd7;
-        6'd27: cur_volume_log = 6'd7;
-        6'd28: cur_volume_log = 6'd8;
-        6'd29: cur_volume_log = 6'd8;
-        6'd30: cur_volume_log = 6'd9;
-        6'd31: cur_volume_log = 6'd9;
-        6'd32: cur_volume_log = 6'd10;
-        6'd33: cur_volume_log = 6'd11;
-        6'd34: cur_volume_log = 6'd11;
-        6'd35: cur_volume_log = 6'd12;
-        6'd36: cur_volume_log = 6'd13;
-        6'd37: cur_volume_log = 6'd14;
-        6'd38: cur_volume_log = 6'd14;
-        6'd39: cur_volume_log = 6'd15;
-        6'd40: cur_volume_log = 6'd16;
-        6'd41: cur_volume_log = 6'd17;
-        6'd42: cur_volume_log = 6'd18;
-        6'd43: cur_volume_log = 6'd19;
-        6'd44: cur_volume_log = 6'd21;
-        6'd45: cur_volume_log = 6'd22;
-        6'd46: cur_volume_log = 6'd23;
-        6'd47: cur_volume_log = 6'd25;
-        6'd48: cur_volume_log = 6'd26;
-        6'd49: cur_volume_log = 6'd28;
-        6'd50: cur_volume_log = 6'd29;
-        6'd51: cur_volume_log = 6'd31;
-        6'd52: cur_volume_log = 6'd33;
-        6'd53: cur_volume_log = 6'd35;
-        6'd54: cur_volume_log = 6'd37;
-        6'd55: cur_volume_log = 6'd39;
-        6'd56: cur_volume_log = 6'd42;
-        6'd57: cur_volume_log = 6'd44;
-        6'd58: cur_volume_log = 6'd47;
-        6'd59: cur_volume_log = 6'd50;
-        6'd60: cur_volume_log = 6'd52;
-        6'd61: cur_volume_log = 6'd56;
-        6'd62: cur_volume_log = 6'd59;
-        6'd63: cur_volume_log = 6'd63;
+        6'd0:  cur_volume_log = 10'd0;
+        6'd1:  cur_volume_log = 10'd14;
+        6'd2:  cur_volume_log = 10'd15;
+        6'd3:  cur_volume_log = 10'd16;
+        6'd4:  cur_volume_log = 10'd16;
+        6'd5:  cur_volume_log = 10'd17;
+        6'd6:  cur_volume_log = 10'd19;
+        6'd7:  cur_volume_log = 10'd20;
+        6'd8:  cur_volume_log = 10'd21;
+        6'd9:  cur_volume_log = 10'd22;
+        6'd10: cur_volume_log = 10'd23;
+        6'd11: cur_volume_log = 10'd25;
+        6'd12: cur_volume_log = 10'd26;
+        6'd13: cur_volume_log = 10'd28;
+        6'd14: cur_volume_log = 10'd30;
+        6'd15: cur_volume_log = 10'd32;
+        6'd16: cur_volume_log = 10'd33;
+        6'd17: cur_volume_log = 10'd35;
+        6'd18: cur_volume_log = 10'd38;
+        6'd19: cur_volume_log = 10'd40;
+        6'd20: cur_volume_log = 10'd42;
+        6'd21: cur_volume_log = 10'd45;
+        6'd22: cur_volume_log = 10'd47;
+        6'd23: cur_volume_log = 10'd50;
+        6'd24: cur_volume_log = 10'd53;
+        6'd25: cur_volume_log = 10'd57;
+        6'd26: cur_volume_log = 10'd60;
+        6'd27: cur_volume_log = 10'd64;
+        6'd28: cur_volume_log = 10'd67;
+        6'd29: cur_volume_log = 10'd71;
+        6'd30: cur_volume_log = 10'd76;
+        6'd31: cur_volume_log = 10'd80;
+        6'd32: cur_volume_log = 10'd85;
+        6'd33: cur_volume_log = 10'd90;
+        6'd34: cur_volume_log = 10'd95;
+        6'd35: cur_volume_log = 10'd101;
+        6'd36: cur_volume_log = 10'd107;
+        6'd37: cur_volume_log = 10'd114;
+        6'd38: cur_volume_log = 10'd120;
+        6'd39: cur_volume_log = 10'd128;
+        6'd40: cur_volume_log = 10'd135;
+        6'd41: cur_volume_log = 10'd143;
+        6'd42: cur_volume_log = 10'd152;
+        6'd43: cur_volume_log = 10'd161;
+        6'd44: cur_volume_log = 10'd170;
+        6'd45: cur_volume_log = 10'd181;
+        6'd46: cur_volume_log = 10'd191;
+        6'd47: cur_volume_log = 10'd203;
+        6'd48: cur_volume_log = 10'd215;
+        6'd49: cur_volume_log = 10'd228;
+        6'd50: cur_volume_log = 10'd241;
+        6'd51: cur_volume_log = 10'd256;
+        6'd52: cur_volume_log = 10'd271;
+        6'd53: cur_volume_log = 10'd287;
+        6'd54: cur_volume_log = 10'd304;
+        6'd55: cur_volume_log = 10'd322;
+        6'd56: cur_volume_log = 10'd341;
+        6'd57: cur_volume_log = 10'd362;
+        6'd58: cur_volume_log = 10'd383;
+        6'd59: cur_volume_log = 10'd406;
+        6'd60: cur_volume_log = 10'd430;
+        6'd61: cur_volume_log = 10'd456;
+        6'd62: cur_volume_log = 10'd483;
+        6'd63: cur_volume_log = 10'd512;
     endcase
 
     //////////////////////////////////////////////////////////////////////////
     // Noise generator
     //////////////////////////////////////////////////////////////////////////
     reg [15:0] lfsr_r;
-    reg [5:0] noise_value_r;
+    reg [9:0] noise_value_r;
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             lfsr_r        <= 16'd1;
-            noise_value_r <= 6'd0;
+            noise_value_r <= 10'd0;
         end else begin
             lfsr_r        <= {lfsr_r[14:0], lfsr_r[1] ^ lfsr_r[2] ^ lfsr_r[4] ^ lfsr_r[15]};
-            noise_value_r <= {noise_value_r[4:0], lfsr_r[0]};
+            noise_value_r <= {noise_value_r[8:0], lfsr_r[0]};
         end
     end
 
     //////////////////////////////////////////////////////////////////////////
     // Working data RAM
     //////////////////////////////////////////////////////////////////////////
-    wire [22:0] cur_working_data;
+    wire [26:0] cur_working_data;
 
-    wire  [5:0] cur_noise = cur_working_data[22:17];
+    wire  [9:0] cur_noise = cur_working_data[26:17];
     wire [16:0] cur_phase = cur_working_data[16:0];
 
-    wire [16:0] new_phase = cur_phase + cur_freq;
+    wire [16:0] new_phase = |cur_volume ? cur_phase + cur_freq : 17'd0;
 
     wire        do_noise_sample = cur_phase[16] && !new_phase[16];
-    wire  [5:0] new_noise = do_noise_sample ? noise_value_r : cur_noise;
+    wire  [9:0] new_noise = do_noise_sample ? noise_value_r : cur_noise;
 
     reg   [3:0] working_data_wridx_r;
-    wire [22:0] working_data_wrdata = {new_noise, new_phase};
+    wire [26:0] working_data_wrdata = {new_noise, new_phase};
     reg         working_data_wren_r;
 
-    dpram #(.ADDR_WIDTH(4), .DATA_WIDTH(23)) working_data_ram(
+    dpram #(.ADDR_WIDTH(4), .DATA_WIDTH(27)) working_data_ram(
         .rd_clk(clk),
         .rd_addr(cur_channel_r),
         .rd_data(cur_working_data),
@@ -156,12 +156,12 @@ module psg(
     //////////////////////////////////////////////////////////////////////////
     // Signal generation
     //////////////////////////////////////////////////////////////////////////
-    wire [5:0] signal_pw       = (cur_phase[16:10] > {1'b0, cur_pulsewidth}) ? 6'd0 : 6'd63;
-    wire [5:0] signal_saw      = cur_phase[16:11];
-    wire [5:0] signal_triangle = cur_phase[16] ? ~cur_phase[15:10] : cur_phase[15:10];
-    wire [5:0] signal_noise    = cur_noise;
+    wire [9:0] signal_pw       = (cur_phase[16:10] > {1'b0, cur_pulsewidth}) ? 10'h0 : 10'h3FF;
+    wire [9:0] signal_saw      = cur_phase[16:7];
+    wire [9:0] signal_triangle = cur_phase[16] ? ~cur_phase[15:6] : cur_phase[15:6];
+    wire [9:0] signal_noise    = cur_noise;
 
-    reg [5:0] signal;
+    reg [9:0] signal;
     always @* case (cur_waveform)
         2'b00: signal = signal_pw;
         2'b01: signal = signal_saw;
@@ -169,15 +169,15 @@ module psg(
         2'b11: signal = signal_noise;
     endcase
 
-    wire signed  [5:0] signed_signal = signal ^ 6'h20;
-    wire signed  [6:0] signed_volume = {1'b0, cur_volume_log};
-    wire signed [11:0] scaled_signal = signed_signal * signed_volume;
+    wire signed  [9:0] signed_signal = signal ^ 10'h200;
+    wire signed [10:0] signed_volume = {1'b0, cur_volume_log};
+    wire signed [18:0] scaled_signal = signed_signal * signed_volume;
 
     //////////////////////////////////////////////////////////////////////////
     // Audio generator state machine
     //////////////////////////////////////////////////////////////////////////
-    reg signed [15:0] left_sample_r, right_sample_r;
-    reg signed [15:0] left_accum_r,  right_accum_r;
+    reg signed [22:0] left_sample_r, right_sample_r;
+    reg signed [22:0] left_accum_r,  right_accum_r;
 
     parameter
         IDLE     = 3'b00,

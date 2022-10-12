@@ -29,11 +29,11 @@ module audio(
     output wire        i2s_data);
 
     wire        next_sample;
-    wire [15:0] psg_left;
-    wire [15:0] psg_right;
+    wire signed [22:0] psg_left;
+    wire signed [22:0] psg_right;
 
-    wire [15:0] pcm_left;
-    wire [15:0] pcm_right;
+    wire signed [22:0] pcm_left;
+    wire signed [22:0] pcm_right;
 
     //////////////////////////////////////////////////////////////////////////
     // Programmable Sound Generator
@@ -83,16 +83,9 @@ module audio(
     //////////////////////////////////////////////////////////////////////////
     // I2S DAC interface
     //////////////////////////////////////////////////////////////////////////
-    wire [16:0] psg_l = {psg_left[15], psg_left};
-    wire [16:0] psg_r = {psg_right[15], psg_right};
-    wire [16:0] pcm_l = {pcm_left[15], pcm_left};
-    wire [16:0] pcm_r = {pcm_right[15], pcm_right};
 
-    wire [16:0] mix_l = psg_l + pcm_l;
-    wire [16:0] mix_r = psg_r + pcm_r;
-
-    wire [23:0] left_data = {mix_l, 7'b0};
-    wire [23:0] right_data = {mix_r, 7'b0};
+    wire [23:0] left_data = psg_left + pcm_left;
+    wire [23:0] right_data = psg_right + pcm_right;
 
     dacif dacif(
         .rst(rst),
