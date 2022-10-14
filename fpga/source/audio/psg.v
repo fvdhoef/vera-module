@@ -134,7 +134,7 @@ module psg(
     wire  [9:0] cur_noise = cur_working_data[26:17];
     wire [16:0] cur_phase = cur_working_data[16:0];
 
-    wire [16:0] new_phase = |cur_volume ? cur_phase + cur_freq : 17'd0;
+    wire [16:0] new_phase = (cur_left_en | cur_right_en) ? (cur_phase + cur_freq) : 17'd0;
 
     wire        do_noise_sample = cur_phase[16] && !new_phase[16];
     wire  [9:0] new_noise = do_noise_sample ? noise_value_r : cur_noise;
