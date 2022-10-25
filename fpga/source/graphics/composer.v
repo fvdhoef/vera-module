@@ -101,7 +101,7 @@ module composer(
         end else begin
             line_irq <= display_next_line && (
                 (!interlaced && y_counter_r == irqline) ||
-                ( interlaced && y_counter_r[8:1] == irqline[8:1]));
+                ( interlaced && y_counter_r[9:1] == {1'b0, irqline[8:1]}));
         end
     end
 
@@ -179,7 +179,7 @@ module composer(
                     scaled_x_counter_r <= scaled_x_counter_r + frac_x_incr_int;
                 end
             end
-            
+
             if (display_next_line) begin
                 scaled_x_counter_r <= 0;
             end
