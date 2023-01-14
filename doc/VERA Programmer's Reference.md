@@ -72,8 +72,9 @@ This document describes the **V**ersatile **E**mbedded **R**etro **A**dapter or 
 	<tr>
 		<td>$06</td>
 		<td>IEN</td>
-		<td colspan="1" align="center">IRQ/Scan line (8)</td>
-		<td colspan="3" align="center">-</td>
+		<td colspan="1" align="center">IRQ Line (8)</td>
+		<td colspan="1" align="center">Scan Line (8)</td>
+		<td colspan="2" align="center">-</td>
 		<td colspan="1" align="center">AFLOW</td>
 		<td colspan="1" align="center">SPRCOL</td>
 		<td colspan="1" align="center">LINE</td>
