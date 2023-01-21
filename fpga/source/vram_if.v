@@ -133,19 +133,13 @@ module vram_if(
     always @(posedge clk) if0_addr_r <= if0_addr[1:0];
 
 	// Cache for blitting
-    reg [31:0] if0_rddata32;
     reg [31:0] if0_rddata32_r;
 
     // Memory bus read data selection
     reg [7:0] if0_rddata8;
     reg [7:0] if0_rddata8_r;
     always @* case (if0_addr_r)
-        2'b00: begin
-			if0_rddata8 = ram_rddata[7:0];
-			if ((if0_wrpattern[1:0] == 2'b11) && (if0_addr[1:0] == 2'b00)) begin
-				if0_rddata32 = ram_rddata;         // saving to-be-blit data into register
-			end
-		end
+        2'b00: if0_rddata8 = ram_rddata[7:0];
         2'b01: if0_rddata8 = ram_rddata[15:8];
         2'b10: if0_rddata8 = ram_rddata[23:16];
         2'b11: if0_rddata8 = ram_rddata[31:24];
@@ -154,7 +148,9 @@ module vram_if(
     always @(posedge clk) begin
         if (if0_ack) begin
             if0_rddata8_r <= if0_rddata8;
-			if0_rddata32_r <= if0_rddata32;         // keeping to-be-blit data into register
+            if ((if0_wrpattern[1:0] == 2'b11) && (if0_addr[1:0] == 2'b00)) begin
+                if0_rddata32_r <= ram_rddata;
+            end
         end
     end
 
