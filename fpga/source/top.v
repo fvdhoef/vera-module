@@ -52,6 +52,8 @@ module top(
     reg  [3:0] vram_addr_incr_1_r,            vram_addr_incr_1_next;
     reg        vram_addr_decr_0_r,            vram_addr_decr_0_next;
     reg        vram_addr_decr_1_r,            vram_addr_decr_1_next;
+    reg  [1:0] vram_wrpattern_0_r,            vram_wrpattern_0_next;
+    reg  [1:0] vram_wrpattern_1_r,            vram_wrpattern_1_next;
     reg        vram_addr_select_r,            vram_addr_select_next;
     reg  [7:0] vram_data0_r,                  vram_data0_next;
     reg  [7:0] vram_data1_r,                  vram_data1_next;
@@ -136,7 +138,7 @@ module top(
     always @* case (extbus_a)
         5'h00: rddata = vram_addr_select_r ? vram_addr_1_r[7:0] : vram_addr_0_r[7:0];
         5'h01: rddata = vram_addr_select_r ? vram_addr_1_r[15:8] : vram_addr_0_r[15:8];
-        5'h02: rddata = vram_addr_select_r ? {vram_addr_incr_1_r, vram_addr_decr_1_r, 2'b0, vram_addr_1_r[16]} : {vram_addr_incr_0_r, vram_addr_decr_0_r, 2'b0, vram_addr_0_r[16]};
+        5'h02: rddata = vram_addr_select_r ? {vram_addr_incr_1_r, vram_addr_decr_1_r, vram_wrpattern_1_r[1:0], vram_addr_1_r[16]} : {vram_addr_incr_0_r, vram_addr_decr_0_r, vram_wrpattern_0_r[1:0], vram_addr_0_r[16]};
         5'h03: rddata = vram_data0_r;
         5'h04: rddata = vram_data1_r;
         5'h05: rddata = {6'b0, dc_select_r, vram_addr_select_r};
@@ -268,6 +270,7 @@ module top(
     endcase
 
     reg [16:0] ib_addr_r,      ib_addr_next;
+    reg  [1:0] ib_wrpattern_r, ib_wrpattern_next;
     reg  [7:0] ib_wrdata_r,    ib_wrdata_next;
     reg        ib_write_r,     ib_write_next;
     reg        ib_do_access_r, ib_do_access_next;
@@ -291,6 +294,8 @@ module top(
         vram_addr_incr_1_next            = vram_addr_incr_1_r;
         vram_addr_decr_0_next            = vram_addr_decr_0_r;
         vram_addr_decr_1_next            = vram_addr_decr_1_r;
+		vram_wrpattern_0_next            = vram_wrpattern_0_r;
+		vram_wrpattern_1_next            = vram_wrpattern_1_r;
         vram_addr_select_next            = vram_addr_select_r;
         vram_data0_next                  = vram_data0_r;
         vram_data1_next                  = vram_data1_r;
@@ -352,6 +357,7 @@ module top(
         spi_autotx_next                  = spi_autotx_r;
 
         ib_addr_next                     = ib_addr_r;
+        ib_wrpattern_next                = ib_wrpattern_r;
         ib_wrdata_next                   = ib_wrdata_r;
         ib_write_next                    = ib_write_r;
         ib_do_access_next                = 0;
@@ -396,10 +402,12 @@ module top(
                     if (vram_addr_select_r) begin
                         vram_addr_incr_1_next = write_data[7:4];
                         vram_addr_decr_1_next = write_data[3];
+                        vram_wrpattern_1_next = write_data[2:1];
                         vram_addr_1_next[16]  = write_data[0];
                     end else begin
                         vram_addr_incr_0_next = write_data[7:4];
                         vram_addr_decr_0_next = write_data[3];
+                        vram_wrpattern_0_next = write_data[2:1];
                         vram_addr_0_next[16]  = write_data[0];
                     end
 
@@ -557,6 +565,7 @@ module top(
 
             if (do_write) begin
                 ib_addr_next = access_addr == 5'h03 ? vram_addr_0_r : vram_addr_1_r;
+                ib_wrpattern_next = access_addr == 5'h03 ? vram_wrpattern_0_r : vram_wrpattern_1_r;
                 ib_do_access_next = 1;
             end
 
@@ -579,6 +588,8 @@ module top(
             vram_addr_incr_1_r            <= 0;
             vram_addr_decr_0_r            <= 0;
             vram_addr_decr_1_r            <= 0;
+            vram_wrpattern_0_r            <= 0;
+            vram_wrpattern_1_r            <= 0;
             vram_addr_select_r            <= 0;
             vram_data0_r                  <= 0;
             vram_data1_r                  <= 0;
@@ -638,6 +649,7 @@ module top(
             spi_autotx_r                  <= 0;
 
             ib_addr_r                     <= 0;
+            ib_wrpattern_r                <= 0;
             ib_wrdata_r                   <= 0;
             ib_do_access_r                <= 0;
             ib_write_r                    <= 0;
@@ -655,6 +667,8 @@ module top(
             vram_addr_incr_1_r            <= vram_addr_incr_1_next;
             vram_addr_decr_0_r            <= vram_addr_decr_0_next;
             vram_addr_decr_1_r            <= vram_addr_decr_1_next;
+            vram_wrpattern_0_r            <= vram_wrpattern_0_next;
+            vram_wrpattern_1_r            <= vram_wrpattern_1_next;
             vram_addr_select_r            <= vram_addr_select_next;
             vram_data0_r                  <= vram_data0_next;
             vram_data1_r                  <= vram_data1_next;
@@ -714,6 +728,7 @@ module top(
             spi_autotx_r                  <= spi_autotx_next;
 
             ib_addr_r                     <= ib_addr_next;
+            ib_wrpattern_r                <= ib_wrpattern_next;
             ib_wrdata_r                   <= ib_wrdata_next;
             ib_do_access_r                <= ib_do_access_next;
             ib_write_r                    <= ib_write_next;
@@ -749,6 +764,7 @@ module top(
 
         // Interface 0 - 8-bit (highest priority)
         .if0_addr(ib_addr_r),
+		.if0_wrpattern(ib_wrpattern_r),
         .if0_wrdata(ib_wrdata_r),
         .if0_rddata(vram_rddata),
         .if0_strobe(ib_do_access_r),
