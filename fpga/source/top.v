@@ -57,6 +57,8 @@ module top(
     reg        vram_addr_select_r,            vram_addr_select_next;
     reg  [7:0] vram_data0_r,                  vram_data0_next;
     reg  [7:0] vram_data1_r,                  vram_data1_next;
+    reg [31:0] vram_data0_32_r,               vram_data0_32_next;  // Not bus accesible
+    reg [31:0] vram_data1_32_r,               vram_data1_32_next;  // Not bus accesible
     reg        dc_select_r,                   dc_select_next;
     reg        fpga_reconfigure_r,            fpga_reconfigure_next;
     reg        irq_enable_vsync_r,            irq_enable_vsync_next;
@@ -118,6 +120,7 @@ module top(
     wire [3:0] sprite_collisions;
     wire       current_field;
     wire [7:0] vram_rddata;
+    wire [31:0] vram_rddata32;
 
     wire       audio_fifo_low;
     wire       audio_fifo_empty;
@@ -269,8 +272,11 @@ module top(
         4'hF: increment = 'd640;
     endcase
 
+	reg [16:0] ib_addr_tmp;
+
     reg [16:0] ib_addr_r,      ib_addr_next;
     reg  [1:0] ib_wrpattern_r, ib_wrpattern_next;
+    reg [31:0] ib_cache32_r, ib_cache32_next;
     reg  [7:0] ib_wrdata_r,    ib_wrdata_next;
     reg        ib_write_r,     ib_write_next;
     reg        ib_do_access_r, ib_do_access_next;
@@ -299,6 +305,8 @@ module top(
         vram_addr_select_next            = vram_addr_select_r;
         vram_data0_next                  = vram_data0_r;
         vram_data1_next                  = vram_data1_r;
+        vram_data0_32_next               = vram_data0_32_r;
+        vram_data1_32_next               = vram_data1_32_r;
         dc_select_next                   = dc_select_r;
         fpga_reconfigure_next            = fpga_reconfigure_r;
         irq_enable_audio_fifo_low_next   = irq_enable_audio_fifo_low_r;
@@ -358,6 +366,8 @@ module top(
 
         ib_addr_next                     = ib_addr_r;
         ib_wrpattern_next                = ib_wrpattern_r;
+        ib_cache32_next                  = ib_cache32_r;
+
         ib_wrdata_next                   = ib_wrdata_r;
         ib_write_next                    = ib_write_r;
         ib_do_access_next                = 0;
@@ -371,8 +381,10 @@ module top(
         if (save_result_r) begin
             if (!save_result_port_r) begin
                 vram_data0_next = vram_rddata;
+                vram_data0_32_next = vram_rddata32;
             end else begin
                 vram_data1_next = vram_rddata;
+                vram_data1_32_next = vram_rddata32;
             end
         end
 
@@ -565,10 +577,15 @@ module top(
 
             if (do_write) begin
                 ib_addr_next = access_addr == 5'h03 ? vram_addr_0_r : vram_addr_1_r;
-                ib_wrpattern_next = access_addr == 5'h03 ? vram_wrpattern_0_r : vram_wrpattern_1_r;
                 ib_do_access_next = 1;
             end
 
+			ib_wrpattern_next = access_addr == 5'h03 ? vram_wrpattern_0_r : vram_wrpattern_1_r;
+			if (do_read) begin
+               if ((ib_wrpattern_next[1:0] == 2'b11) && (ib_addr_next[1:0] == 2'b00)) begin
+					ib_cache32_next = access_addr == 5'h03 ? vram_data0_32_r : vram_data1_32_r;
+               end 
+			end
             if (access_addr == 5'h03) begin
                 fetch_ahead_port_next = 0;
                 vram_addr_0_next = vram_addr_new;
@@ -593,6 +610,8 @@ module top(
             vram_addr_select_r            <= 0;
             vram_data0_r                  <= 0;
             vram_data1_r                  <= 0;
+            vram_data0_32_r               <= 0;
+            vram_data1_32_r               <= 0;
             dc_select_r                   <= 0;
             fpga_reconfigure_r            <= 0;
             irq_enable_audio_fifo_low_r   <= 0;
@@ -650,6 +669,7 @@ module top(
 
             ib_addr_r                     <= 0;
             ib_wrpattern_r                <= 0;
+            ib_cache32_r                  <= 0;
             ib_wrdata_r                   <= 0;
             ib_do_access_r                <= 0;
             ib_write_r                    <= 0;
@@ -672,6 +692,8 @@ module top(
             vram_addr_select_r            <= vram_addr_select_next;
             vram_data0_r                  <= vram_data0_next;
             vram_data1_r                  <= vram_data1_next;
+            vram_data0_32_r               <= vram_data0_32_next;
+            vram_data1_32_r               <= vram_data1_32_next;
             dc_select_r                   <= dc_select_next;
             fpga_reconfigure_r            <= fpga_reconfigure_next;
             irq_enable_audio_fifo_low_r   <= irq_enable_audio_fifo_low_next;
@@ -729,6 +751,7 @@ module top(
 
             ib_addr_r                     <= ib_addr_next;
             ib_wrpattern_r                <= ib_wrpattern_next;
+            ib_cache32_r                  <= ib_cache32_next;
             ib_wrdata_r                   <= ib_wrdata_next;
             ib_do_access_r                <= ib_do_access_next;
             ib_write_r                    <= ib_write_next;
@@ -765,8 +788,10 @@ module top(
         // Interface 0 - 8-bit (highest priority)
         .if0_addr(ib_addr_r),
 		.if0_wrpattern(ib_wrpattern_r),
+		.if0_cache32(ib_cache32_r),
         .if0_wrdata(ib_wrdata_r),
         .if0_rddata(vram_rddata),
+        .if0_rddata32(vram_rddata32),
         .if0_strobe(ib_do_access_r),
         .if0_write(ib_write_r),
 

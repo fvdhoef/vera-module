@@ -6,8 +6,10 @@ module vram_if(
     // Interface 0 - 8-bit (highest priority)
     input  wire [16:0] if0_addr,
 	input  wire  [1:0] if0_wrpattern,
+	input  wire [31:0] if0_cache32,
     input  wire  [7:0] if0_wrdata,
     output wire  [7:0] if0_rddata,
+    output wire [31:0] if0_rddata32,
     input  wire        if0_strobe,
     input  wire        if0_write,
 
@@ -54,7 +56,7 @@ module vram_if(
     reg if2_ack_next;
     reg if3_ack_next;
 
-	assign ram_wrdata = ((if0_wrpattern[1:0] == 2'b11) && (if0_addr[1:0] == 2'b00)) ? if0_rddata32_r : {4{if0_wrdata}};
+	assign ram_wrdata = ((if0_wrpattern[1:0] == 2'b11) && (if0_addr[1:0] == 2'b00)) ? if0_cache32 : {4{if0_wrdata}};
     assign ram_write  = if0_strobe && if0_write;
 
 	/*
@@ -132,7 +134,6 @@ module vram_if(
     reg [1:0] if0_addr_r;
     always @(posedge clk) if0_addr_r <= if0_addr[1:0];
 
-	// Cache for blitting
     reg [31:0] if0_rddata32_r;
 
     // Memory bus read data selection
@@ -148,13 +149,12 @@ module vram_if(
     always @(posedge clk) begin
         if (if0_ack) begin
             if0_rddata8_r <= if0_rddata8;
-            if ((if0_wrpattern[1:0] == 2'b11) && (if0_addr[1:0] == 2'b00)) begin
-                if0_rddata32_r <= ram_rddata;
-            end
+			if0_rddata32_r <= ram_rddata;
         end
     end
 
     assign if0_rddata = if0_ack ? if0_rddata8 : if0_rddata8_r;
+    assign if0_rddata32 = if0_ack ? ram_rddata : if0_rddata32_r;
     assign if1_rddata = ram_rddata;
     assign if2_rddata = ram_rddata;
     assign if3_rddata = ram_rddata;
