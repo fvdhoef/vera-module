@@ -325,7 +325,7 @@ module sprite_renderer(
     // Determine collision for the current pixel
     wire [3:0] collision =
         linebuf_idx_r < 'd640 &&
-        (!pixel_is_transparent && sprite_collision_mask_r != 4'b0) ? (linebuf_rddata[15:12] & ~sprite_collision_mask_r) : 4'b0;
+        (!pixel_is_transparent && sprite_collision_mask_r != 4'b0) ? (linebuf_rddata[15:12] & sprite_collision_mask_r) : 4'b0;
 
     // Render state machine
     always @* begin
