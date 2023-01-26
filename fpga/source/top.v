@@ -272,8 +272,6 @@ module top(
         4'hF: increment = 'd640;
     endcase
 
-    reg [16:0] ib_addr_tmp;
-
     reg [16:0] ib_addr_r,      ib_addr_next;
     reg  [1:0] ib_wrpattern_r, ib_wrpattern_next;
     reg [31:0] ib_cache32_r,   ib_cache32_next;
