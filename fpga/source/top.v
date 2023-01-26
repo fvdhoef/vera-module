@@ -147,7 +147,7 @@ module top(
         5'h05: rddata = {6'b0, dc_select_r, vram_addr_select_r};
 
         5'h06: rddata = {irq_line_r[8], scanline[8], 2'b0, irq_enable_audio_fifo_low_r, irq_enable_sprite_collision_r, irq_enable_line_r, irq_enable_vsync_r};
-        5'h07: rddata = {sprite_collisions,   audio_fifo_low,              irq_status_sprite_collision_r, irq_status_line_r, irq_status_vsync_r};
+        5'h07: rddata = {sprite_collisions, audio_fifo_low, irq_status_sprite_collision_r, irq_status_line_r, irq_status_vsync_r};
         5'h08: rddata = scanline[7:0];
 
         5'h09: begin
@@ -272,11 +272,11 @@ module top(
         4'hF: increment = 'd640;
     endcase
 
-	reg [16:0] ib_addr_tmp;
+    reg [16:0] ib_addr_tmp;
 
     reg [16:0] ib_addr_r,      ib_addr_next;
     reg  [1:0] ib_wrpattern_r, ib_wrpattern_next;
-    reg [31:0] ib_cache32_r, ib_cache32_next;
+    reg [31:0] ib_cache32_r,   ib_cache32_next;
     reg  [7:0] ib_wrdata_r,    ib_wrdata_next;
     reg        ib_write_r,     ib_write_next;
     reg        ib_do_access_r, ib_do_access_next;
@@ -300,8 +300,8 @@ module top(
         vram_addr_incr_1_next            = vram_addr_incr_1_r;
         vram_addr_decr_0_next            = vram_addr_decr_0_r;
         vram_addr_decr_1_next            = vram_addr_decr_1_r;
-		vram_wrpattern_0_next            = vram_wrpattern_0_r;
-		vram_wrpattern_1_next            = vram_wrpattern_1_r;
+        vram_wrpattern_0_next            = vram_wrpattern_0_r;
+        vram_wrpattern_1_next            = vram_wrpattern_1_r;
         vram_addr_select_next            = vram_addr_select_r;
         vram_data0_next                  = vram_data0_r;
         vram_data1_next                  = vram_data1_r;
@@ -580,12 +580,23 @@ module top(
                 ib_do_access_next = 1;
             end
 
-			ib_wrpattern_next = access_addr == 5'h03 ? vram_wrpattern_0_r : vram_wrpattern_1_r;
-			if (do_read) begin
-               if ((ib_wrpattern_next[1:0] == 2'b11) && (ib_addr_next[1:0] == 2'b00)) begin
-					ib_cache32_next = access_addr == 5'h03 ? vram_data0_32_r : vram_data1_32_r;
-               end 
-			end
+            // Write byte pattern and blit-cache setup
+            if (access_addr == 5'h03) begin
+                ib_wrpattern_next = vram_wrpattern_0_r;
+                if (do_read) begin
+                   if ((vram_wrpattern_0_r[1:0] == 2'b11) && (vram_addr_0_r[1:0] == 2'b00)) begin
+                        ib_cache32_next = vram_data0_32_r;
+                   end
+                end
+            end else begin
+                ib_wrpattern_next = vram_wrpattern_1_r;
+                if (do_read) begin
+                   if ((vram_wrpattern_1_r[1:0] == 2'b11) && (vram_addr_1_r[1:0] == 2'b00)) begin
+                        ib_cache32_next = vram_data1_32_r;
+                   end
+                end
+            end
+
             if (access_addr == 5'h03) begin
                 fetch_ahead_port_next = 0;
                 vram_addr_0_next = vram_addr_new;
@@ -787,8 +798,8 @@ module top(
 
         // Interface 0 - 8-bit (highest priority)
         .if0_addr(ib_addr_r),
-		.if0_wrpattern(ib_wrpattern_r),
-		.if0_cache32(ib_cache32_r),
+        .if0_wrpattern(ib_wrpattern_r),
+        .if0_cache32(ib_cache32_r),
         .if0_wrdata(ib_wrdata_r),
         .if0_rddata(vram_rddata),
         .if0_rddata32(vram_rddata32),

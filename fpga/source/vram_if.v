@@ -5,8 +5,8 @@ module vram_if(
 
     // Interface 0 - 8-bit (highest priority)
     input  wire [16:0] if0_addr,
-	input  wire  [1:0] if0_wrpattern,
-	input  wire [31:0] if0_cache32,
+    input  wire  [1:0] if0_wrpattern,
+    input  wire [31:0] if0_cache32,
     input  wire  [7:0] if0_wrdata,
     output wire  [7:0] if0_rddata,
     output wire [31:0] if0_rddata32,
@@ -56,46 +56,46 @@ module vram_if(
     reg if2_ack_next;
     reg if3_ack_next;
 
-	assign ram_wrdata = ((if0_wrpattern[1:0] == 2'b11) && (if0_addr[1:0] == 2'b00)) ? if0_cache32 : {4{if0_wrdata}};
+    assign ram_wrdata = ((if0_wrpattern[1:0] == 2'b11) && (if0_addr[1:0] == 2'b00)) ? if0_cache32 : {4{if0_wrdata}};
     assign ram_write  = if0_strobe && if0_write;
 
-	/*
-		Colums: address % 4
-		Rows: 2-bit value representing a pattern (but dependent on addrss, so we can create all possible patterns)
-	
-		_   0    1    2    3
-		00 0001 0010 0100 1000
-		01 0011 0110 1100 1001
-		10 0101 1010 0111 1110
-		11 1111 1111 1101 1011
+    /*
+        Colums: address % 4
+        Rows: 2-bit value representing a pattern (but dependent on addrss, so we can create all possible patterns)
+    
+        _   0    1    2    3
+        00 0001 0010 0100 1000
+        01 0011 0110 1100 1001
+        10 0101 1010 0111 1110
+        11 1111 1111 1101 1011
 
-	*/
+    */
 
     always @* case (if0_wrpattern[1:0])
-		2'b00: case (if0_addr[1:0])
-			2'b00: ram_wrbytesel = 4'b0001;
-			2'b01: ram_wrbytesel = 4'b0010;
-			2'b10: ram_wrbytesel = 4'b0100;
-			2'b11: ram_wrbytesel = 4'b1000;
-		endcase
-		2'b01: case (if0_addr[1:0])
-			2'b00: ram_wrbytesel = 4'b0011;
-			2'b01: ram_wrbytesel = 4'b0110;
-			2'b10: ram_wrbytesel = 4'b1100;
-			2'b11: ram_wrbytesel = 4'b1001;
-		endcase
-		2'b10: case (if0_addr[1:0])
-			2'b00: ram_wrbytesel = 4'b0101;
-			2'b01: ram_wrbytesel = 4'b1010;
-			2'b10: ram_wrbytesel = 4'b0111;
-			2'b11: ram_wrbytesel = 4'b1110;
-		endcase
-		2'b11: case (if0_addr[1:0])
-			2'b00: ram_wrbytesel = 4'b1111; // blit
-			2'b01: ram_wrbytesel = 4'b1111;
-			2'b10: ram_wrbytesel = 4'b1101;
-			2'b11: ram_wrbytesel = 4'b1011;
-		endcase
+        2'b00: case (if0_addr[1:0])
+            2'b00: ram_wrbytesel = 4'b0001;
+            2'b01: ram_wrbytesel = 4'b0010;
+            2'b10: ram_wrbytesel = 4'b0100;
+            2'b11: ram_wrbytesel = 4'b1000;
+        endcase
+        2'b01: case (if0_addr[1:0])
+            2'b00: ram_wrbytesel = 4'b0011;
+            2'b01: ram_wrbytesel = 4'b0110;
+            2'b10: ram_wrbytesel = 4'b1100;
+            2'b11: ram_wrbytesel = 4'b1001;
+        endcase
+        2'b10: case (if0_addr[1:0])
+            2'b00: ram_wrbytesel = 4'b0101;
+            2'b01: ram_wrbytesel = 4'b1010;
+            2'b10: ram_wrbytesel = 4'b0111;
+            2'b11: ram_wrbytesel = 4'b1110;
+        endcase
+        2'b11: case (if0_addr[1:0])
+            2'b00: ram_wrbytesel = 4'b1111; // blit
+            2'b01: ram_wrbytesel = 4'b1111;
+            2'b10: ram_wrbytesel = 4'b1101;
+            2'b11: ram_wrbytesel = 4'b1011;
+        endcase
 
     endcase
 
@@ -149,7 +149,7 @@ module vram_if(
     always @(posedge clk) begin
         if (if0_ack) begin
             if0_rddata8_r <= if0_rddata8;
-			if0_rddata32_r <= ram_rddata;
+            if0_rddata32_r <= ram_rddata;
         end
     end
 
