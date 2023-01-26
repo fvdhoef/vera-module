@@ -291,6 +291,10 @@ module top(
     wire [16:0] vram_addr_decremented = vram_addr - increment;
     wire [16:0] vram_addr_new         = vram_addr_decr ? vram_addr_decremented : vram_addr_incremented;
 
+    wire is_audio_address             = (vram_addr[16:6]  == 'b11111100111);
+    wire is_palette_address           = (vram_addr[16:9]  == 'b11111101);
+    wire is_sprite_attr_address       = (vram_addr[16:10] == 'b1111111);
+
     always @* begin
         vram_addr_0_next                 = vram_addr_0_r;
         vram_addr_1_next                 = vram_addr_1_r;
@@ -363,7 +367,7 @@ module top(
         spi_autotx_next                  = spi_autotx_r;
 
         ib_addr_next                     = ib_addr_r;
-        ib_wrpattern_next                = ib_wrpattern_r;
+        ib_wrpattern_next                = 0;
         ib_cache32_next                  = ib_cache32_r;
 
         ib_wrdata_next                   = ib_wrdata_r;
@@ -578,20 +582,14 @@ module top(
                 ib_do_access_next = 1;
             end
 
-            // Write byte pattern and blit-cache setup
-            if (access_addr == 5'h03) begin
-                ib_wrpattern_next = vram_wrpattern_0_r;
+            // Only when reading from *main* VRAM do we allow multibyte features
+            if (!is_audio_address && !is_palette_address && !is_sprite_attr_address) begin
+                ib_wrpattern_next = access_addr == 5'h03 ? vram_wrpattern_0_r : vram_wrpattern_1_r;
                 if (do_read) begin
-                   if ((vram_wrpattern_0_r[1:0] == 2'b11) && (vram_addr_0_r[1:0] == 2'b00)) begin
-                        ib_cache32_next = vram_data0_32_r;
-                   end
-                end
-            end else begin
-                ib_wrpattern_next = vram_wrpattern_1_r;
-                if (do_read) begin
-                   if ((vram_wrpattern_1_r[1:0] == 2'b11) && (vram_addr_1_r[1:0] == 2'b00)) begin
-                        ib_cache32_next = vram_data1_32_r;
-                   end
+                    // Only if wrpattern == 11b and address % 4 == 0 do we fill the cache
+                    if ((ib_wrpattern_next[1:0] == 2'b11) && (vram_addr[1:0] == 2'b00)) begin
+                        ib_cache32_next = access_addr == 5'h03 ? vram_data0_32_r : vram_data1_32_r;
+                    end
                 end
             end
 
