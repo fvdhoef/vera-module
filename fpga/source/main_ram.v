@@ -6,7 +6,7 @@ module main_ram(
     // Slave bus interface
     input  wire [14:0] bus_addr,
     input  wire [31:0] bus_wrdata,
-    input  wire  [3:0] bus_wrbytesel,
+    input  wire  [7:0] bus_wrnibblesel,
     output reg  [31:0] bus_rddata,
     input  wire        bus_write);
 
@@ -32,31 +32,55 @@ module main_ram(
 
     always @(posedge clk) begin
         if (bus_write && blk10_cs) begin
-            if (bus_wrbytesel[0]) begin
-                blk10[bus_addr][7:0] = bus_wrdata[7:0];
+            if (bus_wrnibblesel[0]) begin
+                blk10[bus_addr][3:0] = bus_wrdata[3:0];
             end
-            if (bus_wrbytesel[1]) begin
-                blk10[bus_addr][15:8] = bus_wrdata[15:8];
+            if (bus_wrnibblesel[1]) begin
+                blk10[bus_addr][7:4] = bus_wrdata[7:4];
             end
-            if (bus_wrbytesel[2]) begin
-                blk10[bus_addr][23:16] = bus_wrdata[23:16];
+            if (bus_wrnibblesel[2]) begin
+                blk10[bus_addr][11:8] = bus_wrdata[11:8];
             end
-            if (bus_wrbytesel[3]) begin
-                blk10[bus_addr][31:24] = bus_wrdata[31:24];
+            if (bus_wrnibblesel[3]) begin
+                blk10[bus_addr][15:12] = bus_wrdata[15:12];
+            end
+            if (bus_wrnibblesel[4]) begin
+                blk10[bus_addr][19:16] = bus_wrdata[19:16];
+            end
+            if (bus_wrnibblesel[5]) begin
+                blk10[bus_addr][23:20] = bus_wrdata[23:20];
+            end
+            if (bus_wrnibblesel[6]) begin
+                blk10[bus_addr][27:24] = bus_wrdata[27:24];
+            end
+            if (bus_wrnibblesel[7]) begin
+                blk10[bus_addr][31:28] = bus_wrdata[31:28];
             end
         end
         if (bus_write && blk32_cs) begin
-            if (bus_wrbytesel[0]) begin
-                blk32[bus_addr][7:0] = bus_wrdata[7:0];
+            if (bus_wrnibblesel[0]) begin
+                blk32[bus_addr][3:0] = bus_wrdata[3:0];
             end
-            if (bus_wrbytesel[1]) begin
-                blk32[bus_addr][15:8] = bus_wrdata[15:8];
+            if (bus_wrnibblesel[1]) begin
+                blk32[bus_addr][7:4] = bus_wrdata[7:4];
             end
-            if (bus_wrbytesel[2]) begin
-                blk32[bus_addr][23:16] = bus_wrdata[23:16];
+            if (bus_wrnibblesel[2]) begin
+                blk32[bus_addr][11:8] = bus_wrdata[11:8];
             end
-            if (bus_wrbytesel[3]) begin
-                blk32[bus_addr][31:24] = bus_wrdata[31:24];
+            if (bus_wrnibblesel[3]) begin
+                blk32[bus_addr][15:12] = bus_wrdata[15:12];
+            end
+            if (bus_wrnibblesel[4]) begin
+                blk32[bus_addr][19:16] = bus_wrdata[19:16];
+            end
+            if (bus_wrnibblesel[5]) begin
+                blk32[bus_addr][23:20] = bus_wrdata[23:20];
+            end
+            if (bus_wrnibblesel[6]) begin
+                blk32[bus_addr][27:24] = bus_wrdata[27:24];
+            end
+            if (bus_wrnibblesel[7]) begin
+                blk32[bus_addr][31:28] = bus_wrdata[31:28];
             end
         end
 
@@ -86,7 +110,7 @@ module main_ram(
         .AD(bus_addr[13:0]),
         .DI(bus_wrdata[15:0]),
         .DO(blk10_rddata[15:0]),
-        .MASKWE({{2{bus_wrbytesel[1]}}, {2{bus_wrbytesel[0]}}}),
+        .MASKWE(bus_wrnibblesel[3:0]),
         .WE(bus_write && blk10_cs),
         .CS(1'b1),
         .STDBY(1'b0),
@@ -98,7 +122,7 @@ module main_ram(
         .AD(bus_addr[13:0]),
         .DI(bus_wrdata[31:16]),
         .DO(blk10_rddata[31:16]),
-        .MASKWE({{2{bus_wrbytesel[3]}}, {2{bus_wrbytesel[2]}}}),
+        .MASKWE(bus_wrnibblesel[7:4]),
         .WE(bus_write && blk10_cs),
         .CS(1'b1),
         .STDBY(1'b0),
@@ -110,7 +134,7 @@ module main_ram(
         .AD(bus_addr[13:0]),
         .DI(bus_wrdata[15:0]),
         .DO(blk32_rddata[15:0]),
-        .MASKWE({{2{bus_wrbytesel[1]}}, {2{bus_wrbytesel[0]}}}),
+        .MASKWE(bus_wrnibblesel[3:0]),
         .WE(bus_write && blk32_cs),
         .CS(1'b1),
         .STDBY(1'b0),
@@ -122,7 +146,7 @@ module main_ram(
         .AD(bus_addr[13:0]),
         .DI(bus_wrdata[31:16]),
         .DO(blk32_rddata[31:16]),
-        .MASKWE({{2{bus_wrbytesel[3]}}, {2{bus_wrbytesel[2]}}}),
+        .MASKWE(bus_wrnibblesel[7:4]),
         .WE(bus_write && blk32_cs),
         .CS(1'b1),
         .STDBY(1'b0),

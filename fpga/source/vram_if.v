@@ -35,8 +35,8 @@ module vram_if(
     // Main RAM 128kB (32k x 32)
     //////////////////////////////////////////////////////////////////////////
     reg  [14:0] ram_addr;
-    wire [31:0] ram_wrdata;
-    reg   [3:0] ram_wrbytesel;
+    reg  [31:0] ram_wrdata;
+    reg   [7:0] ram_wrnibblesel;
     wire [31:0] ram_rddata;
     wire        ram_write;
 
@@ -44,7 +44,7 @@ module vram_if(
         .clk(clk),
         .bus_addr(ram_addr),
         .bus_wrdata(ram_wrdata),
-        .bus_wrbytesel(ram_wrbytesel),
+        .bus_wrnibblesel(ram_wrnibblesel),
         .bus_rddata(ram_rddata),
         .bus_write(ram_write));
 
@@ -56,48 +56,57 @@ module vram_if(
     reg if2_ack_next;
     reg if3_ack_next;
 
-    assign ram_wrdata = ((if0_wrpattern[1:0] == 2'b11) && (if0_addr[1:0] == 2'b00)) ? if0_cache32 : {4{if0_wrdata}};
     assign ram_write  = if0_strobe && if0_write;
 
     /*
+        Write pattern mapping:
+        
+        _   0    1    2    3
+       00 +--- -+-- --+- ---+
+       01 -+-+ +-+- ++-- +--+
+       10 ++++ +++- -++- ++-+
+       11 blit -+++ --++ +-++
+
         Colums: address % 4
         Rows: 2-bit value representing a pattern (but dependent on addrss, so we can create all possible patterns)
-    
-        _   0    1    2    3
-        00 0001 0010 0100 1000
-        01 0011 0110 1100 1001
-        10 0101 1010 0111 1110
-        11 1111 1111 1101 1011
-
+        
+        Note: Each byte pattern is consists of four +'s and -'s. Each - or + represents a byte in VRAM. 
+        A + means the byte is written to and a - means the byte in VRAM is untouched.
+        
     */
 
-    always @* case (if0_wrpattern[1:0])
-        2'b00: case (if0_addr[1:0])
-            2'b00: ram_wrbytesel = 4'b0001;
-            2'b01: ram_wrbytesel = 4'b0010;
-            2'b10: ram_wrbytesel = 4'b0100;
-            2'b11: ram_wrbytesel = 4'b1000;
+    always @* begin
+        ram_wrdata = {4{if0_wrdata}};
+        case (if0_wrpattern[1:0])
+            2'b00: case (if0_addr[1:0])
+                2'b00: ram_wrnibblesel = 8'b00000011;
+                2'b01: ram_wrnibblesel = 8'b00001100;
+                2'b10: ram_wrnibblesel = 8'b00110000;
+                2'b11: ram_wrnibblesel = 8'b11000000;
+            endcase
+            2'b01: case (if0_addr[1:0])
+                2'b00: ram_wrnibblesel = 8'b11001100;
+                2'b01: ram_wrnibblesel = 8'b00110011;
+                2'b10: ram_wrnibblesel = 8'b00001111;
+                2'b11: ram_wrnibblesel = 8'b11000011;
+            endcase
+            2'b10: case (if0_addr[1:0])
+                2'b00: ram_wrnibblesel = 8'b11111111;
+                2'b01: ram_wrnibblesel = 8'b00111111;
+                2'b10: ram_wrnibblesel = 8'b00111100;
+                2'b11: ram_wrnibblesel = 8'b11001111;
+            endcase
+            2'b11: case (if0_addr[1:0])  
+                2'b00: begin              // blit
+                    ram_wrnibblesel = ~if0_wrdata; // In blit mode, we invert the byte written to us and use it as a nibble mask
+                    ram_wrdata = if0_cache32;      // In blit mode, We use the 32-bit data from the blit-cache
+                end
+                2'b01: ram_wrnibblesel = 8'b11111100;
+                2'b10: ram_wrnibblesel = 8'b11110000;
+                2'b11: ram_wrnibblesel = 8'b11110011;
+            endcase
         endcase
-        2'b01: case (if0_addr[1:0])
-            2'b00: ram_wrbytesel = 4'b0011;
-            2'b01: ram_wrbytesel = 4'b0110;
-            2'b10: ram_wrbytesel = 4'b1100;
-            2'b11: ram_wrbytesel = 4'b1001;
-        endcase
-        2'b10: case (if0_addr[1:0])
-            2'b00: ram_wrbytesel = 4'b0101;
-            2'b01: ram_wrbytesel = 4'b1010;
-            2'b10: ram_wrbytesel = 4'b0111;
-            2'b11: ram_wrbytesel = 4'b1110;
-        endcase
-        2'b11: case (if0_addr[1:0])
-            2'b00: ram_wrbytesel = 4'b1111; // blit
-            2'b01: ram_wrbytesel = 4'b1111;
-            2'b10: ram_wrbytesel = 4'b1101;
-            2'b11: ram_wrbytesel = 4'b1011;
-        endcase
-
-    endcase
+    end
 
     always @* begin
         ram_addr     = 15'b0;
