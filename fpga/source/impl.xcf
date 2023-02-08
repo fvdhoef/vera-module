@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8' ?>
 <!DOCTYPE		ispXCF	SYSTEM	"IspXCF.dtd" >
-<ispXCF version="R3.1">
+<ispXCF version="R3.2">
 	<Comment></Comment>
 	<Chain>
 		<Comm>SPI</Comm>
@@ -19,11 +19,11 @@
 			</Bypass>
 			<File>../../impl/vera_module_impl.bin</File>
 			<FileTime>07/08/22 18:49:56</FileTime>
+			<JedecChecksum>0xFC11</JedecChecksum>
 			<MemoryType>External SPI Flash Memory (SPI FLASH)</MemoryType>
 			<Operation>Erase,Program,Verify</Operation>
 			<Option>
 				<SVFVendor>JTAG STANDARD</SVFVendor>
-				<SVFProcessor>SVF Processor</SVFProcessor>
 				<AccessMode>Direct Programming</AccessMode>
 			</Option>
 			<FPGALoader>
@@ -47,7 +47,6 @@
 					<Option>
 						<SVFVendor>JTAG STANDARD</SVFVendor>
 						<IOState>HighZ</IOState>
-						<SVFProcessor>SVF Processor</SVFProcessor>
 						<AccessMode>Direct Programming</AccessMode>
 					</Option>
 				</Device>
@@ -65,7 +64,7 @@
 					<AddressBase>0x00000000</AddressBase>
 					<EndAddress>0x00010000</EndAddress>
 					<DeviceSize>16</DeviceSize>
-					<DataSize>104156</DataSize>
+					<DataSize>104157</DataSize>
 					<NumberOfDevices>1</NumberOfDevices>
 					<ReInitialize value="FALSE"/>
 				</Device>
@@ -74,15 +73,14 @@
 				<Device>
 					<Pos>1</Pos>
 					<Name></Name>
-					<File>D:/_Dev/Radiant/vera/fpga/impl/vera_module_impl.bin</File>
+					<File>D:/_Dev/X16/vera-module/ICE40_HDMI/fpga/impl/vera_module_impl.bin</File>
 					<LocalChainList>
 						<LocalDevice index="-99"
 							name="Unknown"
-							file="D:/_Dev/Radiant/vera/fpga/impl/vera_module_impl.bin"/>
+							file="D:/_Dev/X16/vera-module/ICE40_HDMI/fpga/impl/vera_module_impl.bin"/>
 					</LocalChainList>
 					<Option>
 						<SVFVendor>JTAG STANDARD</SVFVendor>
-						<SVFProcessor>SVF Processor</SVFProcessor>
 					</Option>
 				</Device>
 			</FPGADevice>
@@ -97,11 +95,11 @@
 		<EndTAP>TLR</EndTAP>
 		<DisableCheckBoard value="TRUE"/>
 		<VerifyUsercode value="FALSE"/>
-		<TCKDelay>1</TCKDelay>
+		<TCKDelay>3</TCKDelay>
 	</ProjectOptions>
 	<CableOptions>
 		<CableName>USB2</CableName>
-		<PortAdd>FTUSB-2</PortAdd>
-		<USBID>C232HM-EDHSL-0 Location 0002 Serial FT4Z3N1S</USBID>
+		<PortAdd>FTUSB-0</PortAdd>
+		<USBID>ATDH1150USB B Location 0001 Serial FTQWZJO8B</USBID>
 	</CableOptions>
 </ispXCF>
