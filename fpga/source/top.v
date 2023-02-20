@@ -211,24 +211,14 @@ module top(
     reg [4:0] rdaddr_r;
     reg [4:0] wraddr_r;
     reg [7:0] wrdata_r;
-    reg [4:0] wraddrp_r;
-    reg [7:0] wrdatap_r;
-    reg [4:0] wraddrn_r;
-    reg [7:0] wrdatan_r;
 
-    always @(posedge clk) begin
-        wraddrp_r <= extbus_a;
-        wrdatap_r <= extbus_d;
-    end
-    always @(negedge clk) begin
-        wraddrn_r <= extbus_a;
-        wrdatan_r <= extbus_d;
-    end
     always @(negedge bus_write) begin
-        wraddr_r <= clk ? wraddrn_r : wraddrp_r;
-        wrdata_r <= clk ? wrdatan_r : wrdatap_r;
+        wrdata_r <= extbus_d;
     end
-    always @(negedge bus_read) begin
+    always @(posedge bus_write) begin
+        wraddr_r <= extbus_a;
+    end
+    always @(posedge bus_read) begin
         rdaddr_r <= extbus_a;
     end
 
@@ -757,13 +747,13 @@ module top(
         // Interface 1 - 32-bit read only
         .if1_addr(l0_addr),
         .if1_rddata(l0_rddata),
-        .if1_strobe(l0_strobe),
+        .if1_strobe(l0_strobe & l0_enabled_r),
         .if1_ack(l0_ack),
 
         // Interface 2 - 32-bit read only
         .if2_addr(l1_addr),
         .if2_rddata(l1_rddata),
-        .if2_strobe(l1_strobe),
+        .if2_strobe(l1_strobe & l1_enabled_r),
         .if2_ack(l1_ack),
 
         // Interface 3 - 32-bit read only
