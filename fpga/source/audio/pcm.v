@@ -213,8 +213,8 @@ module pcm(
     reg signed [22:0] left_scaled_r, right_scaled_r;
 
     always @(posedge clk) begin
-        left_scaled_r  <= left_output_r  * {volume_log, 1'b0};
-        right_scaled_r <= right_output_r * {volume_log, 1'b0};
+        left_scaled_r  <= left_output_r  * volume_log * 2;
+        right_scaled_r <= right_output_r * volume_log * 2;
     end
 
     assign left_audio  = left_scaled_r;
