@@ -16,7 +16,7 @@ module video_composite(
     // Composite interface
     output wire  [5:0] luma,
     output wire  [5:0] chroma,
-    
+
     // RGB interface
     output wire  [3:0] rgb_r,
     output wire  [3:0] rgb_g,
@@ -85,11 +85,11 @@ module video_composite(
         (vcnt >=  12 && vcnt <=  17) ||
         (vcnt >= 525 && vcnt <= 530) ||
         (vcnt >= 537 && vcnt <= 542);
-    
+
     wire v_active =
         (vcnt >=   38+4 && vcnt <=  524-3) ||   // 240 lines
         (vcnt >=  563+5 && vcnt <= 1049-2);     // 240 lines
-    
+
     reg field; // 0: even, 1: odd
 
     wire v_last2           = (vcnt == 38+3 || vcnt == 563+4);
@@ -160,9 +160,10 @@ module video_composite(
 
     assign next_pixel = h_active;
 
-    wire [3:0] r = palette_rgb_data[11:8];
-    wire [3:0] g = palette_rgb_data[7:4];
-    wire [3:0] b = palette_rgb_data[3:0];
+    wire active = h_active && v_active;
+    wire [3:0] r = active ? palette_rgb_data[11:8] : 4'b0;
+    wire [3:0] g = active ? palette_rgb_data[7:4] : 4'b0;
+    wire [3:0] b = active ? palette_rgb_data[3:0] : 4'b0;
 
     video_modulator modulator(
         .clk(clk),
