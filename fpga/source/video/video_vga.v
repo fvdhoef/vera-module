@@ -82,8 +82,8 @@ module video_vga(
             vga_r <= 4'd0;
             vga_g <= 4'd0;
             vga_b <= 4'd0;
-            vga_hsync <= 0;
-            vga_vsync <= 0;
+            vga_hsync <= 1;
+            vga_vsync <= 1;
 
         end else begin
             if (active_r[1]) begin
@@ -96,8 +96,8 @@ module video_vga(
                 vga_b <= 4'd0;
             end
 
-            vga_hsync <= hsync_r[1];
-            vga_vsync <= vsync_r[1];
+            vga_hsync <= ~hsync_r[1];
+            vga_vsync <= ~vsync_r[1];
         end
     end
 
