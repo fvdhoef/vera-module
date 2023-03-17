@@ -103,6 +103,7 @@ module top(
     reg [11:0] l1_vscroll_r,                  l1_vscroll_next;
 
     reg  [1:0] video_output_mode_r,           video_output_mode_next;
+    reg        line_mode_r,                   line_mode_next;
 
     reg  [7:0] audio_pcm_sample_rate_r,       audio_pcm_sample_rate_next;
     reg        audio_mode_stereo_r,           audio_mode_stereo_next;
@@ -147,7 +148,7 @@ module top(
 
         5'h09: begin
             if (dc_select_r == 0) begin
-                rddata = {current_field, sprites_enabled_r, l1_enabled_r, l0_enabled_r, 1'b0, chroma_disable_r, video_output_mode_r};
+                rddata = {current_field, sprites_enabled_r, l1_enabled_r, l0_enabled_r, line_mode_r, chroma_disable_r, video_output_mode_r};
             end else begin
                 rddata = dc_active_hstart_r[9:2];
             end
@@ -298,6 +299,7 @@ module top(
         l0_enabled_next                  = l0_enabled_r;
         l1_enabled_next                  = l1_enabled_r;
         chroma_disable_next              = chroma_disable_r;
+        line_mode_next                   = line_mode_r;
         dc_hscale_next                   = dc_hscale_r;
         dc_vscale_next                   = dc_vscale_r;
         dc_border_color_next             = dc_border_color_r;
@@ -426,6 +428,7 @@ module top(
                         sprites_enabled_next   = write_data[6];
                         l1_enabled_next        = write_data[5];
                         l0_enabled_next        = write_data[4];
+                        line_mode_next         = write_data[3];
                         chroma_disable_next    = write_data[2];
                         video_output_mode_next = write_data[1:0];
                     end else begin
@@ -586,6 +589,7 @@ module top(
             l0_enabled_r                  <= 0;
             l1_enabled_r                  <= 0;
             chroma_disable_r              <= 0;
+            line_mode_r                   <= 0;
             dc_hscale_r                   <= 8'd128;
             dc_vscale_r                   <= 8'd128;
             dc_border_color_r             <= 0;
@@ -662,6 +666,7 @@ module top(
             l0_enabled_r                  <= l0_enabled_next;
             l1_enabled_r                  <= l1_enabled_next;
             chroma_disable_r              <= chroma_disable_next;
+            line_mode_r                   <= line_mode_next;
             dc_hscale_r                   <= dc_hscale_next;
             dc_vscale_r                   <= dc_vscale_next;
             dc_border_color_r             <= dc_border_color_next;
@@ -1076,6 +1081,7 @@ module top(
 
         // Line buffer / palette interface
         .palette_rgb_data(palette_rgb_data[11:0]),
+        .line_mode(line_mode_r),
 
         .next_frame(video_composite_next_frame),
         .next_line(video_composite_next_line),
