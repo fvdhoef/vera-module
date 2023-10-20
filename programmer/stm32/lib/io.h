@@ -55,8 +55,9 @@ static inline void io_set_opendrain(uint32_t io, bool val) {
     GPIO_TypeDef *gpio  = io_get_gpio_regs(io);
     int           shift = (io & 15);
 
-    gpio->OTYPER = (uint16_t)((gpio->OTYPER & ~(1 << shift)) |
-                              ((val ? 1 : 0) << shift));
+    gpio->OTYPER = (uint16_t)(
+        (gpio->OTYPER & ~(1 << shift)) |
+        ((val ? 1 : 0) << shift));
 }
 
 static inline void io_set_outputspeed(uint32_t io, enum iospeed speed) {
