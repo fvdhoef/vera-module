@@ -55,9 +55,8 @@ static inline void io_set_opendrain(uint32_t io, bool val) {
     GPIO_TypeDef *gpio  = io_get_gpio_regs(io);
     int           shift = (io & 15);
 
-    gpio->OTYPER = (uint16_t)(
-        (gpio->OTYPER & ~(1 << shift)) |
-        ((val ? 1 : 0) << shift));
+    gpio->OTYPER = (uint16_t)((gpio->OTYPER & ~(1 << shift)) |
+                              ((val ? 1 : 0) << shift));
 }
 
 static inline void io_set_outputspeed(uint32_t io, enum iospeed speed) {
@@ -115,14 +114,14 @@ static inline void io_set_alternate_function(uint32_t io, int function) {
         (gpio->AFR[afr_idx] & ~(0xF << shift)) |
         ((function & 0xF) << shift);
 }
-static inline clock_t io_clock_for_io(uint32_t io) {
+static inline enum clock io_clock_for_io(uint32_t io) {
     switch ((io >> 4) & 0xF) {
         case IOBANK_A: return CLK_GPIOA;
         case IOBANK_B: return CLK_GPIOB;
         case IOBANK_C: return CLK_GPIOC;
         case IOBANK_D: return CLK_GPIOD;
         case IOBANK_F: return CLK_GPIOF;
-        default: return (clock_t)0;
+        default: return (enum clock)0;
     }
 }
 
